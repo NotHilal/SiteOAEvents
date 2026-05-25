@@ -53,8 +53,12 @@
         <button class="sidebar-btn" data-tab="blocages">
           <i class="fas fa-ban"></i> Blocages
         </button>
+        <button class="sidebar-btn" data-tab="messagerie">
+          <i class="fas fa-envelope"></i> Messagerie
+          <span class="badge-count badge-blink" id="badge-messages" style="display:none;">0</span>
+        </button>
         <button class="sidebar-btn" data-tab="materiaux">
-          <i class="fas fa-boxes"></i> Matériaux
+          <i class="fas fa-boxes"></i> Matériel
         </button>
       </nav>
       <button class="sidebar-logout" id="logout-btn">
@@ -91,6 +95,11 @@
           <button class="cal-nav-btn" id="bloc-cal-prev"><i class="fas fa-chevron-left"></i></button>
           <span class="cal-month-label" id="bloc-cal-label"></span>
           <button class="cal-nav-btn" id="bloc-cal-next"><i class="fas fa-chevron-right"></i></button>
+          <button class="cal-today-btn" id="bloc-cal-today"><i class="fas fa-calendar-day mr-1"></i>Aujourd'hui</button>
+          <div class="cal-view-toggle">
+            <button class="cal-view-btn active" id="bloc-view-month">Mois</button>
+            <button class="cal-view-btn" id="bloc-view-year">Année</button>
+          </div>
         </div>
         <div class="cal-legend">
           <span class="leg-item"><span class="leg-dot leg-booked"></span> Confirmée</span>
@@ -110,6 +119,11 @@
           <button class="cal-nav-btn" id="cal-prev"><i class="fas fa-chevron-left"></i></button>
           <span class="cal-month-label" id="cal-label"></span>
           <button class="cal-nav-btn" id="cal-next"><i class="fas fa-chevron-right"></i></button>
+          <button class="cal-today-btn" id="cal-today"><i class="fas fa-calendar-day mr-1"></i>Aujourd'hui</button>
+          <div class="cal-view-toggle">
+            <button class="cal-view-btn active" id="cal-view-month">Mois</button>
+            <button class="cal-view-btn" id="cal-view-year">Année</button>
+          </div>
         </div>
         <div class="cal-legend">
           <span class="leg-item"><span class="leg-dot leg-booked"></span> Confirmée</span>
@@ -120,11 +134,29 @@
         <div id="calendar-grid" class="cal-grid-wrap"></div>
       </div>
 
+      <!-- ===== ONGLET MESSAGERIE ===== -->
+      <div id="tab-messagerie" class="tab-content">
+        <div class="adm-header">
+          <h1 class="adm-title">Messagerie</h1>
+          <div class="adm-filters">
+            <button class="filter-btn active" data-msg-filter="all">Tous</button>
+            <button class="filter-btn" data-msg-filter="unread">Non lus</button>
+            <button class="filter-btn" data-msg-filter="read">Lus</button>
+          </div>
+        </div>
+        <div id="messages-list">
+          <div class="adm-loader"><i class="fas fa-circle-notch fa-spin"></i> Chargement…</div>
+        </div>
+      </div>
+
       <!-- ===== ONGLET MATÉRIAUX ===== -->
       <div id="tab-materiaux" class="tab-content">
         <div class="adm-header">
-          <h1 class="adm-title">Gestion du matériel</h1>
-          <button class="adm-btn-primary" id="add-mat-btn"><i class="fas fa-plus mr-2"></i>Ajouter un article</button>
+          <h1 class="adm-title">Matériel</h1>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="adm-btn-ghost" id="add-cat-btn"><i class="fas fa-folder-plus mr-2"></i>Ajouter une catégorie</button>
+            <button class="adm-btn-primary" id="add-mat-btn"><i class="fas fa-plus mr-2"></i>Ajouter un article</button>
+          </div>
         </div>
 
         <!-- Formulaire ajout/édition -->
@@ -137,7 +169,9 @@
             </div>
             <div class="adm-form-group">
               <label>Catégorie</label>
-              <input type="text" id="mf-cat" class="adm-input" placeholder="Ex : Mobilier">
+              <select id="mf-cat" class="adm-input">
+                <option value="">— Sans catégorie —</option>
+              </select>
             </div>
             <div class="adm-form-group">
               <label>Description</label>
@@ -146,6 +180,7 @@
             <div class="adm-form-group">
               <label>Stock initial <span class="req">*</span></label>
               <input type="number" id="mf-qty" class="adm-input" min="1" value="1">
+              <div id="qty-error" style="display:none;margin-top:6px;color:var(--danger);font-size:.8rem;font-weight:600;"><i class="fas fa-exclamation-circle mr-1"></i>Veuillez entrer un nombre entier valide (≥ 1).</div>
             </div>
           </div>
 
@@ -192,6 +227,36 @@
     <div class="modal-card day-modal-card">
       <button class="modal-close" id="day-modal-close"><i class="fas fa-times"></i></button>
       <div id="day-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- MODAL CATÉGORIE -->
+  <div id="cat-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card" style="max-width:400px;">
+      <button class="modal-close" id="cat-modal-close"><i class="fas fa-times"></i></button>
+      <h3 class="modal-title"><i class="fas fa-folder-plus mr-2" style="color:var(--rose-gold);"></i>Catégories</h3>
+      <div class="adm-form-group">
+        <label>Nouvelle catégorie</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="cat-input" class="adm-input" placeholder="Ex : Mobilier" style="flex:1;">
+          <button class="adm-btn-primary" id="cat-save-btn" style="flex-shrink:0;"><i class="fas fa-plus mr-1"></i>Ajouter</button>
+        </div>
+        <div id="cat-error" style="display:none;margin-top:8px;background:#fff5f5;border:1.5px solid #fca5a5;border-radius:8px;padding:9px 13px;color:var(--danger);font-size:.83rem;font-weight:600;"><i class="fas fa-exclamation-circle mr-1"></i><span id="cat-error-text"></span></div>
+      </div>
+      <div id="cat-list" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <!-- MODAL SUPPRESSION -->
+  <div id="delete-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card delete-modal-card">
+      <div class="del-modal-icon"><i class="fas fa-trash"></i></div>
+      <h3 class="del-modal-title">Supprimer ?</h3>
+      <p class="del-modal-sub" id="del-modal-sub">Cette action est irréversible.</p>
+      <div class="del-modal-actions">
+        <button class="adm-btn-ghost" id="del-modal-cancel">Annuler</button>
+        <button class="adm-btn-danger" id="del-modal-confirm"><i class="fas fa-trash mr-2"></i>Supprimer</button>
+      </div>
     </div>
   </div>
 

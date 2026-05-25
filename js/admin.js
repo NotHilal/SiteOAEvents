@@ -6,8 +6,10 @@
 var currentFilter  = "all";
 var calYear        = new Date().getFullYear();
 var calMonth       = new Date().getMonth();
+var calView        = "month";   /* "month" | "year" */
 var blocYear       = new Date().getFullYear();
 var blocMonth      = new Date().getMonth();
+var blocView       = "month";   /* "month" | "year" */
 var blockedDatesSet  = new Set();
 var blockedDatesMap  = {};
 var blockedHoursMap  = {};
@@ -61,11 +63,15 @@ document.getElementById("logout-btn").addEventListener("click", function () {
    =================================================== */
 function initDashboard() {
   loadReservations();
+  loadMessages();
   setupTabs();
   setupFilters();
+  setupMsgFilters();
   setupCalendar();
   setupBlocCalendar();
+  loadCategories();
   loadMaterials();
+  setupCatModal();
 }
 
 /* ===================================================
@@ -78,8 +84,9 @@ function setupTabs() {
       document.querySelectorAll(".tab-content").forEach(function (t) { t.classList.remove("active"); });
       btn.classList.add("active");
       document.getElementById("tab-" + btn.dataset.tab).classList.add("active");
-      if (btn.dataset.tab === "calendrier") renderCalendar();
-      if (btn.dataset.tab === "blocages")   renderBlocCalendar();
+      if (btn.dataset.tab === "calendrier")  renderCalendar();
+      if (btn.dataset.tab === "blocages")    renderBlocCalendar();
+      if (btn.dataset.tab === "messagerie")  renderMessages();
     });
   });
 }
@@ -179,12 +186,13 @@ window.updateStatus = async function (id, status) {
   if (status === "confirmed" || status === "refused") renderCalendar();
 };
 
-window.deleteReservation = async function (id) {
-  if (!confirm("Supprimer cette demande ?")) return;
-  await db.from("reservations").delete().eq("id", id);
-  reservationsAll = reservationsAll.filter(function (r) { return r.id !== id; });
-  updateBadge();
-  renderReservations();
+window.deleteReservation = function(id) {
+  showDeleteConfirm("Cette demande de réservation sera définitivement supprimée.", async function() {
+    await db.from("reservations").delete().eq("id", id);
+    reservationsAll = reservationsAll.filter(function(r) { return r.id !== id; });
+    updateBadge();
+    renderReservations();
+  });
 };
 
 window.openContact = function (id) {
@@ -212,18 +220,39 @@ document.getElementById("contact-modal").addEventListener("click", function (e) 
    CALENDRIER
    =================================================== */
 function setupCalendar() {
-  document.getElementById("cal-prev").addEventListener("click", function () {
-    calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
+  /* .onclick = évite l'accumulation de listeners si initDashboard est rappelé */
+  document.getElementById("cal-prev").onclick = function () {
+    if (calView === "year") { calYear--; }
+    else { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } }
     renderCalendar();
-  });
-  document.getElementById("cal-next").addEventListener("click", function () {
-    calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
+  };
+  document.getElementById("cal-next").onclick = function () {
+    if (calView === "year") { calYear++; }
+    else { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } }
     renderCalendar();
-  });
-  document.getElementById("day-modal-close").addEventListener("click", closeDayModal);
-  document.getElementById("day-modal").addEventListener("click", function(e) {
+  };
+  document.getElementById("cal-today").onclick = function () {
+    var now = new Date();
+    calYear  = now.getFullYear();
+    calMonth = now.getMonth();
+    renderCalendar();
+  };
+  document.getElementById("cal-view-month").onclick = function () {
+    calView = "month";
+    document.getElementById("cal-view-month").classList.add("active");
+    document.getElementById("cal-view-year").classList.remove("active");
+    renderCalendar();
+  };
+  document.getElementById("cal-view-year").onclick = function () {
+    calView = "year";
+    document.getElementById("cal-view-year").classList.add("active");
+    document.getElementById("cal-view-month").classList.remove("active");
+    renderCalendar();
+  };
+  document.getElementById("day-modal-close").onclick = closeDayModal;
+  document.getElementById("day-modal").onclick = function (e) {
     if (e.target === this) closeDayModal();
-  });
+  };
 }
 
 async function loadBlockedForCalendar() {
@@ -241,7 +270,85 @@ async function loadBlockedForCalendar() {
   } catch(e) { blockedHoursMap = {}; }
 }
 
-/* ── Helper partagé : construit la grille calendrier ─── */
+/* ── Vue annuelle : 12 mois en grille ─── */
+function buildYearGrid(gridEl, labelEl, year, clickFnName) {
+  labelEl.textContent = year;
+
+  var today    = new Date().toISOString().split("T")[0];
+  var nowYear  = new Date().getFullYear();
+  var nowMonth = new Date().getMonth();
+  var DAYS_HDR = ["L","M","M","J","V","S","D"];
+
+  /* ── eventMap pour toute l'année ── */
+  var yearStart = year + "-01-01";
+  var yearEnd   = year + "-12-31";
+  var eventMap  = {};
+  reservationsAll.forEach(function(r) {
+    var rDates = (r.dates && r.dates.length) ? r.dates.slice().sort() : (r.date ? [r.date] : []);
+    rDates.filter(function(d) { return d >= yearStart && d <= yearEnd; }).forEach(function(d) {
+      if (!eventMap[d]) eventMap[d] = [];
+      eventMap[d].push(r);
+    });
+  });
+
+  var html = '<div class="cal-year-wrap">';
+
+  for (var m = 0; m < 12; m++) {
+    var monthName = new Date(year, m, 1).toLocaleDateString("fr-FR", { month:"long" });
+    monthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+    var monthStr    = year + "-" + String(m + 1).padStart(2, "0");
+    var daysInMonth = new Date(year, m + 1, 0).getDate();
+    var firstDay    = (new Date(year, m, 1).getDay() + 6) % 7;
+    var isCurrent   = (year === nowYear && m === nowMonth);
+
+    html += '<div class="cal-mini-month' + (isCurrent ? " cal-mini-current" : "") + '" id="ym-' + year + '-' + m + '">';
+    html += '<div class="cal-mini-label">' + monthName + '</div>';
+    html += '<div class="cal-mini-grid">';
+
+    DAYS_HDR.forEach(function(d) { html += '<div class="cal-mini-hdr">' + d + '</div>'; });
+
+    for (var i = 0; i < firstDay; i++) html += '<div class="cal-mini-empty"></div>';
+
+    for (var d = 1; d <= daysInMonth; d++) {
+      var dateStr   = monthStr + "-" + String(d).padStart(2, "0");
+      var isPast    = dateStr < today;
+      var isToday   = dateStr === today;
+      var isBlocked = blockedDatesSet.has(dateStr);
+      var hasHours  = !!(blockedHoursMap[dateStr] && blockedHoursMap[dateStr].length);
+      var dayRes    = (eventMap[dateStr] || []).filter(function(r) { return r.status !== "refused"; });
+      var hasConf   = dayRes.some(function(r) { return r.status === "confirmed"; });
+      var hasPend   = dayRes.some(function(r) { return r.status === "pending"; });
+
+      var cls = "cal-mini-day";
+      if (isPast)    cls += " is-past";
+      if (isToday)   cls += " is-today";
+      if (isBlocked) cls += " is-blocked";
+      else if (hasHours) cls += " is-partial";
+
+      var dots = "";
+      if (hasConf) dots += '<span class="cal-mini-dot dot-conf"></span>';
+      if (hasPend) dots += '<span class="cal-mini-dot dot-pend"></span>';
+      if (hasHours && !isBlocked) dots += '<span class="cal-mini-dot dot-part"></span>';
+      var dotsHtml = dots ? '<div class="cal-mini-dots">' + dots + '</div>' : '';
+
+      html += '<div class="' + cls + '" onclick="' + clickFnName + '(\'' + dateStr + '\')">' +
+        d + dotsHtml + '</div>';
+    }
+
+    html += '</div></div>';
+  }
+
+  html += '</div>';
+  gridEl.innerHTML = html;
+
+  /* Scroll vers le mois courant si on affiche l'année actuelle */
+  if (year === nowYear) {
+    var el = document.getElementById("ym-" + year + "-" + nowMonth);
+    if (el) setTimeout(function() { el.scrollIntoView({ behavior:"smooth", block:"nearest" }); }, 80);
+  }
+}
+
+/* ── Helper partagé : construit la grille calendrier (1 mois) ─── */
 function buildCalGrid(gridEl, labelEl, year, month, clickFnName) {
   var monthName = new Date(year, month, 1).toLocaleDateString("fr-FR", { month:"long", year:"numeric" });
   labelEl.textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
@@ -281,10 +388,14 @@ function buildCalGrid(gridEl, labelEl, year, month, clickFnName) {
     var isBlocked = blockedDatesSet.has(dateStr);
     var dayEvents = (eventMap[dateStr] || []).filter(function(e) { return e.r.status !== "refused"; });
 
+    var dayHours = blockedHoursMap[dateStr] || [];
+    var hasHours = dayHours.length > 0;
+
     var cls = "cal-day";
-    if (isPast)    cls += " cal-past";
-    if (isToday)   cls += " cal-today";
-    if (isBlocked) cls += " cal-blocked";
+    if (isPast)         cls += " cal-past";
+    if (isToday)        cls += " cal-today";
+    if (isBlocked)      cls += " cal-blocked";
+    else if (hasHours)  cls += " cal-partial";
 
     var BARS_MAX = 3;
     var barsHtml = dayEvents.slice(0, BARS_MAX).map(function(ev) {
@@ -296,12 +407,30 @@ function buildCalGrid(gridEl, labelEl, year, month, clickFnName) {
     }).join("");
     if (dayEvents.length > BARS_MAX) barsHtml += '<div class="cal-ev-more">+' + (dayEvents.length - BARS_MAX) + '</div>';
 
+    /* Affichage du blocage */
+    var blockHtml = "";
+    if (isBlocked) {
+      var reason = blockedDatesMap[dateStr] && blockedDatesMap[dateStr].reason;
+      blockHtml = '<div class="cal-block-full">' +
+        '<i class="fas fa-ban"></i>' +
+        (reason ? ' ' + escHtml(reason) : ' Journée bloquée') +
+      '</div>';
+    } else if (hasHours) {
+      var sortedH = dayHours.slice().sort();
+      var HOURS_MAX = 4;
+      var tagsHtml = sortedH.slice(0, HOURS_MAX).map(function(h) {
+        return '<span class="cal-hour-tag">' + h.replace(":00","h") + '</span>';
+      }).join("");
+      if (sortedH.length > HOURS_MAX) tagsHtml += '<span class="cal-hour-more">+' + (sortedH.length - HOURS_MAX) + '</span>';
+      blockHtml = '<div class="cal-hour-tags">' + tagsHtml + '</div>';
+    }
+
     html += '<div class="' + cls + '" onclick="' + clickFnName + '(\'' + dateStr + '\')">' +
       '<div class="cal-day-top">' +
         '<span class="cal-day-num">' + d + (isToday ? '<span class="today-dot"></span>' : '') + '</span>' +
-        (isBlocked ? '<span class="cal-badge badge-blocked"><i class="fas fa-ban"></i></span>' : '') +
       '</div>' +
-      (barsHtml ? '<div class="cal-ev-bars">' + barsHtml + '</div>' : '') +
+      (barsHtml  ? '<div class="cal-ev-bars">' + barsHtml + '</div>' : '') +
+      blockHtml +
     '</div>';
   }
   html += '</div>';
@@ -310,22 +439,24 @@ function buildCalGrid(gridEl, labelEl, year, month, clickFnName) {
 
 async function renderCalendar() {
   await loadBlockedForCalendar();
-  buildCalGrid(
-    document.getElementById("calendar-grid"),
-    document.getElementById("cal-label"),
-    calYear, calMonth,
-    "openDayModal"
-  );
+  var gridEl  = document.getElementById("calendar-grid");
+  var labelEl = document.getElementById("cal-label");
+  if (calView === "year") {
+    buildYearGrid(gridEl, labelEl, calYear, "openDayModal");
+  } else {
+    buildCalGrid(gridEl, labelEl, calYear, calMonth, "openDayModal");
+  }
 }
 
 async function renderBlocCalendar() {
   await loadBlockedForCalendar();
-  buildCalGrid(
-    document.getElementById("bloc-calendar-grid"),
-    document.getElementById("bloc-cal-label"),
-    blocYear, blocMonth,
-    "openBlocModal"
-  );
+  var gridEl  = document.getElementById("bloc-calendar-grid");
+  var labelEl = document.getElementById("bloc-cal-label");
+  if (blocView === "year") {
+    buildYearGrid(gridEl, labelEl, blocYear, "openBlocModal");
+  } else {
+    buildCalGrid(gridEl, labelEl, blocYear, blocMonth, "openBlocModal");
+  }
 }
 
 /* ===== MODAL BLOCAGE ===== */
@@ -624,12 +755,13 @@ window.updateStatusFromDetail = async function(id, status, clickedDate) {
   openResaDetail(id, clickedDate);
 };
 
-window.deleteFromDetail = async function(id, backDate) {
-  if (!confirm("Supprimer cette demande ?")) return;
-  await db.from("reservations").delete().eq("id", id);
-  reservationsAll = reservationsAll.filter(function(r) { return r.id !== id; });
-  updateBadge(); renderReservations(); renderCalendar();
-  openDayModal(backDate, true);
+window.deleteFromDetail = function(id, backDate) {
+  showDeleteConfirm("Cette demande de réservation sera définitivement supprimée.", async function() {
+    await db.from("reservations").delete().eq("id", id);
+    reservationsAll = reservationsAll.filter(function(r) { return r.id !== id; });
+    updateBadge(); renderReservations(); renderCalendar();
+    openDayModal(backDate, true);
+  });
 };
 
 
@@ -637,55 +769,245 @@ window.deleteFromDetail = async function(id, backDate) {
    BLOCAGES — navigation calendrier
    =================================================== */
 function setupBlocCalendar() {
-  document.getElementById("bloc-cal-prev").addEventListener("click", function () {
-    blocMonth--; if (blocMonth < 0) { blocMonth = 11; blocYear--; }
+  document.getElementById("bloc-cal-prev").onclick = function () {
+    if (blocView === "year") { blocYear--; }
+    else { blocMonth--; if (blocMonth < 0) { blocMonth = 11; blocYear--; } }
     renderBlocCalendar();
-  });
-  document.getElementById("bloc-cal-next").addEventListener("click", function () {
-    blocMonth++; if (blocMonth > 11) { blocMonth = 0; blocYear++; }
+  };
+  document.getElementById("bloc-cal-next").onclick = function () {
+    if (blocView === "year") { blocYear++; }
+    else { blocMonth++; if (blocMonth > 11) { blocMonth = 0; blocYear++; } }
     renderBlocCalendar();
-  });
+  };
+  document.getElementById("bloc-cal-today").onclick = function () {
+    var now = new Date();
+    blocYear  = now.getFullYear();
+    blocMonth = now.getMonth();
+    renderBlocCalendar();
+  };
+  document.getElementById("bloc-view-month").onclick = function () {
+    blocView = "month";
+    document.getElementById("bloc-view-month").classList.add("active");
+    document.getElementById("bloc-view-year").classList.remove("active");
+    renderBlocCalendar();
+  };
+  document.getElementById("bloc-view-year").onclick = function () {
+    blocView = "year";
+    document.getElementById("bloc-view-year").classList.add("active");
+    document.getElementById("bloc-view-month").classList.remove("active");
+    renderBlocCalendar();
+  };
 }
+
+/* ===================================================
+   CATÉGORIES
+   =================================================== */
+var categoriesAll  = [];
+var catPage        = 0;
+var CAT_PAGE_SIZE  = 10;
+
+async function loadCategories() {
+  var { data } = await db.from("categories").select("*").order("name");
+  categoriesAll = data || [];
+  renderCategorySelect();
+}
+
+function renderCategorySelect() {
+  var sel     = document.getElementById("mf-cat");
+  var current = sel ? sel.value : "";
+  var opts    = '<option value="">— Sans catégorie —</option>';
+  categoriesAll.forEach(function(c) {
+    opts += '<option value="' + escHtml(c.name) + '"' + (c.name === current ? " selected" : "") + '>' + escHtml(c.name) + '</option>';
+  });
+  if (sel) sel.innerHTML = opts;
+}
+
+function renderCatList(page) {
+  var wrap = document.getElementById("cat-list");
+  if (!wrap) return;
+
+  if (page !== undefined) catPage = page;
+
+  if (!categoriesAll.length) {
+    wrap.innerHTML = '<p style="color:var(--gray);font-size:.85rem;text-align:center;padding:12px 0;">Aucune catégorie.</p>';
+    return;
+  }
+
+  var totalPages = Math.ceil(categoriesAll.length / CAT_PAGE_SIZE);
+  if (catPage >= totalPages) catPage = totalPages - 1;
+  if (catPage < 0)           catPage = 0;
+
+  var start = catPage * CAT_PAGE_SIZE;
+  var slice = categoriesAll.slice(start, start + CAT_PAGE_SIZE);
+
+  var html = slice.map(function(c) {
+    return '<div class="cat-list-item">' +
+      '<span class="cat-list-name">' + escHtml(c.name) + '</span>' +
+      '<button class="adm-btn-delete btn-sm" onclick="deleteCategory(\'' + c.id + '\',\'' + escHtml(c.name) + '\')"><i class="fas fa-trash"></i></button>' +
+    '</div>';
+  }).join("");
+
+  if (totalPages > 1) {
+    html += '<div class="cat-pagination">' +
+      '<button class="cat-pg-btn" onclick="renderCatList(' + (catPage - 1) + ')"' + (catPage === 0 ? ' disabled' : '') + '>' +
+        '<i class="fas fa-chevron-left"></i>' +
+      '</button>' +
+      '<span class="cat-pg-info">' + (catPage + 1) + ' / ' + totalPages + '</span>' +
+      '<button class="cat-pg-btn" onclick="renderCatList(' + (catPage + 1) + ')"' + (catPage >= totalPages - 1 ? ' disabled' : '') + '>' +
+        '<i class="fas fa-chevron-right"></i>' +
+      '</button>' +
+    '</div>';
+  }
+
+  wrap.innerHTML = html;
+}
+
+function setupCatModal() {
+  var modal   = document.getElementById("cat-modal");
+  var close   = document.getElementById("cat-modal-close");
+  var input   = document.getElementById("cat-input");
+  var saveBtn = document.getElementById("cat-save-btn");
+  var openBtn = document.getElementById("add-cat-btn");
+
+  /* .onclick évite l'accumulation de listeners si setupCatModal est rappelé */
+  openBtn.onclick = function() {
+    catPage = 0;
+    renderCatList();
+    modal.style.display = "flex";
+    input.value = "";
+    hideCatError();
+    input.focus();
+  };
+  close.onclick = function() { modal.style.display = "none"; };
+  modal.onclick = function(e) { if (e.target === this) this.style.display = "none"; };
+
+  saveBtn.onclick = saveCategory;
+  input.onkeydown = function(e) { if (e.key === "Enter") saveCategory(); };
+}
+
+var _catErrTimer = null;
+
+function showCatError(msg) {
+  clearTimeout(_catErrTimer);
+  var err = document.getElementById("cat-error");
+  document.getElementById("cat-error-text").textContent = msg;
+  err.style.display = "block";
+  _catErrTimer = setTimeout(function() { err.style.display = "none"; }, 3500);
+}
+
+function hideCatError() {
+  clearTimeout(_catErrTimer);
+  document.getElementById("cat-error").style.display = "none";
+}
+
+async function saveCategory() {
+  var input = document.getElementById("cat-input");
+  var name  = input.value.trim().toUpperCase();
+  if (!name) { input.style.borderColor = "var(--danger)"; return; }
+  input.style.borderColor = "";
+  hideCatError();
+
+  var { data, error } = await db.from("categories").insert({ name: name }).select().single();
+  if (error) {
+    if (error.code === "23505") showCatError('La catégorie "' + name + '" existe déjà.');
+    else showCatError("Erreur : " + error.message);
+    return;
+  }
+  categoriesAll.push(data);
+  categoriesAll.sort(function(a, b) { return a.name.localeCompare(b.name); });
+  input.value = "";
+  renderCategorySelect();
+  renderCatList();
+}
+
+window.deleteCategory = function(id, name) {
+  showDeleteConfirm('La catégorie "' + name + '" sera supprimée.', async function() {
+    await db.from("categories").delete().eq("id", id);
+    categoriesAll = categoriesAll.filter(function(c) { return c.id !== id; });
+    renderCategorySelect();
+    renderCatList();
+  });
+};
 
 /* ===================================================
    MATÉRIAUX
    =================================================== */
+var materialsAll  = [];
+var matPage       = 0;
+var MAT_PAGE_SIZE = 8;
+
 async function loadMaterials() {
   var { data } = await db.from("materials").select("*").order("category").order("name");
-  renderMaterialsTable(data || []);
+  materialsAll = data || [];
+  renderMaterialsTable();
 }
 
-function renderMaterialsTable(items) {
+function renderMaterialsTable(page) {
+  if (page !== undefined) matPage = page;
   var wrap = document.getElementById("materials-table-wrap");
-  if (!items.length) {
+
+  if (!materialsAll.length) {
     wrap.innerHTML = '<div class="adm-empty"><i class="fas fa-boxes"></i><p>Aucun article. Cliquez sur "Ajouter un article".</p></div>';
     return;
   }
+
+  var totalPages = Math.ceil(materialsAll.length / MAT_PAGE_SIZE);
+  if (matPage >= totalPages) matPage = totalPages - 1;
+  if (matPage < 0)           matPage = 0;
+
+  var start = matPage * MAT_PAGE_SIZE;
+  var slice = materialsAll.slice(start, start + MAT_PAGE_SIZE);
+
   var html = '<table class="adm-table"><thead><tr>' +
-    '<th style="width:56px;">Photo</th><th>Nom</th><th>Catégorie</th><th>Description</th><th>Qté max</th><th>Dispo</th><th>Actions</th>' +
+    '<th style="width:56px;">Photo</th>' +
+    '<th style="text-align:center;">Nom</th>' +
+    '<th style="text-align:center;">Catégorie</th>' +
+    '<th style="text-align:center;">Description</th>' +
+    '<th style="text-align:center;">Qté max</th>' +
+    '<th style="text-align:center;">Dispo</th>' +
+    '<th style="text-align:center;">Actions</th>' +
     '</tr></thead><tbody>';
-  items.forEach(function (m) {
+
+  slice.forEach(function (m) {
     var thumb = m.image_url
       ? '<img src="' + escHtml(m.image_url) + '" alt="" class="mat-thumb">'
       : '<div class="mat-thumb-empty"><i class="fas fa-image"></i></div>';
     html += '<tr>' +
       '<td>' + thumb + '</td>' +
-      '<td><strong>' + escHtml(m.name) + '</strong></td>' +
-      '<td>' + escHtml(m.category || "—") + '</td>' +
-      '<td>' + escHtml(m.description || "—") + '</td>' +
+      '<td style="text-align:center;"><strong>' + escHtml(m.name) + '</strong></td>' +
+      '<td style="text-align:center;">' + escHtml(m.category || "—") + '</td>' +
+      '<td style="text-align:center;">' + escHtml(m.description || "—") + '</td>' +
       '<td style="text-align:center;">' + m.max_quantity + '</td>' +
       '<td style="text-align:center;">' +
         '<button class="toggle-avail ' + (m.available ? "avail-on" : "avail-off") + '" onclick="toggleAvail(\'' + m.id + '\',' + m.available + ')">' +
           (m.available ? "Oui" : "Non") +
         '</button>' +
       '</td>' +
-      '<td class="adm-table-actions">' +
-        '<button class="adm-btn-ghost btn-sm" onclick="editMaterial(\'' + m.id + '\')"><i class="fas fa-pen"></i></button>' +
-        '<button class="adm-btn-delete btn-sm" onclick="deleteMaterial(\'' + m.id + '\')"><i class="fas fa-trash"></i></button>' +
+      '<td style="text-align:center;">' +
+        '<div class="adm-table-actions">' +
+          '<button class="adm-btn-ghost btn-sm" onclick="editMaterial(\'' + m.id + '\')"><i class="fas fa-pen"></i></button>' +
+          '<button class="adm-btn-delete btn-sm" onclick="deleteMaterial(\'' + m.id + '\')"><i class="fas fa-trash"></i></button>' +
+        '</div>' +
       '</td>' +
     '</tr>';
   });
+
   html += '</tbody></table>';
+
+  if (totalPages > 1) {
+    html += '<div class="mat-pagination">' +
+      '<button class="cat-pg-btn" onclick="renderMaterialsTable(' + (matPage - 1) + ')"' + (matPage === 0 ? ' disabled' : '') + '>' +
+        '<i class="fas fa-chevron-left"></i>' +
+      '</button>' +
+      '<span class="cat-pg-info">' + (matPage + 1) + ' / ' + totalPages +
+        ' <span class="mat-pg-total">(' + materialsAll.length + ' articles)</span>' +
+      '</span>' +
+      '<button class="cat-pg-btn" onclick="renderMaterialsTable(' + (matPage + 1) + ')"' + (matPage >= totalPages - 1 ? ' disabled' : '') + '>' +
+        '<i class="fas fa-chevron-right"></i>' +
+      '</button>' +
+    '</div>';
+  }
+
   wrap.innerHTML = html;
 }
 
@@ -694,6 +1016,7 @@ document.getElementById("add-mat-btn").addEventListener("click", function () {
   editingImageUrl = null;
   document.getElementById("mat-form-title").textContent = "Nouvel article";
   document.getElementById("mf-name").value  = "";
+  renderCategorySelect();
   document.getElementById("mf-cat").value   = "";
   document.getElementById("mf-desc").value  = "";
   document.getElementById("mf-qty").value   = 1;
@@ -701,6 +1024,11 @@ document.getElementById("add-mat-btn").addEventListener("click", function () {
   resetImageField();
   document.getElementById("mat-form-wrap").style.display = "block";
   document.getElementById("mf-name").focus();
+});
+
+document.getElementById("mf-qty").addEventListener("input", function() {
+  this.style.borderColor = "";
+  document.getElementById("qty-error").style.display = "none";
 });
 
 /* ── upload widget ── */
@@ -755,10 +1083,25 @@ document.getElementById("mat-cancel-btn").addEventListener("click", function () 
 });
 
 document.getElementById("mat-save-btn").addEventListener("click", async function () {
-  var btn  = this;
-  var name = document.getElementById("mf-name").value.trim();
-  var qty  = parseInt(document.getElementById("mf-qty").value) || 1;
-  if (!name) { document.getElementById("mf-name").style.borderColor = "#e53e3e"; return; }
+  var btn     = this;
+  var nameEl  = document.getElementById("mf-name");
+  var qtyEl   = document.getElementById("mf-qty");
+  var name    = nameEl.value.trim();
+  var qtyRaw  = qtyEl.value.trim();
+  var qty     = parseInt(qtyRaw, 10);
+
+  var valid = true;
+  nameEl.style.borderColor = "";
+  qtyEl.style.borderColor  = "";
+  document.getElementById("qty-error").style.display = "none";
+
+  if (!name) { nameEl.style.borderColor = "#e53e3e"; valid = false; }
+  if (!qtyRaw || isNaN(qty) || qty < 1 || !/^\d+$/.test(qtyRaw)) {
+    qtyEl.style.borderColor = "#e53e3e";
+    document.getElementById("qty-error").style.display = "block";
+    valid = false;
+  }
+  if (!valid) return;
 
   btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i>Enregistrement…';
   btn.disabled  = true;
@@ -786,7 +1129,7 @@ document.getElementById("mat-save-btn").addEventListener("click", async function
 
     var payload = {
       name:         name,
-      category:     document.getElementById("mf-cat").value.trim()  || null,
+      category:     document.getElementById("mf-cat").value || null,
       description:  document.getElementById("mf-desc").value.trim() || null,
       max_quantity: qty,
       image_url:    imageUrl,
@@ -828,6 +1171,7 @@ window.editMaterial = async function (id) {
   editingImageUrl = data.image_url || null;
   document.getElementById("mat-form-title").textContent = "Modifier l'article";
   document.getElementById("mf-name").value = data.name;
+  renderCategorySelect();
   document.getElementById("mf-cat").value  = data.category   || "";
   document.getElementById("mf-desc").value = data.description || "";
   document.getElementById("mf-qty").value  = data.max_quantity;
@@ -847,14 +1191,208 @@ window.toggleAvail = async function (id, current) {
   loadMaterials();
 };
 
-window.deleteMaterial = async function (id) {
-  if (!confirm("Supprimer cet article ?")) return;
-  /* supprimer l'image du storage si elle existe */
-  var items = await db.from("materials").select("image_url").eq("id", id).single();
-  if (items.data && items.data.image_url) await removeStorageImage(items.data.image_url);
-  await db.from("materials").delete().eq("id", id);
-  loadMaterials();
+window.deleteMaterial = function(id) {
+  showDeleteConfirm("Cet article et son image seront définitivement supprimés.", async function() {
+    var items = await db.from("materials").select("image_url").eq("id", id).single();
+    if (items.data && items.data.image_url) await removeStorageImage(items.data.image_url);
+    await db.from("materials").delete().eq("id", id);
+    loadMaterials();
+  });
 };
+
+/* ===================================================
+   MESSAGERIE
+   =================================================== */
+var messagesAll  = [];
+var msgFilter    = "all";   // "all" | "unread" | "read"
+
+var TYPE_LABELS = {
+  "mariage"       : "Mariage",
+  "anniversaire"  : "Anniversaire",
+  "evenement-pro" : "Événement professionnel",
+  "location-deco" : "Location de décoration",
+  "autre"         : "Autre"
+};
+
+async function loadMessages() {
+  var { data, error } = await db
+    .from("contacts")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  messagesAll = data || [];
+  updateMsgBadge();
+  renderMessages();
+
+  /* Écoute temps réel — nouveaux messages */
+  db.channel("contacts-channel")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "contacts" }, function(payload) {
+      messagesAll.unshift(payload.new);
+      updateMsgBadge();
+      renderMessages();
+    })
+    .subscribe();
+}
+
+function updateMsgBadge() {
+  var unread = messagesAll.filter(function(m) { return !m.read; }).length;
+  var badge  = document.getElementById("badge-messages");
+  if (!badge) return;
+  badge.textContent    = unread;
+  badge.style.display  = unread ? "inline-block" : "none";
+  /* blink seulement si non lus */
+  if (unread) badge.classList.add("badge-blink");
+  else        badge.classList.remove("badge-blink");
+}
+
+function setupMsgFilters() {
+  document.querySelectorAll(".filter-btn[data-msg-filter]").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      document.querySelectorAll(".filter-btn[data-msg-filter]").forEach(function(b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      msgFilter = btn.dataset.msgFilter;
+      renderMessages();
+    });
+  });
+}
+
+function renderMessages() {
+  var list = document.getElementById("messages-list");
+  if (!list) return;
+
+  var filtered = messagesAll;
+  if (msgFilter === "unread") filtered = messagesAll.filter(function(m) { return !m.read; });
+  if (msgFilter === "read")   filtered = messagesAll.filter(function(m) { return  m.read; });
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="adm-empty"><i class="fas fa-envelope-open"></i><p>' +
+      (msgFilter === "unread" ? "Aucun message non lu." : msgFilter === "read" ? "Aucun message lu." : "Aucun message reçu.") +
+      '</p></div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(function(m) { return renderMsgCard(m); }).join("");
+}
+
+function renderMsgCard(m) {
+  var isUnread  = !m.read;
+  var fullName  = [m.prenom, m.nom].filter(Boolean).join(" ") || m.email;
+  var created   = new Date(m.created_at).toLocaleDateString("fr-FR", { day:"2-digit", month:"long", year:"numeric", hour:"2-digit", minute:"2-digit" });
+  var typeLabel = TYPE_LABELS[m.type_evenement] || m.type_evenement || "";
+  /* Aperçu tronqué du message */
+  var preview   = (m.message || "").replace(/\n/g, " ");
+  if (preview.length > 90) preview = preview.slice(0, 90) + "…";
+
+  return '<div class="msg-card' + (isUnread ? " msg-unread" : "") + '" onclick="openMessage(\'' + m.id + '\')">' +
+    '<div class="msg-card-head">' +
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+        '<span class="msg-name"><i class="fas fa-user mr-1" style="color:var(--rose-gold);"></i>' + escHtml(fullName) + '</span>' +
+        (isUnread ? '<span class="msg-badge-new">Nouveau</span>' : '') +
+      '</div>' +
+      '<span class="msg-date"><i class="fas fa-clock" style="margin-right:4px;"></i>' + escHtml(created) + '</span>' +
+    '</div>' +
+    '<div class="msg-body">' +
+      '<div class="msg-meta">' +
+        '<span><i class="fas fa-envelope"></i>' + escHtml(m.email) + '</span>' +
+        (m.telephone ? '<span><i class="fas fa-phone"></i>' + escHtml(m.telephone) + '</span>' : '') +
+        (typeLabel   ? '<span><i class="fas fa-tag"></i>' + escHtml(typeLabel) + '</span>' : '') +
+      '</div>' +
+      '<p class="msg-preview">' + escHtml(preview) + '</p>' +
+    '</div>' +
+    '<div class="msg-actions">' +
+      '<span class="msg-read-lbl">' + (isUnread
+        ? '<i class="fas fa-circle" style="color:var(--rose-gold);font-size:.55rem;"></i> Non lu'
+        : '<i class="fas fa-check-double"></i> Lu') + '</span>' +
+      '<button class="adm-btn-delete btn-sm" onclick="deleteMessage(event,\'' + m.id + '\')"><i class="fas fa-trash"></i></button>' +
+    '</div>' +
+  '</div>';
+}
+
+window.openMessage = async function(id) {
+  var m = messagesAll.find(function(x) { return x.id === id; });
+  if (!m) return;
+
+  /* Marquer comme lu si pas encore fait */
+  if (!m.read) {
+    await db.from("contacts").update({ read: true }).eq("id", id);
+    m.read = true;
+    updateMsgBadge();
+    renderMessages();
+  }
+
+  /* Ouvrir le popup de détail */
+  var modal = document.getElementById("day-modal");
+  var body  = document.getElementById("day-modal-body");
+
+  var fullName  = [m.prenom, m.nom].filter(Boolean).join(" ") || "—";
+  var created   = new Date(m.created_at).toLocaleDateString("fr-FR", { weekday:"long", day:"numeric", month:"long", year:"numeric", hour:"2-digit", minute:"2-digit" });
+  created = created.charAt(0).toUpperCase() + created.slice(1);
+  var typeLabel = TYPE_LABELS[m.type_evenement] || m.type_evenement || "—";
+
+  body.innerHTML =
+    '<div class="msg-detail-head">' +
+      '<div class="msg-detail-avatar"><i class="fas fa-user"></i></div>' +
+      '<div>' +
+        '<div class="msg-detail-name">' + escHtml(fullName) + '</div>' +
+        '<div class="msg-detail-date">' + escHtml(created) + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="detail-info-grid" style="margin:18px 0;">' +
+      '<div class="detail-info-item"><i class="fas fa-envelope"></i><div><small>Email</small><strong>' + escHtml(m.email) + '</strong></div></div>' +
+      (m.telephone ? '<div class="detail-info-item"><i class="fas fa-phone"></i><div><small>Téléphone</small><strong>' + escHtml(m.telephone) + '</strong></div></div>' : '') +
+      '<div class="detail-info-item"><i class="fas fa-tag"></i><div><small>Type d\'événement</small><strong>' + escHtml(typeLabel) + '</strong></div></div>' +
+    '</div>' +
+    '<div class="detail-block">' +
+      '<h4 class="detail-block-title"><i class="fas fa-comment mr-2"></i>Message</h4>' +
+      '<div class="msg-detail-text">' + escHtml(m.message || "") + '</div>' +
+    '</div>' +
+    '<div class="detail-actions">' +
+      '<a href="mailto:' + escHtml(m.email) + '?subject=' + encodeURIComponent("Réponse à votre demande — OA Événementiel") + '" class="adm-btn-primary">' +
+        '<i class="fas fa-reply mr-2"></i>Répondre par email</a>' +
+      '<button class="adm-btn-delete" onclick="deleteMessage(event,\'' + m.id + '\');closeDayModal();"><i class="fas fa-trash mr-1"></i>Supprimer</button>' +
+    '</div>';
+
+  modal.style.display = "flex";
+};
+
+window.deleteMessage = function(e, id) {
+  e.stopPropagation();
+  showDeleteConfirm("Ce message sera définitivement supprimé.", async function() {
+    await db.from("contacts").delete().eq("id", id);
+    messagesAll = messagesAll.filter(function(m) { return m.id !== id; });
+    updateMsgBadge();
+    renderMessages();
+  });
+};
+
+/* ===================================================
+   MODAL SUPPRESSION
+   =================================================== */
+var _delCallback = null;
+
+(function setupDeleteModal() {
+  var modal   = document.getElementById("delete-modal");
+  var confirm = document.getElementById("del-modal-confirm");
+  var cancel  = document.getElementById("del-modal-cancel");
+
+  cancel.addEventListener("click", closeDeleteModal);
+  modal.addEventListener("click", function(e) { if (e.target === this) closeDeleteModal(); });
+  confirm.addEventListener("click", function() {
+    if (typeof _delCallback === "function") _delCallback();
+    closeDeleteModal();
+  });
+})();
+
+function showDeleteConfirm(subtitle, callback) {
+  _delCallback = callback;
+  document.getElementById("del-modal-sub").textContent = subtitle || "Cette action est irréversible.";
+  document.getElementById("delete-modal").style.display = "flex";
+}
+
+function closeDeleteModal() {
+  document.getElementById("delete-modal").style.display = "none";
+  _delCallback = null;
+}
 
 /* ===== HELPER ===== */
 function escHtml(str) {

@@ -239,6 +239,24 @@ jQuery(document).ready(function ($) {
     .then(function (res) { return res.json(); })
     .then(function (result) {
       if (result.success === true) {
+        /* ── Sauvegarde dans Supabase (capture AVANT reset) ── */
+        var contactData = {
+          prenom        : $("#prenom").val().trim(),
+          nom           : $("#nom").val().trim(),
+          email         : $("#email").val().trim(),
+          telephone     : $("#telephone").val().trim() || null,
+          type_evenement: $("#type-evenement").val() || null,
+          message       : $("#message").val().trim(),
+          read          : false
+        };
+        if (typeof db !== "undefined") {
+          db.from("contacts").insert(contactData).then(function(res) {
+            if (res.error) console.error("[OA] Supabase contacts insert error:", res.error);
+            else           console.log("[OA] Contact sauvegardé en DB.");
+          });
+        } else {
+          console.warn("[OA] db non défini — supabase-config.js chargé ?");
+        }
         $btn
           .html('<i class="fas fa-check mr-2"></i>Message envoyé !')
           .css({ "background": "#4caf50", "border-color": "#4caf50" });
