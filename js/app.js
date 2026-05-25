@@ -5,11 +5,21 @@
 jQuery(document).ready(function ($) {
   "use strict";
 
+  /* ===== JS-LOADED CLASS (enables image animations) ===== */
+  $("body").addClass("js-loaded");
+
   /* ===== PRELOADER ===== */
+  function hidePreloader() {
+    $("#overlayer, .loader").fadeOut("slow");
+    AOS.refresh();
+  }
+
+  // Fallback : masque le preloader après 2.5s max (images lentes ou bloquées)
+  var preloaderTimeout = setTimeout(hidePreloader, 2500);
+
   $(window).on("load", function () {
-    setTimeout(function () {
-      $("#overlayer, .loader").fadeOut("slow");
-    }, 700);
+    clearTimeout(preloaderTimeout);
+    setTimeout(hidePreloader, 300);
   });
 
   /* ===== MOBILE MENU — clone desktop nav ===== */
@@ -50,13 +60,28 @@ jQuery(document).ready(function ($) {
       items: 1,
       loop: true,
       autoplay: true,
-      autoplayTimeout: 6500,
+      autoplayTimeout: 5000,
       autoplayHoverPause: false,
       smartSpeed: 1300,
       animateOut: "fadeOut",
       animateIn: "fadeIn",
       nav: false,
       dots: true,
+      mouseDrag: false,
+      touchDrag: false,
+      pullDrag: false,
+    });
+
+    // Réinitialise le timer après un clic sur une flèche
+    $("#heroPrev").on("click", function () {
+      $(".hero-slider").trigger("prev.owl.carousel");
+      var owl = $(".hero-slider").data("owl.carousel");
+      owl.stop(); owl.play();
+    });
+    $("#heroNext").on("click", function () {
+      $(".hero-slider").trigger("next.owl.carousel");
+      var owl = $(".hero-slider").data("owl.carousel");
+      owl.stop(); owl.play();
     });
   }
 
@@ -97,6 +122,13 @@ jQuery(document).ready(function ($) {
         },
       },
     });
+  }
+
+  /* ===== GALLERY FILTER (galerie.html) ===== */
+  // Les items doivent être display:block AVANT AOS.init
+  // sinon AOS ne les détecte pas (ils sont display:none par défaut)
+  if ($(".gallery-filter").length) {
+    $(".gallery-full-item").addClass("show");
   }
 
   /* ===== AOS INIT ===== */
@@ -141,11 +173,8 @@ jQuery(document).ready(function ($) {
     }
   });
 
-  /* ===== GALLERY FILTER (galerie.html) ===== */
+  /* ===== GALLERY FILTER — boutons (galerie.html) ===== */
   if ($(".gallery-filter").length) {
-    // Show all on load
-    $(".gallery-full-item").addClass("show");
-
     $(".gallery-filter button").on("click", function () {
       $(".gallery-filter button").removeClass("active");
       $(this).addClass("active");
@@ -166,17 +195,64 @@ jQuery(document).ready(function ($) {
   /* ===== CONTACT FORM ===== */
   $("#contact-form").on("submit", function (e) {
     e.preventDefault();
-    var $btn = $(this).find('[type="submit"]');
-    var origText = $btn.text();
-    $btn.text("Envoi en cours…").prop("disabled", true);
+    var $form = $(this);
+    var $btn  = $form.find('[type="submit"]');
 
-    // Placeholder — à connecter au backend
-    setTimeout(function () {
+    // --- Validation des champs requis ---
+    var isValid = true;
+    $form.find("[required]").each(function () {
+      if (!$(this).val().trim()) {
+        isValid = false;
+        $(this).css("border-color", "#e53e3e");
+      } else {
+        $(this).css("border-color", "");
+      }
+    });
+    if (!isValid) {
+      $btn.html('<i class="fas fa-exclamation-circle mr-2"></i>Veuillez remplir les champs obligatoires');
+      setTimeout(function () {
+        $btn.html('<i class="fas fa-paper-plane mr-2"></i>Envoyer ma demande').prop("disabled", false);
+      }, 2500);
+      return;
+    }
+
+    $btn.html('<i class="fas fa-circle-notch fa-spin mr-2"></i>Envoi en cours…').prop("disabled", true);
+
+    // --- Envoi vers Web3Forms ---
+    var payload = {
+      access_key        : "380ad0e4-4abc-4a00-81d1-d81067d54129",
+      subject           : "🌹 Nouvelle demande de devis — OA Événementiel",
+      from_name         : "OA Événementiel - Site Web",
+      "Prénom"          : $("#prenom").val(),
+      "Nom"             : $("#nom").val(),
+      "Email"           : $("#email").val(),
+      "Téléphone"       : $("#telephone").val(),
+      "Type d'événement": $("#type-evenement").val(),
+      "Message"         : $("#message").val()
+    };
+
+    fetch("https://api.web3forms.com/submit", {
+      method  : "POST",
+      headers : { "Content-Type": "application/json", "Accept": "application/json" },
+      body    : JSON.stringify(payload)
+    })
+    .then(function (res) { return res.json(); })
+    .then(function (result) {
+      if (result.success === true) {
+        $btn
+          .html('<i class="fas fa-check mr-2"></i>Message envoyé !')
+          .css({ "background": "#4caf50", "border-color": "#4caf50" });
+        $form[0].reset();
+      } else {
+        throw new Error("Échec Web3Forms");
+      }
+    })
+    .catch(function () {
       $btn
-        .text("✓ Message envoyé !")
-        .addClass("btn-success")
-        .css("background", "#4caf50");
-    }, 1500);
+        .html('<i class="fas fa-exclamation-triangle mr-2"></i>Erreur — réessayez')
+        .css({ "background": "#e53e3e", "border-color": "#e53e3e" })
+        .prop("disabled", false);
+    });
   });
 
   /* ===== SMOOTH SCROLL (ancres) ===== */

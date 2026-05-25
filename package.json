@@ -1,0 +1,11 @@
+{
+  "name": "oa-evenementiel",
+  "version": "1.0.0",
+  "description": "Site vitrine OA Événementiel",
+  "scripts": {
+    "dev": "live-server --port=8080 --open=index.html"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  }
+}
