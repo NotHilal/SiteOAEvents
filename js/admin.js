@@ -493,7 +493,6 @@ window.openBlocModal = function(dateStr) {
     var info = blockedDatesMap[dateStr];
     html += '<div class="day-banner day-banner-blocked"><i class="fas fa-ban"></i> Journée entièrement bloquée' +
       (info && info.reason ? ' — ' + escHtml(info.reason) : '') + '</div>';
-    html += '<button class="adm-btn-ghost" style="margin-top:4px;" onclick="unblockFullDay(\'' + dateStr + '\')"><i class="fas fa-unlock mr-2"></i>Débloquer cette journée</button>';
   }
 
   if (hourBlocks.length) {
@@ -511,7 +510,10 @@ window.openBlocModal = function(dateStr) {
     '<div class="adm-form-group"><label>Raison <span style="font-weight:400;color:#999;">(optionnel)</span></label>' +
     '<input type="text" id="block-reason" class="adm-input" placeholder="Ex : Congés, événement privé…"' +
     (isBlocked && blockedDatesMap[dateStr] && blockedDatesMap[dateStr].reason ? ' value="' + escHtml(blockedDatesMap[dateStr].reason) + '"' : '') + '></div>' +
-    '<button class="adm-btn-danger" onclick="saveFullDayBlock(\'' + dateStr + '\')"><i class="fas fa-ban mr-2"></i>Bloquer la journée entière</button></div>';
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">' +
+    '<button class="adm-btn-danger" onclick="saveFullDayBlock(\'' + dateStr + '\')"><i class="fas fa-ban mr-2"></i>Bloquer la journée entière</button>' +
+    (isBlocked ? '<button class="adm-btn-ghost" onclick="unblockFullDay(\'' + dateStr + '\')"><i class="fas fa-unlock mr-2"></i>Débloquer la journée</button>' : '') +
+    '</div></div>';
   html += '<div id="block-panel-hours" class="block-panel" style="display:none;">';
   html += '<p class="hours-hint">Sélectionnez les créneaux à bloquer :</p><div class="hours-grid">';
   HOURS.forEach(function(h) {
