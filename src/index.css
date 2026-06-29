@@ -1,0 +1,57 @@
+/* AOS */
+@import 'aos/dist/aos.css';
+
+/* Swiper */
+@import 'swiper/css';
+@import 'swiper/css/effect-fade';
+@import 'swiper/css/navigation';
+@import 'swiper/css/pagination';
+
+/* Yet another react lightbox */
+@import 'yet-another-react-lightbox/styles.css';
+
+/* Custom styles */
+@import './styles/style.css';
+@import './styles/reservation.css';
+@import './styles/admin.css';
+
+/* Swiper hero overrides */
+.hero-swiper,
+.hero-swiper .swiper-wrapper,
+.hero-swiper .swiper-slide {
+  height: 100vh !important;
+  min-height: 580px;
+  width: 100%;
+}
+.hero-swiper .swiper-pagination-bullet {
+  width: 8px;
+  height: 8px;
+  background: rgba(255,255,255,.38);
+  opacity: 1;
+  border-radius: 4px;
+  transition: all .35s;
+}
+.hero-swiper .swiper-pagination-bullet-active {
+  background: var(--rose-gold);
+  width: 28px;
+}
+
+/* Testimonials swiper overrides */
+.testimonials-swiper .swiper-pagination {
+  bottom: 0;
+}
+.testimonials-swiper .swiper-pagination-bullet {
+  background: var(--border);
+  opacity: 1;
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  transition: all .3s;
+}
+.testimonials-swiper .swiper-pagination-bullet-active {
+  background: var(--rose-gold);
+  width: 26px;
+}
+.testimonials-swiper {
+  padding-bottom: 40px !important;
+}

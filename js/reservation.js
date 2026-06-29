@@ -453,16 +453,20 @@
       return true;
     }
     if (n === 2) {
-      var email = document.getElementById('r-email').value.trim();
-      var type  = document.getElementById('r-type').value;
-      var nb    = document.getElementById('r-nb').value;
-      ['r-email','r-type','r-nb'].forEach(function (id) {
+      var prenom = document.getElementById('r-prenom').value.trim();
+      var nom    = document.getElementById('r-nom').value.trim();
+      var email  = document.getElementById('r-email').value.trim();
+      var type   = document.getElementById('r-type').value;
+      var nb     = document.getElementById('r-nb').value;
+      ['r-prenom','r-nom','r-email','r-type','r-nb'].forEach(function (id) {
         document.getElementById(id).style.borderColor = '';
       });
       var ok = true;
-      if (!email || !email.includes('@')) { document.getElementById('r-email').style.borderColor = '#e53e3e'; ok = false; }
-      if (!type)                           { document.getElementById('r-type').style.borderColor  = '#e53e3e'; ok = false; }
-      if (!nb || parseInt(nb) < 1)         { document.getElementById('r-nb').style.borderColor    = '#e53e3e'; ok = false; }
+      if (!prenom)                          { document.getElementById('r-prenom').style.borderColor = '#e53e3e'; ok = false; }
+      if (!nom)                             { document.getElementById('r-nom').style.borderColor    = '#e53e3e'; ok = false; }
+      if (!email || !email.includes('@'))   { document.getElementById('r-email').style.borderColor  = '#e53e3e'; ok = false; }
+      if (!type)                            { document.getElementById('r-type').style.borderColor   = '#e53e3e'; ok = false; }
+      if (!nb || parseInt(nb) < 1)          { document.getElementById('r-nb').style.borderColor     = '#e53e3e'; ok = false; }
       document.getElementById('step2-error').style.display = ok ? 'none' : 'flex';
       return ok;
     }
@@ -479,7 +483,7 @@
     if (currentStep > 1) goToStep(currentStep - 1);
   });
 
-  ['r-email','r-type','r-nb'].forEach(function (id) {
+  ['r-prenom','r-nom','r-email','r-type','r-nb'].forEach(function (id) {
     document.getElementById(id).addEventListener('input', function () {
       this.style.borderColor = '';
       document.getElementById('step2-error').style.display = 'none';
@@ -490,6 +494,11 @@
      RÉCAPITULATIF
      ============================================================ */
   function buildRecap() {
+    /* Nom */
+    var prenom = document.getElementById('r-prenom').value.trim();
+    var nom    = document.getElementById('r-nom').value.trim();
+    document.getElementById('recap-nom').textContent = (prenom + ' ' + nom).trim() || '-';
+
     /* Dates */
     var dateDisplay;
     if (selectedDates.length === 1) {
@@ -555,6 +564,8 @@
 
     try {
       var ins = await db.from('reservations').insert({
+        prenom:     document.getElementById('r-prenom').value.trim() || null,
+        nom:        document.getElementById('r-nom').value.trim() || null,
         email:      document.getElementById('r-email').value.trim(),
         phone:      document.getElementById('r-phone').value.trim() || null,
         date:       selectedDates[0],

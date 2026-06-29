@@ -231,6 +231,17 @@
 
           <div class="resa-row">
             <div class="form-group">
+              <label for="r-prenom">Prénom <span class="req">*</span></label>
+              <input type="text" class="form-control" id="r-prenom" placeholder="Votre prénom">
+            </div>
+            <div class="form-group">
+              <label for="r-nom">Nom <span class="req">*</span></label>
+              <input type="text" class="form-control" id="r-nom" placeholder="Votre nom">
+            </div>
+          </div>
+
+          <div class="resa-row">
+            <div class="form-group">
               <label for="r-email">Email <span class="req">*</span></label>
               <input type="email" class="form-control" id="r-email" placeholder="votre@email.com">
             </div>
@@ -290,6 +301,10 @@
 
           <!-- Fiche récapitulative -->
           <div class="recap-card">
+            <div class="recap-row">
+              <span class="recap-lbl"><i class="fas fa-user"></i>Nom</span>
+              <span class="recap-val" id="recap-nom">-</span>
+            </div>
             <div class="recap-row">
               <span class="recap-lbl"><i class="fas fa-calendar-alt"></i>Date</span>
               <span class="recap-val" id="recap-date">-</span>

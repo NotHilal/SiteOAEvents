@@ -148,10 +148,12 @@ function renderReservations() {
 
     var statusLabel = { pending: "En attente", confirmed: "Confirmée", refused: "Refusée" }[r.status] || r.status;
     var statusClass = { pending: "badge-pending", confirmed: "badge-confirmed", refused: "badge-refused" }[r.status] || "";
+    var name = [r.prenom, r.nom].filter(Boolean).join(' ');
 
     return '<div class="resa-card" data-id="' + r.id + '">' +
       '<div class="resa-card-head">' +
         '<div>' +
+          (name ? '<span class="resa-card-name"><i class="fas fa-user"></i> ' + escHtml(name) + '</span>' : '') +
           '<span class="resa-card-email"><i class="fas fa-envelope"></i> ' + escHtml(r.email) + '</span>' +
           (r.phone ? '<span class="resa-card-phone"><i class="fas fa-phone"></i> ' + escHtml(r.phone) + '</span>' : '') +
         '</div>' +
@@ -170,7 +172,8 @@ function renderReservations() {
       '<div class="resa-card-actions">' +
         (r.status !== "confirmed" ? '<button class="adm-btn-success" onclick="updateStatus(\'' + r.id + '\',\'confirmed\')"><i class="fas fa-check mr-1"></i>Confirmer</button>' : '') +
         (r.status !== "refused"   ? '<button class="adm-btn-danger"  onclick="updateStatus(\'' + r.id + '\',\'refused\')"><i class="fas fa-times mr-1"></i>Refuser</button>'   : '') +
-        '<button class="adm-btn-ghost" onclick="openContact(\'' + r.id + '\')"><i class="fas fa-envelope mr-1"></i>Contacter</button>' +
+        '<button class="adm-btn-ghost" onclick="openContact(\'' + r.id + '\')"><i class="fas fa-envelope mr-1"></i>Email</button>' +
+        (r.phone ? '<a class="adm-btn-success" href="tel:' + escHtml(r.phone) + '"><i class="fas fa-phone mr-1"></i>Appeler</a>' : '') +
         '<button class="adm-btn-delete" onclick="deleteReservation(\'' + r.id + '\')"><i class="fas fa-trash"></i></button>' +
       '</div>' +
     '</div>';
@@ -198,14 +201,25 @@ window.deleteReservation = function(id) {
 window.openContact = function (id) {
   var r = reservationsAll.find(function (r) { return r.id === id; });
   if (!r) return;
-  var body = document.getElementById("modal-body");
+  var name    = [r.prenom, r.nom].filter(Boolean).join(' ') || 'Client';
+  var rDates  = (r.dates && r.dates.length) ? r.dates.slice().sort() : (r.date ? [r.date] : []);
+  var dateStr = rDates.length > 1
+    ? new Date(rDates[0] + "T12:00:00").toLocaleDateString("fr-FR", { day:"2-digit", month:"long" }) +
+      " au " + new Date(rDates[rDates.length-1] + "T12:00:00").toLocaleDateString("fr-FR", { day:"2-digit", month:"long", year:"numeric" })
+    : new Date((rDates[0] || r.date) + "T12:00:00").toLocaleDateString("fr-FR", { day:"2-digit", month:"long", year:"numeric" });
+  var emailBody = "Bonjour " + name + ",\n\nNous avons bien reçu votre demande de réservation pour le " + dateStr + ".\n\n[Votre réponse ici]\n\nCordialement,\nL'équipe OA Événementiel";
   var mailto = "mailto:" + r.email +
-    "?subject=" + encodeURIComponent("Votre réservation OA Événementiel — " + new Date(r.date).toLocaleDateString("fr-FR")) +
-    "&body=" + encodeURIComponent("Bonjour,\n\nConcernant votre demande de réservation pour le " + new Date(r.date).toLocaleDateString("fr-FR") + ".\n\n");
+    "?subject=" + encodeURIComponent("Votre demande de réservation — OA Événementiel") +
+    "&body=" + encodeURIComponent(emailBody);
+  var body = document.getElementById("modal-body");
   body.innerHTML =
+    '<div class="contact-client-name"><i class="fas fa-user mr-2"></i>' + escHtml(name) + '</div>' +
     '<p class="contact-detail"><i class="fas fa-envelope"></i> <a href="' + mailto + '">' + escHtml(r.email) + '</a></p>' +
-    (r.phone ? '<p class="contact-detail"><i class="fas fa-phone"></i> <a href="tel:' + r.phone + '">' + escHtml(r.phone) + '</a></p>' : '') +
-    '<a href="' + mailto + '" class="adm-btn-primary" style="display:inline-block;margin-top:16px;"><i class="fas fa-envelope mr-2"></i>Ouvrir dans la messagerie</a>';
+    (r.phone ? '<p class="contact-detail"><i class="fas fa-phone"></i> <a href="tel:' + escHtml(r.phone) + '">' + escHtml(r.phone) + '</a></p>' : '') +
+    '<div class="contact-actions">' +
+      '<a href="' + mailto + '" class="adm-btn-primary"><i class="fas fa-envelope mr-2"></i>Répondre par email</a>' +
+      (r.phone ? '<a href="tel:' + escHtml(r.phone) + '" class="adm-btn-success"><i class="fas fa-phone mr-2"></i>Appeler</a>' : '') +
+    '</div>';
   document.getElementById("contact-modal").style.display = "flex";
 };
 
@@ -702,6 +716,11 @@ window.openResaDetail = function(id, clickedDate) {
   var label   = { pending:"En attente", confirmed:"Confirmée", refused:"Refusée" }[r.status] || r.status;
   var cls     = { pending:"badge-pending", confirmed:"badge-confirmed", refused:"badge-refused" }[r.status] || "";
   var created = new Date(r.created_at).toLocaleDateString("fr-FR", { day:"2-digit", month:"long", year:"numeric" });
+  var name    = [r.prenom, r.nom].filter(Boolean).join(' ') || 'Client';
+  var emailBody = "Bonjour " + name + ",\n\nNous avons bien reçu votre demande de réservation pour le " + dateDisplay + ".\n\n[Votre réponse ici]\n\nCordialement,\nL'équipe OA Événementiel";
+  var mailtoDetail = "mailto:" + r.email +
+    "?subject=" + encodeURIComponent("Votre demande de réservation — OA Événementiel") +
+    "&body=" + encodeURIComponent(emailBody);
 
   /* Matériaux */
   var matsRows = (r.materials && r.materials.length)
@@ -723,7 +742,8 @@ window.openResaDetail = function(id, clickedDate) {
   var actHtml = '<div class="detail-actions">';
   if (r.status !== "confirmed") actHtml += '<button class="adm-btn-success" onclick="updateStatusFromDetail(\'' + r.id + '\',\'confirmed\',\'' + backDate + '\')"><i class="fas fa-check mr-1"></i>Confirmer</button>';
   if (r.status !== "refused")   actHtml += '<button class="adm-btn-danger"  onclick="updateStatusFromDetail(\'' + r.id + '\',\'refused\',\'' + backDate + '\')"><i class="fas fa-times mr-1"></i>Refuser</button>';
-  actHtml += '<button class="adm-btn-ghost" onclick="openContact(\'' + r.id + '\')"><i class="fas fa-envelope mr-1"></i>Contacter</button>';
+  actHtml += '<a href="' + mailtoDetail + '" class="adm-btn-ghost"><i class="fas fa-envelope mr-1"></i>Répondre par email</a>';
+  if (r.phone) actHtml += '<a href="tel:' + escHtml(r.phone) + '" class="adm-btn-success"><i class="fas fa-phone mr-1"></i>Appeler</a>';
   actHtml += '<button class="adm-btn-delete" onclick="deleteFromDetail(\'' + r.id + '\',\'' + backDate + '\')"><i class="fas fa-trash"></i></button>';
   actHtml += '</div>';
 
@@ -732,6 +752,7 @@ window.openResaDetail = function(id, clickedDate) {
       new Date(backDate + "T12:00:00").toLocaleDateString("fr-FR", { day:"numeric", month:"long" }) + '</button>' +
     '<div class="detail-head">' +
       '<div>' +
+        '<div class="detail-name"><i class="fas fa-user"></i> ' + escHtml(name) + '</div>' +
         '<div class="detail-email"><i class="fas fa-envelope"></i> ' + escHtml(r.email) + '</div>' +
         (r.phone ? '<div class="detail-phone"><i class="fas fa-phone"></i> ' + escHtml(r.phone) + '</div>' : '') +
       '</div>' +
@@ -1349,8 +1370,10 @@ window.openMessage = async function(id) {
       '<div class="msg-detail-text">' + escHtml(m.message || "") + '</div>' +
     '</div>' +
     '<div class="detail-actions">' +
-      '<a href="mailto:' + escHtml(m.email) + '?subject=' + encodeURIComponent("Réponse à votre demande — OA Événementiel") + '" class="adm-btn-primary">' +
-        '<i class="fas fa-reply mr-2"></i>Répondre par email</a>' +
+      '<a href="mailto:' + escHtml(m.email) + '?subject=' + encodeURIComponent("Réponse à votre demande — OA Événementiel") +
+        '&body=' + encodeURIComponent("Bonjour " + fullName + ",\n\nMerci pour votre message concernant " + (TYPE_LABELS[m.type_evenement] || 'votre projet') + ".\n\n[Votre réponse ici]\n\nCordialement,\nL'équipe OA Événementiel") +
+        '" class="adm-btn-primary"><i class="fas fa-reply mr-2"></i>Répondre par email</a>' +
+      (m.telephone ? '<a href="tel:' + escHtml(m.telephone) + '" class="adm-btn-success"><i class="fas fa-phone mr-2"></i>Appeler</a>' : '') +
       '<button class="adm-btn-delete" onclick="deleteMessage(event,\'' + m.id + '\');closeDayModal();"><i class="fas fa-trash mr-1"></i>Supprimer</button>' +
     '</div>';
 
