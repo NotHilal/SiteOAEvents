@@ -2,13 +2,13 @@
    OA Événementiel — reservation.css
    ===================================================== */
 
-/* ── Section ─────────────────────────────────────── */
 .resa-section {
   padding: 72px 0 96px;
-  background: var(--cream);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
 }
 
-/* ── Message de succès ───────────────────────────── */
 .resa-success-msg {
   max-width: 560px;
   margin: 0 auto;
@@ -22,21 +22,17 @@
   display: block;
 }
 .resa-success-msg h3 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Montserrat', sans-serif;
   font-size: 2rem;
   margin-bottom: 12px;
 }
 .resa-success-msg p { color: var(--gray); font-size: .95rem; line-height: 1.7; }
 
-/* ═══════════════════════════════════════════════════
-   WIZARD WRAPPER
-   ═══════════════════════════════════════════════════ */
 #resa-wizard {
   max-width: 740px;
   margin: 0 auto;
 }
 
-/* ── Barre de progression ────────────────────────── */
 .resa-stepper {
   display: flex;
   align-items: center;
@@ -55,13 +51,13 @@
 .step-circle {
   width: 46px;
   height: 46px;
-  border-radius: 50%;
+  border-radius: 0px;
   border: 2px solid #ddd;
   background: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-weight: 700;
   font-size: .95rem;
   color: #aaa;
@@ -69,7 +65,7 @@
 }
 
 .step-label {
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-size: .68rem;
   font-weight: 700;
   letter-spacing: 1.2px;
@@ -79,28 +75,25 @@
   transition: color .3s;
 }
 
-/* Ligne de connexion */
 .step-line {
   flex: 1;
   height: 2px;
   background: #e0dbd5;
   margin: 0 6px;
-  margin-bottom: 26px; /* aligner avec le centre des cercles */
+  margin-bottom: 26px;
   transition: background .4s;
-  border-radius: 2px;
+  border-radius: 0px;
 }
 .step-line.done { background: var(--rose-gold); }
 
-/* Étape active */
 .resa-step.active .step-circle {
   border-color: var(--rose-gold);
   background: var(--rose-gold);
   color: #fff;
-  box-shadow: 0 4px 18px rgba(196,149,106,.38);
+  box-shadow: 0 4px 18px rgba(235,199,149,.38);
 }
 .resa-step.active .step-label { color: var(--rose-gold); }
 
-/* Étape terminée */
 .resa-step.done .step-circle {
   border-color: var(--rose-gold);
   background: var(--rose-gold);
@@ -108,11 +101,12 @@
 }
 .resa-step.done .step-label { color: var(--rose-gold); }
 
-/* ── Panneau d'étape ─────────────────────────────── */
 .step-panel {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 6px 44px rgba(44,28,12,.08);
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(25px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 0px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.03);
   padding: 44px 48px;
   margin-bottom: 20px;
   animation: fadeStepIn .32s ease;
@@ -123,10 +117,9 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Entête de chaque étape */
 .step-tag {
   display: inline-block;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-weight: 700;
   font-size: .68rem;
   letter-spacing: 2.5px;
@@ -135,7 +128,7 @@
   margin-bottom: 6px;
 }
 .step-title {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Montserrat', sans-serif;
   font-size: 1.75rem;
   color: var(--dark);
   margin-bottom: 8px;
@@ -148,7 +141,6 @@
   margin-bottom: 32px;
 }
 
-/* ── Boutons de navigation ───────────────────────── */
 .step-nav {
   display: flex;
   justify-content: space-between;
@@ -160,9 +152,9 @@
   background: transparent;
   border: 1.5px solid #d8d2cb;
   color: var(--gray);
-  border-radius: 30px;
+  border-radius: 0px;
   padding: 13px 30px;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-weight: 600;
   font-size: .9rem;
   cursor: pointer;
@@ -176,16 +168,13 @@
 .step-next-btn {
   padding: 14px 38px;
   font-size: .95rem;
-  border-radius: 30px;
+  border-radius: 0px;
 }
 
-/* ═══════════════════════════════════════════════════
-   FORMULAIRE — CHAMPS COMMUNS
-   ═══════════════════════════════════════════════════ */
 .form-group { margin-bottom: 20px; }
 
 .form-group label {
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-weight: 700;
   font-size: .74rem;
   letter-spacing: 1.5px;
@@ -196,11 +185,12 @@
 }
 
 .form-group .form-control {
-  background: var(--cream);
-  border: 1.5px solid var(--border);
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0px;
+  backdrop-filter: blur(5px);
   padding: 13px 16px;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-size: .94rem;
   color: var(--dark);
   height: auto;
@@ -208,10 +198,10 @@
   transition: border-color .25s, box-shadow .25s;
 }
 .form-group .form-control:focus {
-  border-color: var(--rose-gold);
-  box-shadow: 0 0 0 3px rgba(196,149,106,.13);
+  border-color: #000000;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.03);
   outline: none;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.8);
 }
 .form-group textarea.form-control { resize: vertical; min-height: 110px; }
 .form-group select.form-control   { appearance: none; cursor: pointer; }
@@ -222,11 +212,10 @@
 .resa-row .form-group { flex: 1; }
 @media(max-width: 576px) { .resa-row { flex-direction: column; gap: 0; } }
 
-/* Alerte / erreur */
 .resa-alert {
   background: #fff5f5;
   border: 1.5px solid #e53e3e;
-  border-radius: 8px;
+  border-radius: 0px;
   padding: 12px 16px;
   color: #e53e3e;
   font-size: .88rem;
@@ -244,19 +233,16 @@
   margin: 16px 0 0;
 }
 
-/* ═══════════════════════════════════════════════════
-   CALENDRIER VISUEL
-   ═══════════════════════════════════════════════════ */
+/* CALENDRIER */
 .res-cal-wrap {
   background: #fff;
   border: 1.5px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0px;
   overflow: hidden;
   user-select: none;
   margin-bottom: 0;
 }
 
-/* Header navigation mois */
 .res-cal-header {
   display: flex;
   align-items: center;
@@ -267,7 +253,7 @@
 }
 
 .res-cal-month {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Montserrat', sans-serif;
   font-size: 1.05rem;
   font-weight: 600;
   letter-spacing: .5px;
@@ -276,7 +262,7 @@
 .res-cal-nav {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: 0px;
   border: 1.5px solid rgba(255,255,255,.28);
   background: transparent;
   color: #fff;
@@ -291,9 +277,8 @@
   background: rgba(196,149,106,.3);
   border-color: var(--rose-gold);
 }
-.res-cal-nav:disabled { cursor: not-allowed; }
+.res-cal-nav:disabled { cursor: not-allowed; opacity: .3; }
 
-/* Jours de la semaine */
 .res-cal-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -303,7 +288,7 @@
 }
 .res-cal-weekdays span {
   text-align: center;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 700;
   font-size: .66rem;
   letter-spacing: 1.5px;
@@ -312,7 +297,6 @@
 }
 .rcd-weekend-hd { color: var(--rose-gold) !important; }
 
-/* Grille des jours */
 .res-cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -320,15 +304,6 @@
   padding: 10px 10px 12px;
 }
 
-.res-cal-loading {
-  grid-column: span 7;
-  text-align: center;
-  color: var(--gray);
-  padding: 36px 0;
-  font-size: 1.5rem;
-}
-
-/* Cellule jour */
 .rcd {
   position: relative;
   aspect-ratio: 1;
@@ -336,8 +311,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  font-family: 'Raleway', sans-serif;
+  border-radius: 0px;
+  font-family: 'Lato', sans-serif;
   font-size: .88rem;
   font-weight: 500;
   transition: background .18s, color .18s, transform .15s, box-shadow .15s;
@@ -345,7 +320,6 @@
 }
 .rcd-empty { background: transparent; }
 
-/* Disponible */
 .rcd-avail {
   color: var(--dark);
   background: var(--cream);
@@ -359,10 +333,8 @@
   font-weight: 700;
   transform: scale(1.06);
 }
-/* Weekend (léger accent) */
 .rcd-weekend { background: #fdf5ef; }
 
-/* Partiellement bloqué */
 .rcd-partial::after {
   content: '';
   position: absolute;
@@ -371,11 +343,10 @@
   transform: translateX(-50%);
   width: 5px;
   height: 5px;
-  border-radius: 50%;
+  border-radius: 0px;
   background: #f59e0b;
 }
 
-/* Désactivé */
 .rcd-disabled {
   color: #ccc;
   background: #f7f6f4;
@@ -386,7 +357,6 @@
   font-size: .82rem;
 }
 
-/* Sélectionné */
 .rcd-selected {
   background: var(--rose-gold) !important;
   color: #fff !important;
@@ -401,7 +371,6 @@
   opacity: .9;
 }
 
-/* Instruction contextuelle */
 .res-cal-hint {
   display: flex;
   align-items: center;
@@ -410,13 +379,11 @@
   background: var(--rg-pale);
   font-size: .8rem;
   color: var(--rose-gold);
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 600;
   border-top: 1px solid rgba(196,149,106,.2);
 }
-.res-cal-hint i { flex-shrink: 0; }
 
-/* Erreur inline calendrier */
 .res-cal-error {
   display: flex;
   align-items: flex-start;
@@ -426,13 +393,11 @@
   border-top: 1px solid #fed7d7;
   font-size: .8rem;
   color: #c53030;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 600;
   animation: fadeStepIn .2s ease;
 }
-.res-cal-error i { flex-shrink: 0; margin-top: 1px; }
 
-/* Jour avec une résa existante (pas désactivé, mais signalé) */
 .rcd-booked::after {
   content: '';
   position: absolute;
@@ -441,11 +406,10 @@
   transform: translateX(-50%);
   width: 5px;
   height: 5px;
-  border-radius: 50%;
+  border-radius: 0px;
   background: #e07070;
 }
 
-/* Jour adjacent à la sélection (guidage visuel) */
 .rcd-adjacent {
   border-color: var(--rose-gold) !important;
   border-style: dashed !important;
@@ -457,28 +421,13 @@
   transform: scale(1.06);
 }
 
-/* ─── Plage de dates ─────────────────────────────── */
-
-/* 1er clic en attente (pulse) */
-.rcd-range-picking {
-  background: var(--rose-gold);
-  color: #fff;
-  animation: pulse-pick 1.4s ease-in-out infinite;
-}
-@keyframes pulse-pick {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(196,149,106,.5); }
-  50%       { box-shadow: 0 0 0 6px rgba(196,149,106,0); }
-}
-
-/* Début de plage */
 .rcd-range-start {
   background: var(--rose-gold);
   color: #fff;
-  border-radius: 8px 0 0 8px !important;
+  border-radius: 0px 0 0 8px !important;
   box-shadow: 0 4px 14px rgba(196,149,106,.4);
 }
 
-/* Fin de plage */
 .rcd-range-end {
   background: var(--rose-gold);
   color: #fff;
@@ -486,21 +435,18 @@
   box-shadow: 0 4px 14px rgba(196,149,106,.4);
 }
 
-/* Jours intermédiaires */
 .rcd-range-mid {
   background: rgba(196,149,106,.18);
   color: var(--dark);
   border-radius: 0 !important;
   font-weight: 600;
-  /* comble le gap entre cellules */
   box-shadow: -3px 0 0 rgba(196,149,106,.18), 3px 0 0 rgba(196,149,106,.18);
 }
 
-/* Note multi-jours */
 .res-multiday-note {
   background: #fff;
   border: 1.5px solid rgba(196,149,106,.3);
-  border-radius: 8px;
+  border-radius: 0px;
   padding: 10px 14px;
   font-size: .84rem;
   color: var(--dark-mid);
@@ -511,7 +457,6 @@
 }
 .res-multiday-note i { color: var(--rose-gold); flex-shrink: 0; margin-top: 2px; }
 
-/* Légende */
 .res-cal-legend {
   display: flex;
   gap: 18px;
@@ -526,12 +471,12 @@
   gap: 7px;
   font-size: .74rem;
   color: var(--gray);
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
 }
 .res-leg-dot {
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: 0px;
   flex-shrink: 0;
 }
 .res-leg-avail   { background: var(--cream); border: 1.5px solid #ccc; }
@@ -539,19 +484,16 @@
 .res-leg-booked  { background: #e07070; }
 .res-leg-blocked { background: #ccc; }
 
-/* ═══════════════════════════════════════════════════
-   SECTION CRÉNEAU
-   ═══════════════════════════════════════════════════ */
+/* TIME SECTION */
 .res-time-section {
   background: var(--rg-pale);
   border: 1.5px solid rgba(196,149,106,.32);
-  border-radius: 12px;
+  border-radius: 0px;
   padding: 22px 24px;
   margin-top: 20px;
   animation: fadeStepIn .3s ease;
 }
 
-/* Badge date sélectionnée */
 .res-date-badge {
   display: flex;
   align-items: center;
@@ -561,7 +503,7 @@
 }
 .res-date-badge > i { color: var(--rose-gold); font-size: 1.1rem; flex-shrink: 0; }
 .res-date-badge > span {
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 700;
   font-size: .95rem;
   color: var(--dark);
@@ -571,10 +513,10 @@
   background: transparent;
   border: 1.5px solid var(--rose-gold);
   color: var(--rose-gold);
-  border-radius: 20px;
+  border-radius: 0px;
   padding: 4px 14px;
   font-size: .8rem;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-weight: 600;
   cursor: pointer;
   transition: background .2s, color .2s;
@@ -582,7 +524,6 @@
 }
 .res-change-btn:hover { background: var(--rose-gold); color: #fff; }
 
-/* En-tête dates sélectionnées */
 .res-dates-header {
   display: flex;
   align-items: center;
@@ -592,14 +533,13 @@
 }
 .res-dates-header > i { color: var(--rose-gold); font-size: 1.1rem; flex-shrink: 0; }
 .res-dates-header > span {
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 700;
   font-size: .95rem;
   color: var(--dark);
   flex: 1;
 }
 
-/* Pills des jours sélectionnés */
 .res-dates-pills {
   display: flex;
   flex-wrap: wrap;
@@ -612,9 +552,9 @@
   gap: 6px;
   background: var(--rose-gold);
   color: #fff;
-  border-radius: 20px;
+  border-radius: 0px;
   padding: 5px 8px 5px 14px;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-size: .82rem;
   font-weight: 600;
   line-height: 1;
@@ -627,7 +567,7 @@
   height: 18px;
   background: rgba(255,255,255,.25);
   border: none;
-  border-radius: 50%;
+  border-radius: 0px;
   color: #fff;
   cursor: pointer;
   font-size: .6rem;
@@ -637,9 +577,8 @@
 }
 .date-pill-rm:hover { background: rgba(255,255,255,.5); }
 
-/* Label du type de réservation */
 .res-time-label {
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 700;
   font-size: .74rem;
   letter-spacing: 1.5px;
@@ -648,7 +587,6 @@
   margin-bottom: 10px;
 }
 
-/* Tabs journée / heures */
 .res-time-tabs { display: flex; gap: 12px; margin-bottom: 0; flex-wrap: wrap; }
 
 .res-time-tab {
@@ -661,8 +599,8 @@
   padding: 16px 12px;
   background: #fff;
   border: 2px solid var(--border);
-  border-radius: 10px;
-  font-family: 'Raleway', sans-serif;
+  border-radius: 0px;
+  font-family: 'Lato', sans-serif;
   font-size: .88rem;
   font-weight: 600;
   color: var(--gray);
@@ -678,7 +616,6 @@
   box-shadow: 0 4px 16px rgba(196,149,106,.3);
 }
 
-/* Section heures */
 .res-hours-section { margin-top: 18px; animation: fadeStepIn .25s ease; }
 
 .res-hours-hint {
@@ -692,10 +629,10 @@
 
 .res-hour-pill {
   padding: 8px 16px;
-  border-radius: 20px;
+  border-radius: 0px;
   border: 1.5px solid var(--border);
   background: #fff;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-size: .84rem;
   font-weight: 600;
   color: var(--dark);
@@ -731,22 +668,20 @@
   gap: 6px;
 }
 
-/* ═══════════════════════════════════════════════════
-   ÉTAPE 3 — MATÉRIAUX
-   ═══════════════════════════════════════════════════ */
+/* MATÉRIAUX */
 .resa-loader { color: var(--gray); font-size: .9rem; padding: 12px 0; }
 
 .no-mat-msg {
   color: var(--gray);
   font-size: .9rem;
   background: var(--rg-pale);
-  border-radius: 8px;
+  border-radius: 0px;
   padding: 14px 18px;
 }
 
 .mat-category  { margin-bottom: 32px; }
 .mat-cat-label {
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 700;
   font-size: .68rem;
   letter-spacing: 3px;
@@ -755,7 +690,6 @@
   margin-bottom: 14px;
 }
 
-/* Grille 2 colonnes */
 .mat-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -763,11 +697,10 @@
 }
 @media(max-width: 640px) { .mat-grid { grid-template-columns: 1fr; } }
 
-/* Card matériel */
 .mat-card {
   background: #fff;
   border: 1.5px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0px;
   overflow: hidden;
   transition: border-color .22s, box-shadow .22s;
   display: flex;
@@ -778,7 +711,6 @@
   box-shadow: 0 0 0 3px rgba(196,149,106,.15);
 }
 
-/* Zone image */
 .mat-card-img {
   width: 100%;
   aspect-ratio: 16/9;
@@ -804,16 +736,11 @@
   font-size: 2rem;
 }
 
-/* Card indisponible */
 .mat-card-unavail {
   opacity: .55;
   filter: grayscale(.6);
 }
-.mat-card-unavail .mat-card-img img {
-  filter: grayscale(.5);
-}
 
-/* Overlay "Indisponible" sur l'image */
 .mat-unavail-overlay {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -823,31 +750,28 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 700;
   font-size: .82rem;
   letter-spacing: .5px;
 }
 
-/* Badge stock */
 .mat-stock-row { display: flex; align-items: center; }
 .mat-stock-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-size: .75rem;
   font-weight: 700;
-  border-radius: 20px;
+  border-radius: 0px;
   padding: 3px 10px;
 }
 .mat-stock-ok  { background: #d1fae5; color: #065f46; }
 .mat-stock-out { background: #fee2e2; color: #991b1b; }
 
 .mat-check-disabled { cursor: not-allowed !important; opacity: .65; }
-.mat-check-disabled input { cursor: not-allowed !important; }
 
-/* Corps de la card */
 .mat-card-body {
   padding: 14px 16px;
   display: flex;
@@ -877,7 +801,7 @@
 .qty-btn {
   width: 30px;
   height: 30px;
-  border-radius: 50%;
+  border-radius: 0px;
   border: 2px solid var(--rose-gold);
   background: transparent;
   color: var(--rose-gold);
@@ -894,13 +818,11 @@
 .qty-val { font-family:'Raleway',sans-serif; font-weight:700; font-size:.95rem; min-width:22px; text-align:center; color:var(--dark); }
 .qty-max { font-size:.76rem; color:var(--gray); }
 
-/* ═══════════════════════════════════════════════════
-   ÉTAPE 4 — RÉCAPITULATIF
-   ═══════════════════════════════════════════════════ */
+/* RÉCAPITULATIF */
 .recap-card {
   background: var(--cream);
   border: 1.5px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0px;
   overflow: hidden;
 }
 
@@ -914,7 +836,7 @@
 .recap-row:last-child { border-bottom: none; }
 
 .recap-lbl {
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 700;
   font-size: .74rem;
   color: var(--gray);
@@ -937,30 +859,21 @@
   word-break: break-word;
 }
 
-/* ═══════════════════════════════════════════════════
-   RESPONSIVE
-   ═══════════════════════════════════════════════════ */
 @media(max-width: 767.98px) {
   .step-panel { padding: 28px 20px; }
-
   .step-title  { font-size: 1.4rem; }
   .step-desc   { font-size: .88rem; margin-bottom: 24px; }
-
   .step-circle { width: 38px; height: 38px; font-size: .82rem; }
   .step-label  { font-size: .62rem; }
   .step-line   { margin-bottom: 22px; }
-
   .res-cal-grid { gap: 3px; padding: 8px; }
-  .rcd { font-size: .78rem; min-height: 36px; border-radius: 6px; }
-
+  .rcd { font-size: .78rem; min-height: 36px; border-radius: 0px; }
   .res-time-tabs { gap: 8px; }
   .res-time-tab  { min-width: 120px; padding: 12px 8px; font-size: .82rem; }
   .res-hours-grid { gap: 6px; }
   .res-hour-pill  { padding: 7px 12px; font-size: .8rem; }
-
   .recap-lbl { min-width: 90px; font-size: .68rem; }
   .recap-val { font-size: .88rem; }
-
   .step-next-btn  { padding: 12px 24px; font-size: .88rem; }
   .step-prev-btn  { padding: 12px 20px; font-size: .88rem; }
 }

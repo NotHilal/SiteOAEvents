@@ -1,0 +1,7 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="triangleGradient" x1="0%" y1="90%" x2="90%" y2="0%">
+</linearGradient>
+</defs>
+<path d="M0,0 L0,200 Q0,0 200,0 Z" fill="#fff"/>
+</svg>

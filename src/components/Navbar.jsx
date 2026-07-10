@@ -1,126 +1,178 @@
-import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const router = useRouter()
+  const isHome = router.pathname === '/'
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 80)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  useEffect(() => {
-    setMenuOpen(false)
-    if (typeof document !== 'undefined') {
-      document.body.classList.remove('offcanvas-menu')
-    }
-  }, [router.asPath])
-
-  const toggleMenu = () => {
-    const next = !menuOpen
-    setMenuOpen(next)
-    if (typeof document !== 'undefined') {
-      document.body.classList.toggle('offcanvas-menu', next)
+  const handleAbout = (e) => {
+    e.preventDefault()
+    if (isHome) {
+      document.getElementById('About-Us')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    } else {
+      router.push('/')
+      setTimeout(() => {
+        document.getElementById('About-Us')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 400)
     }
   }
-
-  const isHome = router.pathname === '/'
-  const isScrolled = scrolled || !isHome
 
   const isActive = (path) => {
     if (path === '#about') return false
     return router.pathname === path
   }
 
-  const handleAbout = (e) => {
-    e.preventDefault()
-    if (isHome) {
-      document.getElementById('about')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    } else {
-      router.push('/')
-      setTimeout(() => {
-        document.getElementById('about')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 400)
-    }
-    setMenuOpen(false)
-    if (typeof document !== 'undefined') {
-      document.body.classList.remove('offcanvas-menu')
-    }
-  }
-
-  const navLinks = [
-    { to: '/', label: 'Accueil' },
-    { to: '/services', label: 'Prestations' },
-    { to: '/galerie', label: 'Galerie' },
-    { to: '#about', label: 'À Propos', onClick: handleAbout },
-    { to: '/contact', label: 'Contact' },
-  ]
-
   return (
-    <>
-      <div className={`site-navbar-wrap js-site-navbar${isScrolled ? ' scrolled' : ''}`}>
-        <div className="container">
-          <div className="site-navbar">
-            <div className="row align-items-center">
-              <div className="col-4 col-lg-3">
-                <h2 className="mb-0 site-logo">
-                  <Link href="/">OA <span>Événementiel</span></Link>
-                </h2>
-              </div>
-              <div className="col-8 col-lg-9">
-                <nav className="site-navigation" role="navigation">
-                  <ul className="site-menu js-clone-nav d-none d-lg-flex">
-                    {navLinks.map(l => (
-                       <li key={l.label} className={isActive(l.to) ? 'active' : ''}>
-                        {l.onClick
-                          ? <a href={l.to} onClick={l.onClick}>{l.label}</a>
-                          : <Link href={l.to}>{l.label}</Link>
-                        }
-                      </li>
-                    ))}
-                    <li>
-                      <Link href="/reservation" className="btn-devis">Réserver</Link>
-                    </li>
-                  </ul>
-                  <div className="d-block d-lg-none text-right">
-                    <button className="site-menu-toggle js-menu-toggle bg-transparent border-0 p-0" onClick={toggleMenu}>
-                      <i className="fas fa-bars" />
-                    </button>
-                  </div>
-                </nav>
-              </div>
+    <section className="main-header">
+      <div className="w-layout-blockcontainer container w-container">
+        <div className="header-main-box">
+          <Link href="/" className={`header-logo-link w-inline-block ${isHome ? 'w--current' : ''}`}>
+            {/* Remplacer "/LogoOA.png" par "/logo_template.avif" pour utiliser le logo du template */}
+            <img
+              loading="lazy"
+              src="/LogoOA.png"
+              alt="OA Événementiel Logo"
+              className="header-logo"
+              style={{ width: '130px', height: '35px', objectFit: 'contain' }}
+            />
+          </Link>
+          <div className="header-menu-box">
+            <Link
+              href="/"
+              data-w-id="120dca71-39d2-8c1e-9ed1-e619c73f2c8b"
+              className={`header-menu-link w-inline-block ${router.pathname === '/' ? 'w--current' : ''}`}
+            >
+              <p className="header-menu-text">Accueil</p>
+              <div className="header-menu-line"></div>
+            </Link>
+            <Link
+              href="/services"
+              data-w-id="120dca71-39d2-8c1e-9ed1-e619c73f2c8e"
+              className={`header-menu-link w-inline-block ${router.pathname === '/services' ? 'w--current' : ''}`}
+            >
+              <p className="header-menu-text">Prestations</p>
+              <div className="header-menu-line"></div>
+            </Link>
+            <Link
+              href="/galerie"
+              data-w-id="120dca71-39d2-8c1e-9ed1-e619c73f2c91"
+              className={`header-menu-link w-inline-block ${router.pathname === '/galerie' ? 'w--current' : ''}`}
+            >
+              <p className="header-menu-text">Galerie</p>
+              <div className="header-menu-line"></div>
+            </Link>
+            <a
+              href="#about"
+              onClick={handleAbout}
+              data-w-id="120dca71-39d2-8c1e-9ed1-e619c73f2c94"
+              className="header-menu-link w-inline-block"
+            >
+              <p className="header-menu-text">À Propos</p>
+              <div className="header-menu-line"></div>
+            </a>
+            <Link
+              href="/contact"
+              data-w-id="120dca71-39d2-8c1e-9ed1-e619c73f2c97"
+              className={`header-menu-link w-inline-block ${router.pathname === '/contact' ? 'w--current' : ''}`}
+            >
+              <p className="header-menu-text">Contact</p>
+              <div className="header-menu-line"></div>
+            </Link>
+          </div>
+          
+          <div className="header-btn-box">
+            <div className="header-btn">
+              <Link
+                href="/reservation"
+                data-wf--primary-button--variant="base"
+                data-w-id="08c8af99-e448-a937-dcfa-7ee6c8bdc474"
+                className="theme-button w-inline-block"
+              >
+                <div className="theme-button-content">
+                  <div className="theme-button-text">Réserver</div>
+                  <div className="theme-button-hover-text">Réserver</div>
+                </div>
+              </Link>
+            </div>
+            <div data-w-id="120dca71-39d2-8c1e-9ed1-e619c73f2ca3" className="mobile-menu-btn">
+              
             </div>
           </div>
         </div>
       </div>
-
-      <div className="site-mobile-menu">
-        <div className="site-mobile-menu-header">
-          <div className="site-mobile-menu-logo">
-            <Link href="/">OA <span>Événementiel</span></Link>
-          </div>
-          <div className="site-mobile-menu-close js-menu-toggle" onClick={toggleMenu}>
-            <i className="fas fa-times" />
-          </div>
+      
+      {/* Native Webflow Mobile Menu - Managed by Webflow JS via ID Triggers */}
+      <div className="mobile-menu">
+        <div className="mobile-logo-box">
+          <Link href="/" className={`header-logo-link w-inline-block ${isHome ? 'w--current' : ''}`}>
+            {/* Remplacer "/LogoOA.png" par "/logo_template.avif" pour utiliser le logo du template */}
+            <img
+              loading="lazy"
+              src="/LogoOA.png"
+              alt="OA Événementiel Logo"
+              className="header-logo"
+              style={{ width: '110px', height: '30px', objectFit: 'contain' }}
+            />
+          </Link>
+          <img
+            data-w-id="c6458aca-98af-15a7-c01c-17afce9b98cf"
+            loading="lazy"
+            alt="Close Menu"
+            src="https://cdn.prod.website-files.com/686b79afb668ce59a9047b8f/694e428401e8e79a23001a0a_679274e26348659b0fc56c38_close.png"
+            className="mobile-menu-close-btn"
+          />
         </div>
-        <div className="site-mobile-menu-body">
-          <ul className="site-nav-wrap">
-            {navLinks.map(l => (
-              <li key={l.label}>
-                {l.onClick
-                  ? <a href={l.to} onClick={l.onClick}>{l.label}</a>
-                  : <Link href={l.to}>{l.label}</Link>
-                }
-              </li>
-            ))}
-            <li><Link href="/reservation">Réserver</Link></li>
-          </ul>
+        <div className="mobile-menu-box">
+          <Link
+            href="/"
+            data-w-id="c6458aca-98af-15a7-c01c-17afce9b98d1"
+            className={`mobile-dropdown-link w-inline-block ${router.pathname === '/' ? 'w--current' : ''}`}
+          >
+            <div className="mobile-dropdown-title">Accueil</div>
+          </Link>
+          <Link
+            href="/services"
+            data-w-id="c6458aca-98af-15a7-c01c-17afce9b98d4"
+            className={`mobile-dropdown-link w-inline-block ${router.pathname === '/services' ? 'w--current' : ''}`}
+          >
+            <div className="mobile-dropdown-title">Prestations</div>
+          </Link>
+          <Link
+            href="/galerie"
+            data-w-id="c6458aca-98af-15a7-c01c-17afce9b98d7"
+            className={`mobile-dropdown-link w-inline-block ${router.pathname === '/galerie' ? 'w--current' : ''}`}
+          >
+            <div className="mobile-dropdown-title">Galerie</div>
+          </Link>
+          <a
+            href="#about"
+            onClick={handleAbout}
+            data-w-id="c6458aca-98af-15a7-c01c-17afce9b98dd"
+            className="mobile-dropdown-link w-inline-block"
+          >
+            <div className="mobile-dropdown-title">À Propos</div>
+          </a>
+          <Link
+            href="/contact"
+            data-w-id="c6458aca-98af-15a7-c01c-17afce9b98da"
+            className={`mobile-dropdown-link w-inline-block ${router.pathname === '/contact' ? 'w--current' : ''}`}
+          >
+            <div className="mobile-dropdown-title">Contact</div>
+          </Link>
+          
+          <Link
+            href="/reservation"
+            data-wf--primary-button--variant="base"
+            data-w-id="08c8af99-e448-a937-dcfa-7ee6c8bdc474"
+            className="theme-button w-inline-block"
+            style={{ marginTop: '20px', width: '100%', textAlign: 'center' }}
+          >
+            <div className="theme-button-content" style={{ justifyContent: 'center' }}>
+              <div className="theme-button-text">Réserver</div>
+            </div>
+          </Link>
         </div>
       </div>
-    </>
+    </section>
   )
 }

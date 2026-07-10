@@ -257,8 +257,8 @@ export default function AdminDashboard() {
   const closeModal = () => { setDayModal(null); setResaDetail(null) }
 
   if (authLoading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'#f8f4f0' }}>
-      <i className="fas fa-circle-notch fa-spin" style={{ fontSize:'2rem', color:'#c9a96e' }} />
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:'#ffffff' }}>
+      <i className="fas fa-circle-notch fa-spin" style={{ fontSize:'2rem', color:'var(--rose-gold)' }} />
     </div>
   )
 

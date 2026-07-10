@@ -4,7 +4,9 @@
 
 .resa-section {
   padding: 72px 0 96px;
-  background: var(--cream);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
 }
 
 .resa-success-msg {
@@ -20,7 +22,7 @@
   display: block;
 }
 .resa-success-msg h3 {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Montserrat', sans-serif;
   font-size: 2rem;
   margin-bottom: 12px;
 }
@@ -49,13 +51,13 @@
 .step-circle {
   width: 46px;
   height: 46px;
-  border-radius: 50%;
+  border-radius: 0px;
   border: 2px solid #ddd;
   background: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-weight: 700;
   font-size: .95rem;
   color: #aaa;
@@ -63,7 +65,7 @@
 }
 
 .step-label {
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-size: .68rem;
   font-weight: 700;
   letter-spacing: 1.2px;
@@ -80,7 +82,7 @@
   margin: 0 6px;
   margin-bottom: 26px;
   transition: background .4s;
-  border-radius: 2px;
+  border-radius: 0px;
 }
 .step-line.done { background: var(--rose-gold); }
 
@@ -88,7 +90,7 @@
   border-color: var(--rose-gold);
   background: var(--rose-gold);
   color: #fff;
-  box-shadow: 0 4px 18px rgba(196,149,106,.38);
+  box-shadow: 0 4px 18px rgba(235,199,149,.38);
 }
 .resa-step.active .step-label { color: var(--rose-gold); }
 
@@ -100,9 +102,11 @@
 .resa-step.done .step-label { color: var(--rose-gold); }
 
 .step-panel {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 6px 44px rgba(44,28,12,.08);
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(25px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 0px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.03);
   padding: 44px 48px;
   margin-bottom: 20px;
   animation: fadeStepIn .32s ease;
@@ -115,7 +119,7 @@
 
 .step-tag {
   display: inline-block;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-weight: 700;
   font-size: .68rem;
   letter-spacing: 2.5px;
@@ -124,7 +128,7 @@
   margin-bottom: 6px;
 }
 .step-title {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Montserrat', sans-serif;
   font-size: 1.75rem;
   color: var(--dark);
   margin-bottom: 8px;
@@ -148,9 +152,9 @@
   background: transparent;
   border: 1.5px solid #d8d2cb;
   color: var(--gray);
-  border-radius: 30px;
+  border-radius: 0px;
   padding: 13px 30px;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-weight: 600;
   font-size: .9rem;
   cursor: pointer;
@@ -164,13 +168,13 @@
 .step-next-btn {
   padding: 14px 38px;
   font-size: .95rem;
-  border-radius: 30px;
+  border-radius: 0px;
 }
 
 .form-group { margin-bottom: 20px; }
 
 .form-group label {
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-weight: 700;
   font-size: .74rem;
   letter-spacing: 1.5px;
@@ -181,11 +185,12 @@
 }
 
 .form-group .form-control {
-  background: var(--cream);
-  border: 1.5px solid var(--border);
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0px;
+  backdrop-filter: blur(5px);
   padding: 13px 16px;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-size: .94rem;
   color: var(--dark);
   height: auto;
@@ -193,10 +198,10 @@
   transition: border-color .25s, box-shadow .25s;
 }
 .form-group .form-control:focus {
-  border-color: var(--rose-gold);
-  box-shadow: 0 0 0 3px rgba(196,149,106,.13);
+  border-color: #000000;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.03);
   outline: none;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.8);
 }
 .form-group textarea.form-control { resize: vertical; min-height: 110px; }
 .form-group select.form-control   { appearance: none; cursor: pointer; }
@@ -210,7 +215,7 @@
 .resa-alert {
   background: #fff5f5;
   border: 1.5px solid #e53e3e;
-  border-radius: 8px;
+  border-radius: 0px;
   padding: 12px 16px;
   color: #e53e3e;
   font-size: .88rem;
@@ -232,7 +237,7 @@
 .res-cal-wrap {
   background: #fff;
   border: 1.5px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0px;
   overflow: hidden;
   user-select: none;
   margin-bottom: 0;
@@ -248,7 +253,7 @@
 }
 
 .res-cal-month {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Montserrat', sans-serif;
   font-size: 1.05rem;
   font-weight: 600;
   letter-spacing: .5px;
@@ -257,7 +262,7 @@
 .res-cal-nav {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: 0px;
   border: 1.5px solid rgba(255,255,255,.28);
   background: transparent;
   color: #fff;
@@ -283,7 +288,7 @@
 }
 .res-cal-weekdays span {
   text-align: center;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 700;
   font-size: .66rem;
   letter-spacing: 1.5px;
@@ -306,8 +311,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  font-family: 'Raleway', sans-serif;
+  border-radius: 0px;
+  font-family: 'Lato', sans-serif;
   font-size: .88rem;
   font-weight: 500;
   transition: background .18s, color .18s, transform .15s, box-shadow .15s;
@@ -338,7 +343,7 @@
   transform: translateX(-50%);
   width: 5px;
   height: 5px;
-  border-radius: 50%;
+  border-radius: 0px;
   background: #f59e0b;
 }
 
@@ -374,7 +379,7 @@
   background: var(--rg-pale);
   font-size: .8rem;
   color: var(--rose-gold);
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 600;
   border-top: 1px solid rgba(196,149,106,.2);
 }
@@ -388,7 +393,7 @@
   border-top: 1px solid #fed7d7;
   font-size: .8rem;
   color: #c53030;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 600;
   animation: fadeStepIn .2s ease;
 }
@@ -401,7 +406,7 @@
   transform: translateX(-50%);
   width: 5px;
   height: 5px;
-  border-radius: 50%;
+  border-radius: 0px;
   background: #e07070;
 }
 
@@ -419,7 +424,7 @@
 .rcd-range-start {
   background: var(--rose-gold);
   color: #fff;
-  border-radius: 8px 0 0 8px !important;
+  border-radius: 0px 0 0 8px !important;
   box-shadow: 0 4px 14px rgba(196,149,106,.4);
 }
 
@@ -441,7 +446,7 @@
 .res-multiday-note {
   background: #fff;
   border: 1.5px solid rgba(196,149,106,.3);
-  border-radius: 8px;
+  border-radius: 0px;
   padding: 10px 14px;
   font-size: .84rem;
   color: var(--dark-mid);
@@ -466,12 +471,12 @@
   gap: 7px;
   font-size: .74rem;
   color: var(--gray);
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
 }
 .res-leg-dot {
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: 0px;
   flex-shrink: 0;
 }
 .res-leg-avail   { background: var(--cream); border: 1.5px solid #ccc; }
@@ -483,7 +488,7 @@
 .res-time-section {
   background: var(--rg-pale);
   border: 1.5px solid rgba(196,149,106,.32);
-  border-radius: 12px;
+  border-radius: 0px;
   padding: 22px 24px;
   margin-top: 20px;
   animation: fadeStepIn .3s ease;
@@ -498,7 +503,7 @@
 }
 .res-date-badge > i { color: var(--rose-gold); font-size: 1.1rem; flex-shrink: 0; }
 .res-date-badge > span {
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 700;
   font-size: .95rem;
   color: var(--dark);
@@ -508,10 +513,10 @@
   background: transparent;
   border: 1.5px solid var(--rose-gold);
   color: var(--rose-gold);
-  border-radius: 20px;
+  border-radius: 0px;
   padding: 4px 14px;
   font-size: .8rem;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Montserrat', sans-serif;
   font-weight: 600;
   cursor: pointer;
   transition: background .2s, color .2s;
@@ -528,7 +533,7 @@
 }
 .res-dates-header > i { color: var(--rose-gold); font-size: 1.1rem; flex-shrink: 0; }
 .res-dates-header > span {
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 700;
   font-size: .95rem;
   color: var(--dark);
@@ -547,9 +552,9 @@
   gap: 6px;
   background: var(--rose-gold);
   color: #fff;
-  border-radius: 20px;
+  border-radius: 0px;
   padding: 5px 8px 5px 14px;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-size: .82rem;
   font-weight: 600;
   line-height: 1;
@@ -562,7 +567,7 @@
   height: 18px;
   background: rgba(255,255,255,.25);
   border: none;
-  border-radius: 50%;
+  border-radius: 0px;
   color: #fff;
   cursor: pointer;
   font-size: .6rem;
@@ -573,7 +578,7 @@
 .date-pill-rm:hover { background: rgba(255,255,255,.5); }
 
 .res-time-label {
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 700;
   font-size: .74rem;
   letter-spacing: 1.5px;
@@ -594,8 +599,8 @@
   padding: 16px 12px;
   background: #fff;
   border: 2px solid var(--border);
-  border-radius: 10px;
-  font-family: 'Raleway', sans-serif;
+  border-radius: 0px;
+  font-family: 'Lato', sans-serif;
   font-size: .88rem;
   font-weight: 600;
   color: var(--gray);
@@ -624,10 +629,10 @@
 
 .res-hour-pill {
   padding: 8px 16px;
-  border-radius: 20px;
+  border-radius: 0px;
   border: 1.5px solid var(--border);
   background: #fff;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-size: .84rem;
   font-weight: 600;
   color: var(--dark);
@@ -670,13 +675,13 @@
   color: var(--gray);
   font-size: .9rem;
   background: var(--rg-pale);
-  border-radius: 8px;
+  border-radius: 0px;
   padding: 14px 18px;
 }
 
 .mat-category  { margin-bottom: 32px; }
 .mat-cat-label {
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 700;
   font-size: .68rem;
   letter-spacing: 3px;
@@ -695,7 +700,7 @@
 .mat-card {
   background: #fff;
   border: 1.5px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0px;
   overflow: hidden;
   transition: border-color .22s, box-shadow .22s;
   display: flex;
@@ -745,7 +750,7 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 700;
   font-size: .82rem;
   letter-spacing: .5px;
@@ -756,10 +761,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-size: .75rem;
   font-weight: 700;
-  border-radius: 20px;
+  border-radius: 0px;
   padding: 3px 10px;
 }
 .mat-stock-ok  { background: #d1fae5; color: #065f46; }
@@ -796,7 +801,7 @@
 .qty-btn {
   width: 30px;
   height: 30px;
-  border-radius: 50%;
+  border-radius: 0px;
   border: 2px solid var(--rose-gold);
   background: transparent;
   color: var(--rose-gold);
@@ -817,7 +822,7 @@
 .recap-card {
   background: var(--cream);
   border: 1.5px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0px;
   overflow: hidden;
 }
 
@@ -831,7 +836,7 @@
 .recap-row:last-child { border-bottom: none; }
 
 .recap-lbl {
-  font-family: 'Raleway', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-weight: 700;
   font-size: .74rem;
   color: var(--gray);
@@ -862,7 +867,7 @@
   .step-label  { font-size: .62rem; }
   .step-line   { margin-bottom: 22px; }
   .res-cal-grid { gap: 3px; padding: 8px; }
-  .rcd { font-size: .78rem; min-height: 36px; border-radius: 6px; }
+  .rcd { font-size: .78rem; min-height: 36px; border-radius: 0px; }
   .res-time-tabs { gap: 8px; }
   .res-time-tab  { min-width: 120px; padding: 12px 8px; font-size: .82rem; }
   .res-hours-grid { gap: 6px; }
