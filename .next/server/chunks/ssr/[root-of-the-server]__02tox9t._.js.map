@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../../../pages/_app.jsx"],"sourcesContent":["import '../src/index.css';\n\nexport default function App({ Component, pageProps }) {\n  return <Component {...pageProps} />;\n}\n"],"names":["App","Component","pageProps"],"mappings":"2JAEe,SAASA,AAAI,WAAEC,CAAS,WAAEC,CAAS,CAAE,EAClD,MAAO,CAAA,EAAA,EAAA,GAAA,EAACD,EAAAA,CAAW,GAAGC,CAAS,EACjC"}

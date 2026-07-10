@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import Link from 'next/link'
+import { useRouter } from 'next/router'
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const location = useLocation()
-  const navigate = useNavigate()
+  const router = useRouter()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80)
@@ -15,21 +15,25 @@ export default function Navbar() {
 
   useEffect(() => {
     setMenuOpen(false)
-    document.body.classList.remove('offcanvas-menu')
-  }, [location])
+    if (typeof document !== 'undefined') {
+      document.body.classList.remove('offcanvas-menu')
+    }
+  }, [router.asPath])
 
   const toggleMenu = () => {
     const next = !menuOpen
     setMenuOpen(next)
-    document.body.classList.toggle('offcanvas-menu', next)
+    if (typeof document !== 'undefined') {
+      document.body.classList.toggle('offcanvas-menu', next)
+    }
   }
 
-  const isHome = location.pathname === '/'
+  const isHome = router.pathname === '/'
   const isScrolled = scrolled || !isHome
 
   const isActive = (path) => {
     if (path === '#about') return false
-    return location.pathname === path
+    return router.pathname === path
   }
 
   const handleAbout = (e) => {
@@ -37,13 +41,15 @@ export default function Navbar() {
     if (isHome) {
       document.getElementById('about')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     } else {
-      navigate('/')
+      router.push('/')
       setTimeout(() => {
         document.getElementById('about')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 400)
     }
     setMenuOpen(false)
-    document.body.classList.remove('offcanvas-menu')
+    if (typeof document !== 'undefined') {
+      document.body.classList.remove('offcanvas-menu')
+    }
   }
 
   const navLinks = [
@@ -62,22 +68,22 @@ export default function Navbar() {
             <div className="row align-items-center">
               <div className="col-4 col-lg-3">
                 <h2 className="mb-0 site-logo">
-                  <Link to="/">OA <span>Événementiel</span></Link>
+                  <Link href="/">OA <span>Événementiel</span></Link>
                 </h2>
               </div>
               <div className="col-8 col-lg-9">
                 <nav className="site-navigation" role="navigation">
                   <ul className="site-menu js-clone-nav d-none d-lg-flex">
                     {navLinks.map(l => (
-                      <li key={l.label} className={isActive(l.to) ? 'active' : ''}>
+                       <li key={l.label} className={isActive(l.to) ? 'active' : ''}>
                         {l.onClick
                           ? <a href={l.to} onClick={l.onClick}>{l.label}</a>
-                          : <Link to={l.to}>{l.label}</Link>
+                          : <Link href={l.to}>{l.label}</Link>
                         }
                       </li>
                     ))}
                     <li>
-                      <Link to="/reservation" className="btn-devis">Réserver</Link>
+                      <Link href="/reservation" className="btn-devis">Réserver</Link>
                     </li>
                   </ul>
                   <div className="d-block d-lg-none text-right">
@@ -95,7 +101,7 @@ export default function Navbar() {
       <div className="site-mobile-menu">
         <div className="site-mobile-menu-header">
           <div className="site-mobile-menu-logo">
-            <Link to="/">OA <span>Événementiel</span></Link>
+            <Link href="/">OA <span>Événementiel</span></Link>
           </div>
           <div className="site-mobile-menu-close js-menu-toggle" onClick={toggleMenu}>
             <i className="fas fa-times" />
@@ -107,11 +113,11 @@ export default function Navbar() {
               <li key={l.label}>
                 {l.onClick
                   ? <a href={l.to} onClick={l.onClick}>{l.label}</a>
-                  : <Link to={l.to}>{l.label}</Link>
+                  : <Link href={l.to}>{l.label}</Link>
                 }
               </li>
             ))}
-            <li><Link to="/reservation">Réserver</Link></li>
+            <li><Link href="/reservation">Réserver</Link></li>
           </ul>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 
 export default function Footer() {
   return (
@@ -18,21 +18,21 @@ export default function Footer() {
           <div className="col-lg-2 col-6 mb-5 mb-lg-0">
             <h3 className="footer-heading">Navigation</h3>
             <ul className="footer-links">
-              <li><Link to="/">Accueil</Link></li>
-              <li><Link to="/services">Prestations</Link></li>
-              <li><Link to="/galerie">Galerie</Link></li>
-              <li><Link to="/contact">Contact</Link></li>
-              <li><Link to="/reservation">Réservation</Link></li>
+              <li><Link href="/">Accueil</Link></li>
+              <li><Link href="/services">Prestations</Link></li>
+              <li><Link href="/galerie">Galerie</Link></li>
+              <li><Link href="/contact">Contact</Link></li>
+              <li><Link href="/reservation">Réservation</Link></li>
             </ul>
           </div>
 
           <div className="col-lg-3 col-6 mb-5 mb-lg-0">
             <h3 className="footer-heading">Prestations</h3>
             <ul className="footer-links">
-              <li><Link to="/services">Organisation Mariage</Link></li>
-              <li><Link to="/services">Organisation Anniversaire</Link></li>
-              <li><Link to="/services">Événements Pro</Link></li>
-              <li><Link to="/services">Location Décoration</Link></li>
+              <li><Link href="/services">Organisation Mariage</Link></li>
+              <li><Link href="/services">Organisation Anniversaire</Link></li>
+              <li><Link href="/services">Événements Pro</Link></li>
+              <li><Link href="/services">Location Décoration</Link></li>
             </ul>
           </div>
 

@@ -1,27 +1,5 @@
-import fs from 'fs';
-import path from 'path';
 import crypto from 'crypto';
-
-const DB_PATH = path.join(process.cwd(), 'data', 'db.json');
-
-// Helper to read database
-function readDb() {
-  if (!fs.existsSync(DB_PATH)) {
-    // Fallback initialize
-    return { materials: [], reservations: [], blocked_dates: [], blocked_hours: [], contacts: [], categories: [] };
-  }
-  const raw = fs.readFileSync(DB_PATH, 'utf8');
-  return JSON.parse(raw);
-}
-
-// Helper to write database
-function writeDb(data) {
-  const dir = path.dirname(DB_PATH);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf8');
-}
+import db from '../../src/lib/sqlite-db';
 
 // Helper to check token authorization
 function isAuthorized(req) {
@@ -46,11 +24,65 @@ function isAuthorized(req) {
   }
 }
 
+function deserializeRow(table, row) {
+  if (!row) return null;
+  const res = { ...row };
+  if (table === 'materials') {
+    res.available = res.available === 1 || res.available === true;
+  }
+  if (table === 'reservations') {
+    try {
+      res.dates = typeof res.dates === 'string' ? JSON.parse(res.dates) : (res.dates || []);
+    } catch (e) {
+      res.dates = [];
+    }
+    try {
+      res.materials = typeof res.materials === 'string' ? JSON.parse(res.materials) : (res.materials || []);
+    } catch (e) {
+      res.materials = [];
+    }
+  }
+  if (table === 'contacts') {
+    res.read = res.read === 1 || res.read === true;
+  }
+  return res;
+}
+
+function serializeRow(table, data) {
+  const res = { ...data };
+  if (table === 'materials') {
+    if (res.available !== undefined) {
+      res.available = res.available ? 1 : 0;
+    }
+  }
+  if (table === 'reservations') {
+    if (res.dates !== undefined) {
+      res.dates = JSON.stringify(res.dates);
+    }
+    if (res.materials !== undefined) {
+      res.materials = JSON.stringify(res.materials);
+    }
+  }
+  if (table === 'contacts') {
+    if (res.read !== undefined) {
+      res.read = res.read ? 1 : 0;
+    }
+  }
+  return res;
+}
+
+const ALLOWED_TABLES = ['materials', 'reservations', 'blocked_dates', 'blocked_hours', 'contacts', 'categories'];
+const isValidColumn = (col) => /^[a-zA-Z0-9_]+$/.test(col);
+
 export default function handler(req, res) {
   const { table, select, filters: filtersStr, order: orderStr, limit, action } = req.query;
 
   if (!table) {
     return res.status(400).json({ message: 'Missing table parameter' });
+  }
+
+  if (!ALLOWED_TABLES.includes(table)) {
+    return res.status(400).json({ message: 'Invalid table' });
   }
 
   // Define table access controls
@@ -64,7 +96,6 @@ export default function handler(req, res) {
   };
 
   const method = req.method;
-  const isWriteAction = ['POST', 'PUT', 'DELETE'].includes(method) || action === 'update';
   const tableAuth = requiresAuth[table] || [];
 
   if (tableAuth.includes(method) || (method === 'GET' && tableAuth.includes('GET'))) {
@@ -74,67 +105,59 @@ export default function handler(req, res) {
   }
 
   try {
-    const db = readDb();
-    if (!db[table]) {
-      db[table] = [];
-    }
-
     const filters = filtersStr ? JSON.parse(filtersStr) : [];
 
-    // Helper function to filter items
-    const applyFilters = (items) => {
-      return items.filter(item => {
-        return filters.every(f => {
-          const val = item[f.field];
-          if (f.type === 'eq') {
-            return String(val) === String(f.value);
-          }
-          if (f.type === 'in') {
-            return Array.isArray(f.values) && f.values.map(String).includes(String(val));
-          }
-          if (f.type === 'lte') {
-            return val <= f.value;
-          }
-          return true;
-        });
-      });
-    };
-
     if (method === 'GET') {
-      let result = db[table];
+      let sql = `SELECT * FROM ${table}`;
+      const whereClauses = [];
+      const params = [];
 
-      // Apply filters
-      result = applyFilters(result);
-
-      // Apply sorting if specified
-      if (orderStr) {
-        const order = JSON.parse(orderStr);
-        result.sort((a, b) => {
-          const valA = a[order.field];
-          const valB = b[order.field];
-          if (valA === valB) return 0;
-          if (valA == null) return 1;
-          if (valB == null) return -1;
-          
-          let comparison = 0;
-          if (typeof valA === 'string' && typeof valB === 'string') {
-            comparison = valA.localeCompare(valB);
-          } else {
-            comparison = valA < valB ? -1 : 1;
+      if (filters.length > 0) {
+        for (const f of filters) {
+          if (!isValidColumn(f.field)) continue;
+          if (f.type === 'eq') {
+            whereClauses.push(`${f.field} = ?`);
+            let val = f.value;
+            if (val === 'true' || val === true) val = 1;
+            else if (val === 'false' || val === false) val = 0;
+            params.push(val);
+          } else if (f.type === 'in') {
+            if (!Array.isArray(f.values) || f.values.length === 0) continue;
+            const placeholders = f.values.map(() => '?').join(',');
+            whereClauses.push(`${f.field} IN (${placeholders})`);
+            params.push(...f.values);
+          } else if (f.type === 'lte') {
+            whereClauses.push(`${f.field} <= ?`);
+            params.push(f.value);
           }
-          return order.ascending ? comparison : -comparison;
-        });
-      }
-
-      // Apply limit
-      if (limit) {
-        const limitVal = parseInt(limit, 10);
-        if (!isNaN(limitVal)) {
-          result = result.slice(0, limitVal);
         }
       }
 
-      return res.status(200).json({ data: result });
+      if (whereClauses.length > 0) {
+        sql += ` WHERE ${whereClauses.join(' AND ')}`;
+      }
+
+      if (orderStr) {
+        try {
+          const order = JSON.parse(orderStr);
+          if (isValidColumn(order.field)) {
+            const direction = order.ascending ? 'ASC' : 'DESC';
+            sql += ` ORDER BY ${order.field} ${direction}`;
+          }
+        } catch (e) {}
+      }
+
+      if (limit) {
+        const limitVal = parseInt(limit, 10);
+        if (!isNaN(limitVal)) {
+          sql += ` LIMIT ?`;
+          params.push(limitVal);
+        }
+      }
+
+      const rows = db.prepare(sql).all(...params);
+      const data = rows.map(row => deserializeRow(table, row));
+      return res.status(200).json({ data });
     }
 
     if (method === 'POST') {
@@ -143,25 +166,40 @@ export default function handler(req, res) {
         return res.status(400).json({ message: 'Missing body payload' });
       }
 
-      const createRecord = (data) => {
-        return {
-          id: data.id || crypto.randomUUID(),
-          created_at: new Date().toISOString(),
-          ...data
-        };
-      };
+      const isArray = Array.isArray(payload);
+      const items = isArray ? payload : [payload];
+      const insertedItems = [];
 
-      let inserted;
-      if (Array.isArray(payload)) {
-        inserted = payload.map(createRecord);
-        db[table].push(...inserted);
-      } else {
-        inserted = createRecord(payload);
-        db[table].push(inserted);
-      }
+      const transaction = db.transaction(() => {
+        for (let item of items) {
+          const isUpsert = item.__upsert === true;
+          if (isUpsert) {
+            delete item.__upsert;
+          }
 
-      writeDb(db);
-      return res.status(200).json({ data: inserted });
+          const id = item.id || crypto.randomUUID();
+          const created_at = item.created_at || new Date().toISOString();
+          const record = serializeRow(table, { ...item, id, created_at });
+
+          const keys = Object.keys(record);
+          const validKeys = keys.filter(isValidColumn);
+          
+          const columns = validKeys.join(', ');
+          const placeholders = validKeys.map(() => '?').join(', ');
+          
+          let insertSql = `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`;
+          if (isUpsert || table === 'blocked_dates') {
+            insertSql = `INSERT OR REPLACE INTO ${table} (${columns}) VALUES (${placeholders})`;
+          }
+          
+          const values = validKeys.map(k => record[k]);
+          db.prepare(insertSql).run(...values);
+          insertedItems.push(deserializeRow(table, record));
+        }
+      });
+
+      transaction();
+      return res.status(200).json({ data: isArray ? insertedItems : insertedItems[0] });
     }
 
     if (method === 'PUT') {
@@ -170,31 +208,69 @@ export default function handler(req, res) {
         return res.status(400).json({ message: 'Missing body payload' });
       }
 
-      // Supabase-like payload update structure or straight payload
       const actualPayload = payload.payload ? payload.payload : payload;
       const actualFilters = payload.filters ? payload.filters : filters;
 
-      let updatedCount = 0;
-      let updatedData = [];
+      const serializedPayload = serializeRow(table, actualPayload);
+      const updateKeys = Object.keys(serializedPayload).filter(isValidColumn);
 
-      db[table] = db[table].map(item => {
-        const matches = actualFilters.every(f => {
-          const val = item[f.field];
-          if (f.type === 'eq') return String(val) === String(f.value);
-          if (f.type === 'in') return Array.isArray(f.values) && f.values.map(String).includes(String(val));
-          return true;
-        });
+      if (updateKeys.length === 0) {
+        return res.status(400).json({ message: 'No fields to update' });
+      }
 
-        if (matches) {
-          updatedCount++;
-          const updatedItem = { ...item, ...actualPayload };
-          updatedData.push(updatedItem);
-          return updatedItem;
+      const updateClauses = updateKeys.map(k => `${k} = ?`).join(', ');
+      const params = updateKeys.map(k => serializedPayload[k]);
+
+      let sql = `UPDATE ${table} SET ${updateClauses}`;
+      const whereClauses = [];
+
+      if (actualFilters && actualFilters.length > 0) {
+        for (const f of actualFilters) {
+          if (!isValidColumn(f.field)) continue;
+          if (f.type === 'eq') {
+            whereClauses.push(`${f.field} = ?`);
+            let val = f.value;
+            if (val === 'true' || val === true) val = 1;
+            else if (val === 'false' || val === false) val = 0;
+            params.push(val);
+          } else if (f.type === 'in') {
+            if (!Array.isArray(f.values) || f.values.length === 0) continue;
+            const placeholders = f.values.map(() => '?').join(',');
+            whereClauses.push(`${f.field} IN (${placeholders})`);
+            params.push(...f.values);
+          }
         }
-        return item;
-      });
+      }
 
-      writeDb(db);
+      if (whereClauses.length > 0) {
+        sql += ` WHERE ${whereClauses.join(' AND ')}`;
+      }
+
+      db.prepare(sql).run(...params);
+
+      // Query and return updated data
+      let selectSql = `SELECT * FROM ${table}`;
+      const selectParams = [];
+      if (whereClauses.length > 0) {
+        selectSql += ` WHERE ${whereClauses.join(' AND ')}`;
+        if (actualFilters && actualFilters.length > 0) {
+          for (const f of actualFilters) {
+            if (!isValidColumn(f.field)) continue;
+            if (f.type === 'eq') {
+              let val = f.value;
+              if (val === 'true' || val === true) val = 1;
+              else if (val === 'false' || val === false) val = 0;
+              selectParams.push(val);
+            } else if (f.type === 'in') {
+              selectParams.push(...f.values);
+            }
+          }
+        }
+      }
+
+      const updatedRows = db.prepare(selectSql).all(...selectParams);
+      const updatedData = updatedRows.map(row => deserializeRow(table, row));
+
       return res.status(200).json({ data: updatedData });
     }
 
@@ -202,21 +278,34 @@ export default function handler(req, res) {
       const payload = req.body;
       const actualFilters = payload && payload.filters ? payload.filters : filters;
 
-      const beforeCount = db[table].length;
-      
-      db[table] = db[table].filter(item => {
-        const matches = actualFilters.every(f => {
-          const val = item[f.field];
-          if (f.type === 'eq') return String(val) === String(f.value);
-          if (f.type === 'in') return Array.isArray(f.values) && f.values.map(String).includes(String(val));
-          return true;
-        });
-        return !matches; // Keep items that DO NOT match filters
-      });
+      let sql = `DELETE FROM ${table}`;
+      const whereClauses = [];
+      const params = [];
 
-      const deletedCount = beforeCount - db[table].length;
-      writeDb(db);
-      return res.status(200).json({ data: { deleted: deletedCount } });
+      if (actualFilters && actualFilters.length > 0) {
+        for (const f of actualFilters) {
+          if (!isValidColumn(f.field)) continue;
+          if (f.type === 'eq') {
+            whereClauses.push(`${f.field} = ?`);
+            let val = f.value;
+            if (val === 'true' || val === true) val = 1;
+            else if (val === 'false' || val === false) val = 0;
+            params.push(val);
+          } else if (f.type === 'in') {
+            if (!Array.isArray(f.values) || f.values.length === 0) continue;
+            const placeholders = f.values.map(() => '?').join(',');
+            whereClauses.push(`${f.field} IN (${placeholders})`);
+            params.push(...f.values);
+          }
+        }
+      }
+
+      if (whereClauses.length > 0) {
+        sql += ` WHERE ${whereClauses.join(' AND ')}`;
+      }
+
+      const info = db.prepare(sql).run(...params);
+      return res.status(200).json({ data: { deleted: info.changes } });
     }
 
     return res.status(405).json({ message: 'Method Not Allowed' });

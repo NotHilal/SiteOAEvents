@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/butinegroupe/Documents/BUTINE%20PROJET/OA_Events/SiteOAEvents/pages/_app.jsx"],"sourcesContent":["import '../src/index.css';\n\nexport default function App({ Component, pageProps }) {\n  return <Component {...pageProps} />;\n}\n"],"names":["App","Component","pageProps"],"mappings":";;;;;;;AAEe,SAASA,IAAI,EAAEC,SAAS,EAAEC,SAAS,EAAE;IAClD,qBAAO,qKAACD;QAAW,GAAGC,SAAS;;;;;;AACjC"}}]
+}
