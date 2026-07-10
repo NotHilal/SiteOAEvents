@@ -1,7 +1,0 @@
-__turbopack_load_page_chunks__("/espace-oa", [
-  "static/chunks/21a8p10gp2msw.js",
-  "static/chunks/0xc6gv4huihov.js",
-  "static/chunks/0ji18shqyrpyy.js",
-  "static/chunks/23lfch1lh8-2h.js",
-  "static/chunks/turbopack-1h8uiazbda6l2.js"
-])

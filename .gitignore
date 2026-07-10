@@ -16,5 +16,11 @@ desktop.ini
 node_modules/
 npm-debug.log*
 
+# ───── Next.js & SQLite ─────
+.next/
+*.sqlite
+*.sqlite-journal
+public/uploads/
+
 # ───── Serveur local ─────
 serveur-local.ps1
