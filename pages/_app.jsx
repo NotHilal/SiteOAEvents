@@ -50,5 +50,10 @@ export default function App({ Component, pageProps }) {
     loadWebflowEngine()
   }, [])
 
-  return <Component {...pageProps} />
+  return (
+    <>
+      <div className="marble-layer" aria-hidden="true" />
+      <Component {...pageProps} />
+    </>
+  )
 }
