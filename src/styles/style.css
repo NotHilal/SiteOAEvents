@@ -100,6 +100,49 @@
 .breadcrumb-item + .breadcrumb-item::before { color: rgba(255,255,255,.4); }
 
 
+/* ===== BUTTONS =====
+   .btn / .btn-rose-gold only ever existed in public/css/style.css, the
+   legacy pre-Next.js stylesheet that isn't loaded by the app anymore
+   (src/index.css only imports src/styles/*.css). So every button using
+   these classes (reservation wizard "Continuer"/"Envoyer ma demande",
+   contact form submit, "Demander un devis") had no background/text color
+   at all — just whatever Bootstrap's bare .btn gives, which reads as
+   transparent. Ported here with a gold fill per request (the legacy
+   version was actually black/white, despite the "rose-gold" name). */
+.btn {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  border-radius: 0px;
+  padding: 15px 36px;
+  display: inline-block;
+  transition: all .35s cubic-bezier(0.2, 1, 0.2, 1);
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.btn:focus { outline: none; box-shadow: none; }
+
+.btn-rose-gold {
+  background: #c9a15a;
+  color: #ffffff;
+  border-color: #c9a15a;
+}
+.btn-rose-gold:hover {
+  background: #b38d47;
+  border-color: #b38d47;
+  color: #ffffff;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(201,161,90,.35);
+}
+.btn-rose-gold:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+
 /* ===== SERVICES PAGE ===== */
 .services-full-section {
   padding: 120px 0;
