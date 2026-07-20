@@ -1,9 +1,19 @@
 // Geocodage (Nominatim/OpenStreetMap) + distance routière (OSRM) — services publics gratuits, sans clé API.
+import db from './sqlite-db.js';
+
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 const OSRM_URL = 'https://router.project-osrm.org/route/v1/driving';
 const USER_AGENT = 'OA-Evenementiel-Website/1.0 (contact@oa-evenementiel.fr)';
 
-let depotCoordsCache = null;
+function getSetting(key, fallback) {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+  return row && row.value != null ? row.value : fallback;
+}
+
+// Keyed by address string (not a single cached value) so editing the depot
+// address in the admin "Réglages" tab is picked up on the next quote
+// instead of serving a stale geocode from before the change.
+const depotCoordsCache = new Map();
 
 export async function geocodeAddress(address) {
   const url = `${NOMINATIM_URL}?format=json&limit=1&q=${encodeURIComponent(address)}`;
@@ -25,10 +35,11 @@ async function getDrivingDistanceKm(origin, dest) {
 }
 
 async function getDepotCoords() {
-  if (depotCoordsCache) return depotCoordsCache;
-  const address = process.env.DEPOT_ADDRESS || '72 rue Victor Basch, 92120 Montrouge, France';
-  depotCoordsCache = await geocodeAddress(address);
-  return depotCoordsCache;
+  const address = getSetting('depot_address', '72 rue Victor Basch, 92120 Montrouge, France');
+  if (depotCoordsCache.has(address)) return depotCoordsCache.get(address);
+  const coords = await geocodeAddress(address);
+  depotCoordsCache.set(address, coords);
+  return coords;
 }
 
 export async function computeDeliveryQuote(destinationAddress) {
@@ -37,8 +48,8 @@ export async function computeDeliveryQuote(destinationAddress) {
     geocodeAddress(destinationAddress),
   ]);
   const { distanceKm, durationMin } = await getDrivingDistanceKm(depot, dest);
-  const baseFee = parseFloat(process.env.DELIVERY_BASE_FEE || '15');
-  const perKm = parseFloat(process.env.DELIVERY_PER_KM || '1.2');
+  const baseFee = parseFloat(getSetting('delivery_base_fee', '15'));
+  const perKm = parseFloat(getSetting('delivery_per_km', '1.2'));
   const fee = Math.round((baseFee + perKm * distanceKm) * 100) / 100;
   return {
     distanceKm: Math.round(distanceKm * 10) / 10,

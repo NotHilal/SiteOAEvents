@@ -71,7 +71,7 @@ function serializeRow(table, data) {
   return res;
 }
 
-const ALLOWED_TABLES = ['materials', 'reservations', 'blocked_dates', 'blocked_hours', 'contacts', 'categories'];
+const ALLOWED_TABLES = ['materials', 'reservations', 'blocked_dates', 'blocked_hours', 'contacts', 'categories', 'settings'];
 const isValidColumn = (col) => /^[a-zA-Z0-9_]+$/.test(col);
 
 export default function handler(req, res) {
@@ -92,7 +92,8 @@ export default function handler(req, res) {
     blocked_dates: ['POST', 'PUT', 'DELETE'],
     blocked_hours: ['POST', 'PUT', 'DELETE'],
     reservations: ['GET', 'PUT', 'DELETE'], // GET is protected, POST (insert) is public
-    contacts: ['GET', 'PUT', 'DELETE']      // GET is protected, POST (insert) is public
+    contacts: ['GET', 'PUT', 'DELETE'],     // GET is protected, POST (insert) is public
+    settings: ['GET', 'POST', 'PUT', 'DELETE'] // business config, admin-only end to end
   };
 
   const method = req.method;

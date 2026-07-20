@@ -6,6 +6,17 @@ class QueryBuilder {
     this.orderConfig = null;
     this.limitVal = null;
     this.isSingle = false;
+    // Mirrors the real Supabase client: .update()/.delete()/.insert()/
+    // .upsert() only record what to do and return `this` so filters like
+    // .eq(...) chained afterwards (the normal call order — e.g.
+    // `.update(payload).eq('id', x)`) still land on the request before it
+    // fires. The actual fetch only happens once the builder is awaited,
+    // via `then()`. Executing eagerly here previously meant `.eq()` was
+    // chained onto an already-in-flight (or already-resolved) Promise
+    // instead of the builder, so the filter was silently dropped — every
+    // update/delete ran against the whole table instead of one row.
+    this.method = 'GET';
+    this.pendingBody = null;
   }
 
   select(columns = '*') {
@@ -60,7 +71,7 @@ class QueryBuilder {
     return headers;
   }
 
-  async execute(method, body = null) {
+  async execute() {
     const params = new URLSearchParams({
       table: this.table,
       select: this.selectColumns
@@ -77,9 +88,17 @@ class QueryBuilder {
 
     const headers = await this.getRequestHeaders();
     const options = {
-      method,
+      method: this.method,
       headers
     };
+    let body = null;
+    if (this.method === 'PUT') {
+      body = { payload: this.pendingBody, filters: this.filters };
+    } else if (this.method === 'DELETE') {
+      body = { filters: this.filters };
+    } else if (this.method === 'POST') {
+      body = this.pendingBody;
+    }
     if (body) {
       options.body = JSON.stringify(body);
     }
@@ -99,23 +118,30 @@ class QueryBuilder {
   }
 
   then(onfulfilled, onrejected) {
-    return this.execute('GET').then(onfulfilled, onrejected);
+    return this.execute().then(onfulfilled, onrejected);
   }
 
-  async insert(payload) {
-    return this.execute('POST', payload);
+  insert(payload) {
+    this.method = 'POST';
+    this.pendingBody = payload;
+    return this;
   }
 
-  async update(payload) {
-    return this.execute('PUT', { payload, filters: this.filters });
+  update(payload) {
+    this.method = 'PUT';
+    this.pendingBody = payload;
+    return this;
   }
 
-  async delete() {
-    return this.execute('DELETE', { filters: this.filters });
+  delete() {
+    this.method = 'DELETE';
+    return this;
   }
 
-  async upsert(payload, options = {}) {
-    return this.execute('POST', { ...payload, __upsert: true });
+  upsert(payload) {
+    this.method = 'POST';
+    this.pendingBody = { ...payload, __upsert: true };
+    return this;
   }
 }
 

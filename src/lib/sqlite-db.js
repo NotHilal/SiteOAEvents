@@ -74,6 +74,12 @@ db.exec(`
     read INTEGER DEFAULT 0,
     created_at TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at TEXT
+  );
 `);
 
 // Migrate existing databases created before new columns were added
@@ -134,6 +140,26 @@ if (matCount === 0) {
   const transaction = db.transaction(() => {
     for (const mat of materials) {
       insertMat.run(mat.id, mat.name, mat.description, mat.category, mat.max_quantity, now);
+    }
+  });
+  transaction();
+}
+
+// Seed delivery settings if empty — starting values come from .env so the
+// existing config isn't lost, but from here on they're edited via the
+// admin "Réglages" tab and .env is no longer read for these.
+const settingsCount = db.prepare("SELECT COUNT(*) as count FROM settings").get().count;
+if (settingsCount === 0) {
+  const insertSetting = db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)");
+  const now = new Date().toISOString();
+  const defaults = [
+    ['depot_address', process.env.DEPOT_ADDRESS || '72 rue Victor Basch, 92120 Montrouge, France'],
+    ['delivery_base_fee', process.env.DELIVERY_BASE_FEE || '15'],
+    ['delivery_per_km', process.env.DELIVERY_PER_KM || '1.2'],
+  ];
+  const transaction = db.transaction(() => {
+    for (const [key, value] of defaults) {
+      insertSetting.run(key, value, now);
     }
   });
   transaction();

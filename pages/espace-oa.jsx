@@ -66,6 +66,10 @@ export default function AdminDashboard() {
   const [deleteModal, setDeleteModal] = useState(null)
   const [contactModal, setContactModal] = useState(null)
   const [msgDetail, setMsgDetail] = useState(null)
+  const [settingsForm, setSettingsForm] = useState({ depot_address:'', delivery_base_fee:'', delivery_per_km:'' })
+  const [settingsSaving, setSettingsSaving] = useState(false)
+  const [settingsSaved, setSettingsSaved] = useState(false)
+  const [settingsError, setSettingsError] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -90,7 +94,7 @@ export default function AdminDashboard() {
   }, [user])
 
   async function loadAll() {
-    await Promise.all([loadReservations(), loadMessages(), loadBlockedData(), loadMaterials(), loadCategories()])
+    await Promise.all([loadReservations(), loadMessages(), loadBlockedData(), loadMaterials(), loadCategories(), loadSettings()])
   }
   async function loadReservations() {
     const { data } = await supabase.from('reservations').select('*').order('created_at', { ascending: false })
@@ -111,6 +115,38 @@ export default function AdminDashboard() {
   async function loadMaterials() {
     const { data } = await supabase.from('materials').select('*').order('category').order('name')
     setMaterials(data || [])
+  }
+  async function loadSettings() {
+    const { data } = await supabase.from('settings').select('*')
+    const map = {}
+    ;(data||[]).forEach(s => { map[s.key] = s.value })
+    setSettingsForm({
+      depot_address: map.depot_address || '',
+      delivery_base_fee: map.delivery_base_fee || '',
+      delivery_per_km: map.delivery_per_km || '',
+    })
+  }
+  async function saveSettings() {
+    setSettingsError('')
+    if (!settingsForm.depot_address.trim()) { setSettingsError('Adresse de départ requise.'); return }
+    const baseFee = parseFloat(String(settingsForm.delivery_base_fee).replace(',', '.'))
+    const perKm = parseFloat(String(settingsForm.delivery_per_km).replace(',', '.'))
+    if (isNaN(baseFee) || baseFee < 0 || isNaN(perKm) || perKm < 0) { setSettingsError('Frais invalides (doivent être ≥ 0).'); return }
+    setSettingsSaving(true)
+    try {
+      await Promise.all([
+        supabase.from('settings').update({ value: settingsForm.depot_address.trim() }).eq('key', 'depot_address'),
+        supabase.from('settings').update({ value: String(baseFee) }).eq('key', 'delivery_base_fee'),
+        supabase.from('settings').update({ value: String(perKm) }).eq('key', 'delivery_per_km'),
+      ])
+      await loadSettings()
+      setSettingsSaved(true)
+      setTimeout(() => setSettingsSaved(false), 3000)
+    } catch {
+      setSettingsError('Erreur lors de l\'enregistrement.')
+    } finally {
+      setSettingsSaving(false)
+    }
   }
   async function loadCategories() {
     const { data } = await supabase.from('categories').select('*').order('name')
@@ -309,6 +345,7 @@ export default function AdminDashboard() {
               { key:'blocages',   icon:'fas fa-ban',          label:'Blocages',   badge:0,             blink:false },
               { key:'messagerie', icon:'fas fa-envelope',     label:'Messagerie', badge:unreadCount,   blink:unreadCount>0 },
               { key:'materiaux',  icon:'fas fa-boxes',        label:'Matériel',   badge:0,             blink:false },
+              { key:'reglages',   icon:'fas fa-cog',          label:'Réglages',   badge:0,             blink:false },
             ].map(item => (
               <button key={item.key} className={`sidebar-btn${activeTab===item.key?' active':''}`} onClick={() => setActiveTab(item.key)}>
                 <i className={item.icon} /> {item.label}
@@ -455,6 +492,57 @@ export default function AdminDashboard() {
               </div>
             )}
             <MatTable materials={materials} page={matPage} onPageChange={setMatPage} onEdit={openEditMat} onDelete={deleteMat} onToggle={toggleAvail} />
+          </div>
+
+          {/* RÉGLAGES */}
+          <div className={`tab-content${activeTab==='reglages'?' active':''}`} id="tab-reglages">
+            <div className="adm-header">
+              <h1 className="adm-title">Réglages</h1>
+              <p className="adm-sub">Point de départ et frais de livraison utilisés pour le calcul automatique lors d'une réservation.</p>
+            </div>
+            <div className="mat-form-card" style={{maxWidth:560}}>
+              <div className="adm-form-group">
+                <label>Adresse de départ (dépôt) <span className="req">*</span></label>
+                <input
+                  className="adm-input"
+                  placeholder="N°, rue, code postal, ville"
+                  value={settingsForm.depot_address}
+                  onChange={e => setSettingsForm(f => ({...f, depot_address: e.target.value}))}
+                  style={settingsError && !settingsForm.depot_address.trim() ? {borderColor:'var(--danger)'} : {}}
+                />
+              </div>
+              <div className="mat-form-grid">
+                <div className="adm-form-group">
+                  <label>Frais de base (€) <span className="req">*</span></label>
+                  <input
+                    type="number" min={0} step="0.01"
+                    className="adm-input"
+                    value={settingsForm.delivery_base_fee}
+                    onChange={e => setSettingsForm(f => ({...f, delivery_base_fee: e.target.value}))}
+                  />
+                </div>
+                <div className="adm-form-group">
+                  <label>Frais par km (€) <span className="req">*</span></label>
+                  <input
+                    type="number" min={0} step="0.01"
+                    className="adm-input"
+                    value={settingsForm.delivery_per_km}
+                    onChange={e => setSettingsForm(f => ({...f, delivery_per_km: e.target.value}))}
+                  />
+                </div>
+              </div>
+              {settingsError && (
+                <div style={{marginTop:8,background:'#fff5f5',border:'1.5px solid #fca5a5',borderRadius:8,padding:'9px 13px',color:'var(--danger)',fontSize:'.83rem',fontWeight:600}}>
+                  <i className="fas fa-exclamation-circle" style={{marginRight:4}} />{settingsError}
+                </div>
+              )}
+              <div className="mat-form-actions">
+                <button className="adm-btn-primary" onClick={saveSettings} disabled={settingsSaving}>
+                  {settingsSaving ? <><i className="fas fa-circle-notch fa-spin" style={{marginRight:8}} />Enregistrement…</> : <><i className="fas fa-save" style={{marginRight:8}} />Enregistrer</>}
+                </button>
+                {settingsSaved && <span style={{marginLeft:12,color:'#2e7d32',fontWeight:700,fontSize:'.85rem'}}><i className="fas fa-check" style={{marginRight:4}} />Enregistré</span>}
+              </div>
+            </div>
           </div>
         </main>
 
