@@ -66,7 +66,7 @@ export default function AdminDashboard() {
   const [deleteModal, setDeleteModal] = useState(null)
   const [contactModal, setContactModal] = useState(null)
   const [msgDetail, setMsgDetail] = useState(null)
-  const [settingsForm, setSettingsForm] = useState({ depot_address:'', delivery_base_fee:'', delivery_per_km:'' })
+  const [settingsForm, setSettingsForm] = useState({ depot_address:'', delivery_base_fee:'', delivery_per_km:'', bank_holder:'', bank_iban:'', bank_bic:'' })
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [settingsError, setSettingsError] = useState('')
@@ -124,6 +124,9 @@ export default function AdminDashboard() {
       depot_address: map.depot_address || '',
       delivery_base_fee: map.delivery_base_fee || '',
       delivery_per_km: map.delivery_per_km || '',
+      bank_holder: map.bank_holder || '',
+      bank_iban: map.bank_iban || '',
+      bank_bic: map.bank_bic || '',
     })
   }
   async function saveSettings() {
@@ -138,6 +141,9 @@ export default function AdminDashboard() {
         supabase.from('settings').update({ value: settingsForm.depot_address.trim() }).eq('key', 'depot_address'),
         supabase.from('settings').update({ value: String(baseFee) }).eq('key', 'delivery_base_fee'),
         supabase.from('settings').update({ value: String(perKm) }).eq('key', 'delivery_per_km'),
+        supabase.from('settings').update({ value: settingsForm.bank_holder.trim() }).eq('key', 'bank_holder'),
+        supabase.from('settings').update({ value: settingsForm.bank_iban.trim() }).eq('key', 'bank_iban'),
+        supabase.from('settings').update({ value: settingsForm.bank_bic.trim() }).eq('key', 'bank_bic'),
       ])
       await loadSettings()
       setSettingsSaved(true)
@@ -531,6 +537,41 @@ export default function AdminDashboard() {
                   />
                 </div>
               </div>
+
+              <h3 style={{marginTop:28,marginBottom:4,fontSize:'1rem'}}>Virement bancaire</h3>
+              <p style={{color:'var(--gray)',fontSize:'.82rem',marginTop:0,marginBottom:14}}>
+                Coordonnées affichées au client s'il choisit de payer par virement. Laissez l'IBAN vide pour désactiver cette option de paiement.
+              </p>
+              <div className="adm-form-group">
+                <label>Titulaire du compte</label>
+                <input
+                  className="adm-input"
+                  placeholder="Ex : OA Événementiel"
+                  value={settingsForm.bank_holder}
+                  onChange={e => setSettingsForm(f => ({...f, bank_holder: e.target.value}))}
+                />
+              </div>
+              <div className="mat-form-grid">
+                <div className="adm-form-group">
+                  <label>IBAN</label>
+                  <input
+                    className="adm-input"
+                    placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
+                    value={settingsForm.bank_iban}
+                    onChange={e => setSettingsForm(f => ({...f, bank_iban: e.target.value}))}
+                  />
+                </div>
+                <div className="adm-form-group">
+                  <label>BIC</label>
+                  <input
+                    className="adm-input"
+                    placeholder="Ex : BNPAFRPPXXX"
+                    value={settingsForm.bank_bic}
+                    onChange={e => setSettingsForm(f => ({...f, bank_bic: e.target.value}))}
+                  />
+                </div>
+              </div>
+
               {settingsError && (
                 <div style={{marginTop:8,background:'#fff5f5',border:'1.5px solid #fca5a5',borderRadius:8,padding:'9px 13px',color:'var(--danger)',fontSize:'.83rem',fontWeight:600}}>
                   <i className="fas fa-exclamation-circle" style={{marginRight:4}} />{settingsError}
@@ -933,6 +974,62 @@ function DayBlocModal({ dateStr, reservations, blockedDatesMap, blockedHoursMap,
   )
 }
 
+const PAY_STATUS_LABEL = { pending:'En attente', paid:'Payé', failed:'Échoué' }
+const PAY_STATUS_CLASS = { pending:'badge-pending', paid:'badge-confirmed', failed:'badge-refused' }
+
+function PaymentsBlock({ reservationId }) {
+  const [payments, setPayments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [updatingId, setUpdatingId] = useState(null)
+
+  async function load() {
+    const { data } = await supabase.from('payments').select('*').eq('reservation_id', reservationId).order('installment_index')
+    setPayments(data || [])
+    setLoading(false)
+  }
+  useEffect(() => { load() }, [reservationId])
+
+  async function markReceived(paymentId) {
+    setUpdatingId(paymentId)
+    await supabase.from('payments').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', paymentId)
+    await load()
+    setUpdatingId(null)
+  }
+
+  if (loading) return null
+  if (!payments.length) return null
+
+  return (
+    <div className="detail-block">
+      <h4 className="detail-block-title"><i className="fas fa-euro-sign" style={{marginRight:8}} />Paiements</h4>
+      <div className="detail-mats">
+        {payments.map(p => (
+          <div key={p.id} className="detail-mat-row" style={{alignItems:'center'}}>
+            <span className="detail-mat-name">
+              <i className={p.method === 'virement' ? 'fas fa-university' : 'fas fa-credit-card'} style={{marginRight:8}} />
+              {p.installment_label} {p.due_date && <small style={{color:'var(--gray)',marginLeft:6}}>({new Date(p.due_date+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})})</small>}
+            </span>
+            <span style={{display:'flex',alignItems:'center',gap:10}}>
+              <strong>{p.amount.toFixed(2)} €</strong>
+              <span className={`status-badge ${PAY_STATUS_CLASS[p.status]||''}`}>{PAY_STATUS_LABEL[p.status]||p.status}</span>
+              {p.method === 'virement' && p.status === 'pending' && (
+                <button className="adm-btn-success btn-sm" onClick={() => markReceived(p.id)} disabled={updatingId === p.id}>
+                  {updatingId === p.id ? <i className="fas fa-circle-notch fa-spin" /> : <><i className="fas fa-check" style={{marginRight:4}} />Marquer reçu</>}
+                </button>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+      {payments.some(p => p.status === 'failed') && (
+        <p style={{color:'var(--danger)',fontSize:'.82rem',marginTop:8}}>
+          <i className="fas fa-exclamation-triangle" style={{marginRight:4}} />Au moins un versement a échoué — le client devra mettre à jour son moyen de paiement.
+        </p>
+      )}
+    </div>
+  )
+}
+
 function ResaDetail({ resa, backDate, onBack, onStatus, onDelete }) {
   if (!resa) return null
   const rd = getRDates(resa)
@@ -969,6 +1066,7 @@ function ResaDetail({ resa, backDate, onBack, onStatus, onDelete }) {
           }
         </div>
       </div>
+      <PaymentsBlock reservationId={resa.id} />
       {resa.message&&<div className="detail-block"><h4 className="detail-block-title"><i className="fas fa-comment" style={{marginRight:8}} />Message / Créneau</h4><p className="detail-message">{resa.message}</p></div>}
       <div className="detail-actions">
         {resa.status!=='confirmed'&&<button className="adm-btn-success" onClick={() => onStatus(resa.id,'confirmed')}><i className="fas fa-check" style={{marginRight:4}} />Confirmer</button>}

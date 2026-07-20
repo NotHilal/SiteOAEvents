@@ -6,15 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "preview": "next start"
+    "preview": "next start",
+    "pay:run-scheduled": "node scripts/run-scheduled-payments.js"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^6.8.0",
+    "@stripe/stripe-js": "^9.10.0",
     "aos": "^2.3.4",
     "better-sqlite3": "^12.11.1",
     "formidable": "^3.5.4",
     "next": "^16.2.10",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "stripe": "^22.3.2",
     "swiper": "^11.1.9",
     "yet-another-react-lightbox": "^3.21.0"
   }

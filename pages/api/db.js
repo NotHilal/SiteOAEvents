@@ -71,7 +71,7 @@ function serializeRow(table, data) {
   return res;
 }
 
-const ALLOWED_TABLES = ['materials', 'reservations', 'blocked_dates', 'blocked_hours', 'contacts', 'categories', 'settings'];
+const ALLOWED_TABLES = ['materials', 'reservations', 'blocked_dates', 'blocked_hours', 'contacts', 'categories', 'settings', 'payments'];
 const isValidColumn = (col) => /^[a-zA-Z0-9_]+$/.test(col);
 
 export default function handler(req, res) {
@@ -93,7 +93,10 @@ export default function handler(req, res) {
     blocked_hours: ['POST', 'PUT', 'DELETE'],
     reservations: ['GET', 'PUT', 'DELETE'], // GET is protected, POST (insert) is public
     contacts: ['GET', 'PUT', 'DELETE'],     // GET is protected, POST (insert) is public
-    settings: ['GET', 'POST', 'PUT', 'DELETE'] // business config, admin-only end to end
+    settings: ['GET', 'POST', 'PUT', 'DELETE'], // business config, admin-only end to end
+    payments: ['GET', 'POST', 'PUT', 'DELETE']  // financial data, admin-only; rows are actually
+                                                  // written by /api/payments/* server-side, not
+                                                  // inserted through this generic endpoint
   };
 
   const method = req.method;

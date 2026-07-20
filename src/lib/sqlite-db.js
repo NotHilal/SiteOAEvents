@@ -80,6 +80,21 @@ db.exec(`
     value TEXT,
     updated_at TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS payments (
+    id TEXT PRIMARY KEY,
+    reservation_id TEXT NOT NULL,
+    stripe_payment_intent_id TEXT,
+    method TEXT DEFAULT 'card',
+    amount REAL NOT NULL,
+    installment_index INTEGER NOT NULL,
+    installment_label TEXT,
+    due_date TEXT,
+    status TEXT DEFAULT 'pending',
+    failure_message TEXT,
+    paid_at TEXT,
+    created_at TEXT
+  );
 `);
 
 // Migrate existing databases created before new columns were added
@@ -90,11 +105,20 @@ function ensureColumn(table, column, definition) {
   }
 }
 ensureColumn('materials', 'price', 'REAL DEFAULT 0');
+ensureColumn('reservations', 'prenom', 'TEXT');
+ensureColumn('reservations', 'nom', 'TEXT');
 ensureColumn('reservations', 'delivery_address', 'TEXT');
 ensureColumn('reservations', 'distance_km', 'REAL');
 ensureColumn('reservations', 'delivery_fee', 'REAL');
 ensureColumn('reservations', 'materials_total', 'REAL');
 ensureColumn('reservations', 'grand_total', 'REAL');
+ensureColumn('reservations', 'stripe_customer_id', 'TEXT');
+ensureColumn('reservations', 'payment_method', 'TEXT'); // 'card' | 'virement'
+
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_payments_reservation ON payments(reservation_id);
+  CREATE INDEX IF NOT EXISTS idx_payments_due_status ON payments(due_date, status);
+`);
 
 // Seed default categories if empty
 const catCount = db.prepare("SELECT COUNT(*) as count FROM categories").get().count;
@@ -145,24 +169,26 @@ if (matCount === 0) {
   transaction();
 }
 
-// Seed delivery settings if empty — starting values come from .env so the
-// existing config isn't lost, but from here on they're edited via the
-// admin "Réglages" tab and .env is no longer read for these.
-const settingsCount = db.prepare("SELECT COUNT(*) as count FROM settings").get().count;
-if (settingsCount === 0) {
-  const insertSetting = db.prepare("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)");
-  const now = new Date().toISOString();
-  const defaults = [
-    ['depot_address', process.env.DEPOT_ADDRESS || '72 rue Victor Basch, 92120 Montrouge, France'],
-    ['delivery_base_fee', process.env.DELIVERY_BASE_FEE || '15'],
-    ['delivery_per_km', process.env.DELIVERY_PER_KM || '1.2'],
-  ];
-  const transaction = db.transaction(() => {
-    for (const [key, value] of defaults) {
-      insertSetting.run(key, value, now);
-    }
-  });
-  transaction();
-}
+// Seed each setting key independently (INSERT OR IGNORE) rather than only
+// when the whole table is empty — otherwise a key added later (like the
+// bank_* ones) would never get inserted for a database that already has
+// earlier settings rows in it, and every read/update against that key
+// would silently no-op forever.
+const insertSettingIfMissing = db.prepare('INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES (?, ?, ?)');
+const settingsNow = new Date().toISOString();
+const settingDefaults = [
+  ['depot_address', process.env.DEPOT_ADDRESS || '72 rue Victor Basch, 92120 Montrouge, France'],
+  ['delivery_base_fee', process.env.DELIVERY_BASE_FEE || '15'],
+  ['delivery_per_km', process.env.DELIVERY_PER_KM || '1.2'],
+  ['bank_holder', ''],
+  ['bank_iban', ''],
+  ['bank_bic', ''],
+];
+const seedSettingsTx = db.transaction(() => {
+  for (const [key, value] of settingDefaults) {
+    insertSettingIfMissing.run(key, value, settingsNow);
+  }
+});
+seedSettingsTx();
 
 export default db;
