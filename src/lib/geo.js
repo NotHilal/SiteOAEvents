@@ -4,6 +4,12 @@ import db from './sqlite-db.js';
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 const OSRM_URL = 'https://router.project-osrm.org/route/v1/driving';
 const USER_AGENT = 'OA-Evenementiel-Website/1.0 (contact@oa-evenementiel.fr)';
+// Base Adresse Nationale (data.gouv.fr) — the French government's own address
+// API, purpose-built for autocomplete. Nominatim's `display_name` is a
+// reverse-geocoding label (admin hierarchy, quartier, "France métropolitaine"…)
+// and reads as garbled noise for a French street address; BAN returns the
+// clean "72 Rue Victor Basch 92120 Montrouge" form people actually expect.
+const BAN_URL = 'https://api-adresse.data.gouv.fr/search/';
 
 function getSetting(key, fallback) {
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
@@ -40,6 +46,18 @@ async function getDepotCoords() {
   const coords = await geocodeAddress(address);
   depotCoordsCache.set(address, coords);
   return coords;
+}
+
+export async function suggestAddresses(query) {
+  const url = `${BAN_URL}?q=${encodeURIComponent(query)}&limit=5&autocomplete=1`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Le service de géocodage est indisponible.');
+  const data = await res.json();
+  return (data.features || []).map(f => ({
+    label: f.properties.label,
+    lat: f.geometry.coordinates[1],
+    lon: f.geometry.coordinates[0],
+  }));
 }
 
 export async function computeDeliveryQuote(destinationAddress) {

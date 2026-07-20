@@ -49,7 +49,13 @@ export default function Reservation() {
   const [materialsData, setMaterialsData] = useState([])
   const [stockUsed, setStockUsed] = useState({})
   const [cart, setCart] = useState({}) // { [id]: qty }
+  const [matFilter, setMatFilter] = useState('all')
+  const [matSearch, setMatSearch] = useState('')
+  const [matPage, setMatPage] = useState(1)
   const [form, setForm] = useState({ prenom:'', nom:'', email:'', phone:'', address:'', type:'', nb:'', message:'' })
+  const [addressSuggestions, setAddressSuggestions] = useState([])
+  const [showAddrSuggestions, setShowAddrSuggestions] = useState(false)
+  const addrDebounceRef = useRef(null)
   const [step2Error, setStep2Error] = useState(false)
   const [submitError, setSubmitError] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -85,6 +91,8 @@ export default function Reservation() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep])
+
+  useEffect(() => { setMatPage(1) }, [matFilter, matSearch])
 
   async function loadBlockedData() {
     try {
@@ -239,6 +247,33 @@ export default function Reservation() {
     } finally {
       setQuoteLoading(false)
     }
+  }
+
+  function handleAddressChange(value) {
+    setForm(f => ({ ...f, address: value }))
+    setQuote(null)
+    setQuoteError('')
+    setShowAddrSuggestions(true)
+    if (addrDebounceRef.current) clearTimeout(addrDebounceRef.current)
+    if (value.trim().length < 3) {
+      setAddressSuggestions([])
+      return
+    }
+    addrDebounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/geocode-suggest?q=' + encodeURIComponent(value))
+        const result = await res.json()
+        setAddressSuggestions(result.data || [])
+      } catch {
+        setAddressSuggestions([])
+      }
+    }, 400)
+  }
+
+  function selectAddressSuggestion(s) {
+    setForm(f => ({ ...f, address: s.label }))
+    setAddressSuggestions([])
+    setShowAddrSuggestions(false)
   }
 
   function goNext() {
@@ -419,13 +454,24 @@ export default function Reservation() {
     }
   }
 
-  /* Cat grouping for materials */
+  /* Cat grouping for materials (used for the filter pills + counts) */
   const matsByCategory = materialsData.reduce((acc, m) => {
     const cat = m.category || 'Autre'
     if (!acc[cat]) acc[cat] = []
     acc[cat].push(m)
     return acc
   }, {})
+  const categoryList = Object.keys(matsByCategory)
+
+  const MAT_PER_PAGE = 6
+  const filteredMats = materialsData.filter(m => {
+    if (matFilter !== 'all' && (m.category || 'Autre') !== matFilter) return false
+    if (matSearch.trim() && !m.name.toLowerCase().includes(matSearch.trim().toLowerCase())) return false
+    return true
+  })
+  const matTotalPages = Math.max(1, Math.ceil(filteredMats.length / MAT_PER_PAGE))
+  const matPageSafe = Math.min(matPage, matTotalPages)
+  const pagedMats = filteredMats.slice((matPageSafe - 1) * MAT_PER_PAGE, matPageSafe * MAT_PER_PAGE)
 
   const prevDisabled = new Date(calYear, calMonth, 1) <= new Date(now.getFullYear(), now.getMonth(), 1)
 
@@ -472,7 +518,7 @@ export default function Reservation() {
 
       <div className="site-wrap">
         <div
-          className="page-header"
+          className="page-header page-header-compact"
           style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=1920&q=80)' }}
         >
           <div className="page-header-overlay" />
@@ -517,6 +563,7 @@ export default function Reservation() {
                   <h2 className="step-title">Choisissez vos dates</h2>
                   <p className="step-desc">Sélectionnez 1 à 3 jours consécutifs pour votre événement.</p>
 
+                  <div className={`res-step1-layout${selectedDates.length ? '' : ' res-step1-solo'}`}>
                   {/* Calendar */}
                   <div className="res-cal-wrap">
                     <div className="res-cal-header">
@@ -656,6 +703,7 @@ export default function Reservation() {
                       </button>
                     </div>
                   )}
+                  </div>
 
                   {!selectedDates.length && (
                     <div className="resa-alert" style={{display:'none'}} id="resa-date-error">
@@ -663,12 +711,14 @@ export default function Reservation() {
                     </div>
                   )}
 
-                  <div className="step-nav mt-4">
-                    <span />
-                    <button className="btn btn-rose-gold step-next-btn" onClick={goNext} disabled={!selectedDates.length || (timeType==='hours' && !selectedHours.length)}>
-                      Continuer <i className="fas fa-arrow-right ms-1" />
-                    </button>
-                  </div>
+                  {selectedDates.length > 0 && (
+                    <div className="step-nav mt-4">
+                      <span />
+                      <button className="btn btn-rose-gold step-next-btn" onClick={goNext} disabled={timeType==='hours' && !selectedHours.length}>
+                        Continuer <i className="fas fa-arrow-right ms-1" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -699,9 +749,27 @@ export default function Reservation() {
                       <input type="tel" className="form-control" value={form.phone} onChange={e => setForm(f=>({...f,phone:e.target.value}))} />
                     </div>
                   </div>
-                  <div className="form-group">
+                  <div className="form-group addr-autocomplete-wrap">
                     <label>Adresse de livraison <span className="req">*</span></label>
-                    <input className="form-control" placeholder="N°, rue, code postal, ville" value={form.address} onChange={e => { setForm(f=>({...f,address:e.target.value})); setQuote(null); setQuoteError('') }} style={step2Error && !form.address.trim() ? {borderColor:'#e53e3e'} : {}} />
+                    <input
+                      className="form-control"
+                      placeholder="N°, rue, code postal, ville"
+                      value={form.address}
+                      onChange={e => handleAddressChange(e.target.value)}
+                      onFocus={() => { if (addressSuggestions.length) setShowAddrSuggestions(true) }}
+                      onBlur={() => setTimeout(() => setShowAddrSuggestions(false), 150)}
+                      autoComplete="off"
+                      style={step2Error && !form.address.trim() ? {borderColor:'#e53e3e'} : {}}
+                    />
+                    {showAddrSuggestions && addressSuggestions.length > 0 && (
+                      <ul className="addr-suggestions">
+                        {addressSuggestions.map((s, i) => (
+                          <li key={i} onMouseDown={() => selectAddressSuggestion(s)}>
+                            <i className="fas fa-map-marker-alt" /><span>{s.label}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                   <div className="resa-row">
                     <div className="form-group">
@@ -751,64 +819,107 @@ export default function Reservation() {
                     <p className="no-mat-msg"><i className="fas fa-info-circle me-2" />Aucun matériel disponible pour le moment.</p>
                   )}
 
-                  {Object.entries(matsByCategory).map(([cat, mats]) => (
-                    <div key={cat} className="mat-category">
-                      <h6 className="mat-cat-label">{cat}</h6>
-                      <div className="mat-grid">
-                        {mats.map(m => {
-                          const avail = getAvail(m)
-                          const unavail = avail <= 0
-                          const qty = cart[String(m.id)] || 0
-                          const selected = qty > 0
-                          return (
-                            <div key={m.id} className={`mat-card${selected?' mat-card-checked':''}${unavail?' mat-card-unavail':''}`}>
-                              <div className={`mat-card-img${!m.image_url?' mat-card-img-empty':''}`}>
-                                {m.image_url
-                                  ? <img src={m.image_url} alt={m.name} />
-                                  : <i className="fas fa-image" />
-                                }
-                                {unavail && (
-                                  <div className="mat-unavail-overlay"><i className="fas fa-ban" /> Indisponible</div>
-                                )}
-                              </div>
-                              <div className="mat-card-body">
-                                <label className={`mat-check-label${unavail?' mat-check-disabled':''}`}>
-                                  <input
-                                    type="checkbox"
-                                    checked={selected}
-                                    disabled={unavail}
-                                    onChange={e => {
-                                      if (e.target.checked) setCart(c => ({...c, [String(m.id)]: 1}))
-                                      else setCart(c => { const n={...c}; delete n[String(m.id)]; return n })
-                                    }}
-                                  />
-                                  <div>
-                                    <span className="mat-name">{m.name}</span>
-                                    {m.description && <span className="mat-desc">{m.description}</span>}
-                                    <span className="mat-price">{(parseFloat(m.price)||0).toFixed(2)} € / unité</span>
-                                  </div>
-                                </label>
-                                <div className="mat-stock-row">
-                                  {unavail
-                                    ? <span className="mat-stock-badge mat-stock-out"><i className="fas fa-times-circle" /> Épuisé</span>
-                                    : <span className="mat-stock-badge mat-stock-ok"><i className="fas fa-check-circle" /> {avail} disponible{avail>1?'s':''}</span>
-                                  }
-                                </div>
-                                {selected && (
-                                  <div className="mat-qty-wrap">
-                                    <button className="qty-btn" onClick={() => setCart(c => ({...c,[String(m.id)]: Math.max(1,qty-1)}))}>−</button>
-                                    <span className="qty-val">{qty}</span>
-                                    <button className="qty-btn" onClick={() => setCart(c => ({...c,[String(m.id)]: Math.min(avail,qty+1)}))}>+</button>
-                                    <span className="qty-max">/ {avail}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        })}
+                  {materialsData.length > 0 && (
+                    <>
+                      <div className="mat-toolbar">
+                        <div className="mat-search">
+                          <i className="fas fa-search" />
+                          <input
+                            type="text"
+                            placeholder="Rechercher un article…"
+                            value={matSearch}
+                            onChange={e => setMatSearch(e.target.value)}
+                          />
+                          {matSearch && (
+                            <button className="mat-search-clear" onClick={() => setMatSearch('')}>
+                              <i className="fas fa-times" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="mat-filter-pills">
+                          <button className={`mat-filter-pill${matFilter==='all'?' active':''}`} onClick={() => setMatFilter('all')}>
+                            Tous <span className="mat-filter-count">{materialsData.length}</span>
+                          </button>
+                          {categoryList.map(cat => (
+                            <button key={cat} className={`mat-filter-pill${matFilter===cat?' active':''}`} onClick={() => setMatFilter(cat)}>
+                              {cat} <span className="mat-filter-count">{matsByCategory[cat].length}</span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+
+                      {!filteredMats.length ? (
+                        <p className="no-mat-msg"><i className="fas fa-info-circle me-2" />Aucun article ne correspond à votre recherche.</p>
+                      ) : (
+                        <div className="mat-grid">
+                          {pagedMats.map(m => {
+                            const avail = getAvail(m)
+                            const unavail = avail <= 0
+                            const qty = cart[String(m.id)] || 0
+                            const selected = qty > 0
+                            return (
+                              <div key={m.id} className={`mat-card${selected?' mat-card-checked':''}${unavail?' mat-card-unavail':''}`}>
+                                <div className={`mat-card-img${!m.image_url?' mat-card-img-empty':''}`}>
+                                  {m.image_url
+                                    ? <img src={m.image_url} alt={m.name} />
+                                    : <i className="fas fa-image" />
+                                  }
+                                  {unavail && (
+                                    <div className="mat-unavail-overlay"><i className="fas fa-ban" /> Indisponible</div>
+                                  )}
+                                </div>
+                                <div className="mat-card-body">
+                                  <label className={`mat-check-label${unavail?' mat-check-disabled':''}`}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selected}
+                                      disabled={unavail}
+                                      onChange={e => {
+                                        if (e.target.checked) setCart(c => ({...c, [String(m.id)]: 1}))
+                                        else setCart(c => { const n={...c}; delete n[String(m.id)]; return n })
+                                      }}
+                                    />
+                                    <div>
+                                      <div className="mat-name-row">
+                                        <span className="mat-name">{m.name}</span>
+                                        <span className="mat-price">{(parseFloat(m.price)||0).toFixed(2)} €</span>
+                                      </div>
+                                      {m.description && <span className="mat-desc">{m.description}</span>}
+                                    </div>
+                                  </label>
+                                  <div className="mat-card-footer">
+                                    {unavail
+                                      ? <span className="mat-stock-badge mat-stock-out"><i className="fas fa-times-circle" /> Épuisé</span>
+                                      : <span className="mat-stock-badge mat-stock-ok"><i className="fas fa-check-circle" /> {avail} dispo.</span>
+                                    }
+                                    {selected && (
+                                      <div className="mat-qty-wrap">
+                                        <button className="qty-btn" onClick={() => setCart(c => ({...c,[String(m.id)]: Math.max(1,qty-1)}))}>−</button>
+                                        <span className="qty-val">{qty}</span>
+                                        <button className="qty-btn" onClick={() => setCart(c => ({...c,[String(m.id)]: Math.min(avail,qty+1)}))}>+</button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {matTotalPages > 1 && (
+                        <div className="mat-pagination">
+                          <button className="mat-page-nav" disabled={matPageSafe<=1} onClick={() => setMatPage(p => Math.max(1, p-1))}>
+                            <i className="fas fa-chevron-left" />
+                          </button>
+                          <span className="mat-page-info">Page {matPageSafe} / {matTotalPages}</span>
+                          <button className="mat-page-nav" disabled={matPageSafe>=matTotalPages} onClick={() => setMatPage(p => Math.min(matTotalPages, p+1))}>
+                            <i className="fas fa-chevron-right" />
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
 
                   {materialsTotal > 0 && (
                     <div className="mat-subtotal-box">

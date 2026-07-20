@@ -2,10 +2,25 @@
    OA Événementiel — reservation.css
    ===================================================== */
 
+/* Booking wizard needs viewport space for the form, not a tall hero photo —
+   override the shared subpage banner (normally 190px/100px padding) with a
+   slim version just tall enough for the title + breadcrumb. */
+.page-header-compact {
+  padding: 44px 0 28px !important;
+}
+.page-header-compact h1 {
+  font-size: clamp(1.5rem, 3.5vw, 2.1rem) !important;
+  margin-bottom: 6px !important;
+}
+
 .resa-section {
-  padding: 72px 0 96px;
+  padding: 28px 0 48px;
+  /* No backdrop-filter here: background is already 88% opaque so blur bought
+     almost nothing visually, and it was one of three nested/stacked blur
+     layers (this + .step-panel + every .form-control) on top of the
+     scrolling marble background — the actual cause of scroll/typing lag on
+     this page. Single blur layer now lives on .step-panel only. */
   background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
 
@@ -29,14 +44,14 @@
 .resa-success-msg p { color: var(--gray); font-size: .95rem; line-height: 1.7; }
 
 #resa-wizard {
-  max-width: 740px;
+  max-width: 840px;
   margin: 0 auto;
 }
 
 .resa-stepper {
   display: flex;
   align-items: center;
-  margin-bottom: 36px;
+  margin-bottom: 8px;
   padding: 0 8px;
 }
 
@@ -49,8 +64,8 @@
 }
 
 .step-circle {
-  width: 46px;
-  height: 46px;
+  width: 38px;
+  height: 38px;
   border-radius: 0px;
   border: 2px solid #ddd;
   background: #fff;
@@ -80,7 +95,7 @@
   height: 2px;
   background: #e0dbd5;
   margin: 0 6px;
-  margin-bottom: 26px;
+  margin-bottom: 20px;
   transition: background .4s;
   border-radius: 0px;
 }
@@ -107,8 +122,8 @@
   border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 0px;
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.03);
-  padding: 44px 48px;
-  margin-bottom: 20px;
+  padding: 18px 34px 26px;
+  margin-bottom: 16px;
   animation: fadeStepIn .32s ease;
 }
 
@@ -136,9 +151,9 @@
 }
 .step-desc {
   color: var(--gray);
-  font-size: .92rem;
-  line-height: 1.75;
-  margin-bottom: 32px;
+  font-size: .9rem;
+  line-height: 1.55;
+  margin-bottom: 14px;
 }
 
 .step-nav {
@@ -171,7 +186,7 @@
   border-radius: 0px;
 }
 
-.form-group { margin-bottom: 20px; }
+.form-group { margin-bottom: 16px; }
 
 .form-group label {
   font-family: 'Montserrat', sans-serif;
@@ -185,10 +200,13 @@
 }
 
 .form-group .form-control {
-  background: rgba(255, 255, 255, 0.5);
+  /* No own backdrop-filter: it already sits inside .step-panel's blurred
+     backdrop, so a second nested blur per input (8 of them on step 2 alone)
+     was pure added compositing cost for no visible difference. Slightly
+     higher opacity keeps the same readability without it. */
+  background: rgba(255, 255, 255, 0.65);
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 0px;
-  backdrop-filter: blur(5px);
   padding: 13px 16px;
   font-family: 'Lato', sans-serif;
   font-size: .94rem;
@@ -203,10 +221,40 @@
   outline: none;
   background: rgba(255, 255, 255, 0.8);
 }
-.form-group textarea.form-control { resize: vertical; min-height: 110px; }
+.form-group textarea.form-control { resize: vertical; min-height: 70px; }
 .form-group select.form-control   { appearance: none; cursor: pointer; }
 
 .req { color: var(--rose-gold); }
+
+/* Address autocomplete */
+.addr-autocomplete-wrap { position: relative; }
+.addr-suggestions {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 30;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  box-shadow: 0 12px 28px rgba(0,0,0,.12);
+}
+.addr-suggestions li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 14px;
+  font-size: .82rem;
+  line-height: 1.4;
+  color: var(--dark);
+  cursor: pointer;
+}
+.addr-suggestions li:hover { background: var(--rg-pale); color: var(--rose-gold); }
+.addr-suggestions li i { color: var(--rose-gold); font-size: .76rem; margin-top: 2px; flex-shrink: 0; }
 
 .resa-row { display: flex; gap: 20px; }
 .resa-row .form-group { flex: 1; }
@@ -227,41 +275,69 @@
 }
 
 .resa-privacy {
-  font-size: .8rem;
+  font-size: .78rem;
   color: var(--gray);
   text-align: center;
-  margin: 16px 0 0;
+  margin: 10px 0 0;
 }
 
-/* CALENDRIER */
+/* Calendar sits left, the date-summary/time-type sidebar sits right of it
+   instead of stacking below — keeps step 1 short even once dates are picked.
+   Grid (not flex-wrap) so the two columns never fall back to stacking just
+   because the combined width is a touch tight — each track has its own
+   elastic floor/ceiling instead of an all-or-nothing wrap threshold. */
+.res-step1-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 440px) minmax(190px, 1fr);
+  align-items: stretch;
+  gap: 20px;
+}
+@media(max-width: 640px) {
+  .res-step1-layout { grid-template-columns: 1fr; }
+}
+
+/* Before any date is picked, the sidebar isn't rendered — collapse to a
+   single track and center the calendar instead of leaving it stuck to the
+   left edge of the (now empty) two-column grid. */
+.res-step1-solo {
+  grid-template-columns: 1fr;
+}
+.res-step1-solo .res-cal-wrap {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+/* CALENDRIER — capped width so the aspect-ratio:1 day cells stay compact;
+   at full wizard width each cell was rendering ~100px square. */
 .res-cal-wrap {
   background: #fff;
   border: 1.5px solid var(--border);
   border-radius: 0px;
   overflow: hidden;
   user-select: none;
-  margin-bottom: 0;
+  width: 100%;
 }
 
 .res-cal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 10px 18px;
   background: var(--dark);
   color: #fff;
 }
 
 .res-cal-month {
   font-family: 'Montserrat', sans-serif;
-  font-size: 1.05rem;
+  font-size: .92rem;
   font-weight: 600;
   letter-spacing: .5px;
 }
 
 .res-cal-nav {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 0px;
   border: 1.5px solid rgba(255,255,255,.28);
   background: transparent;
@@ -283,15 +359,15 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   background: var(--rg-pale);
-  padding: 8px 10px 6px;
+  padding: 6px 10px 4px;
   gap: 4px;
 }
 .res-cal-weekdays span {
   text-align: center;
   font-family: 'Lato', sans-serif;
   font-weight: 700;
-  font-size: .66rem;
-  letter-spacing: 1.5px;
+  font-size: .6rem;
+  letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--dark-mid);
 }
@@ -301,7 +377,7 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
-  padding: 10px 10px 12px;
+  padding: 8px 8px 10px;
 }
 
 .rcd {
@@ -313,10 +389,10 @@
   justify-content: center;
   border-radius: 0px;
   font-family: 'Lato', sans-serif;
-  font-size: .88rem;
+  font-size: .82rem;
   font-weight: 500;
   transition: background .18s, color .18s, transform .15s, box-shadow .15s;
-  min-height: 42px;
+  min-height: 30px;
 }
 .rcd-empty { background: transparent; }
 
@@ -354,7 +430,7 @@
   text-decoration: line-through;
   border: 1.5px solid transparent;
   font-weight: 400;
-  font-size: .82rem;
+  font-size: .72rem;
 }
 
 .rcd-selected {
@@ -375,9 +451,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 7px 14px;
   background: var(--rg-pale);
-  font-size: .8rem;
+  font-size: .78rem;
   color: var(--rose-gold);
   font-family: 'Lato', sans-serif;
   font-weight: 600;
@@ -447,29 +523,29 @@
   background: #fff;
   border: 1.5px solid rgba(196,149,106,.3);
   border-radius: 0px;
-  padding: 10px 14px;
-  font-size: .84rem;
+  padding: 8px 10px;
+  font-size: .72rem;
   color: var(--dark-mid);
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 .res-multiday-note i { color: var(--rose-gold); flex-shrink: 0; margin-top: 2px; }
 
 .res-cal-legend {
   display: flex;
-  gap: 18px;
+  gap: 14px;
   flex-wrap: wrap;
-  padding: 10px 14px 13px;
+  padding: 8px 14px;
   border-top: 1px solid var(--border);
   background: #fafaf8;
 }
 .res-leg-item {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: .74rem;
+  gap: 6px;
+  font-size: .7rem;
   color: var(--gray);
   font-family: 'Lato', sans-serif;
 }
@@ -484,14 +560,22 @@
 .res-leg-booked  { background: #e07070; }
 .res-leg-blocked { background: #ccc; }
 
-/* TIME SECTION */
+/* TIME SECTION — stretches to match the calendar's height (align-items:stretch
+   on the grid parent); laid out as a column so the "Effacer" button settles
+   at the bottom instead of leaving a ragged gap under a short "full day" state. */
 .res-time-section {
   background: var(--rg-pale);
   border: 1.5px solid rgba(196,149,106,.32);
   border-radius: 0px;
-  padding: 22px 24px;
-  margin-top: 20px;
+  padding: 14px 16px;
   animation: fadeStepIn .3s ease;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.res-time-section .res-change-btn {
+  margin-top: auto;
+  align-self: flex-start;
 }
 
 .res-date-badge {
@@ -528,14 +612,14 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
 }
-.res-dates-header > i { color: var(--rose-gold); font-size: 1.1rem; flex-shrink: 0; }
+.res-dates-header > i { color: var(--rose-gold); font-size: .92rem; flex-shrink: 0; }
 .res-dates-header > span {
   font-family: 'Lato', sans-serif;
   font-weight: 700;
-  font-size: .95rem;
+  font-size: .8rem;
   color: var(--dark);
   flex: 1;
 }
@@ -544,18 +628,18 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 .date-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   background: var(--rose-gold);
   color: #fff;
   border-radius: 0px;
-  padding: 5px 8px 5px 14px;
+  padding: 4px 6px 4px 10px;
   font-family: 'Lato', sans-serif;
-  font-size: .82rem;
+  font-size: .74rem;
   font-weight: 600;
   line-height: 1;
 }
@@ -563,14 +647,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 15px;
+  height: 15px;
   background: rgba(255,255,255,.25);
   border: none;
   border-radius: 0px;
   color: #fff;
   cursor: pointer;
-  font-size: .6rem;
+  font-size: .55rem;
   transition: background .15s;
   padding: 0;
   flex-shrink: 0;
@@ -580,34 +664,35 @@
 .res-time-label {
   font-family: 'Lato', sans-serif;
   font-weight: 700;
-  font-size: .74rem;
-  letter-spacing: 1.5px;
+  font-size: .66rem;
+  letter-spacing: 1.2px;
   text-transform: uppercase;
   color: var(--dark-mid);
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
-.res-time-tabs { display: flex; gap: 12px; margin-bottom: 0; flex-wrap: wrap; }
+.res-time-tabs { display: flex; gap: 8px; margin-bottom: 0; flex-wrap: wrap; }
 
 .res-time-tab {
   flex: 1;
-  min-width: 150px;
+  min-width: 95px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 7px;
-  padding: 16px 12px;
+  gap: 4px;
+  padding: 8px 8px;
   background: #fff;
   border: 2px solid var(--border);
   border-radius: 0px;
   font-family: 'Lato', sans-serif;
-  font-size: .88rem;
+  font-size: .74rem;
   font-weight: 600;
   color: var(--gray);
   cursor: pointer;
   transition: border-color .22s, color .22s, background .22s, box-shadow .22s;
+  text-align: center;
 }
-.res-time-tab i { font-size: 1.4rem; }
+.res-time-tab i { font-size: 1.05rem; }
 .res-time-tab:hover { border-color: var(--rose-gold); color: var(--rose-gold); }
 .res-time-tab.active {
   border-color: var(--rose-gold);
@@ -616,7 +701,7 @@
   box-shadow: 0 4px 16px rgba(196,149,106,.3);
 }
 
-.res-hours-section { margin-top: 18px; animation: fadeStepIn .25s ease; }
+.res-hours-section { margin-top: 12px; animation: fadeStepIn .25s ease; }
 
 .res-hours-hint {
   font-size: .84rem;
@@ -679,23 +764,117 @@
   padding: 14px 18px;
 }
 
-.mat-category  { margin-bottom: 32px; }
-.mat-cat-label {
-  font-family: 'Lato', sans-serif;
-  font-weight: 700;
-  font-size: .68rem;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: var(--rose-gold);
-  margin-bottom: 14px;
-}
+/* Toolbar: search + category filter pills */
+.mat-toolbar { margin-bottom: 18px; }
 
+.mat-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.mat-search > i.fa-search {
+  position: absolute;
+  left: 14px;
+  color: var(--gray);
+  font-size: .82rem;
+  pointer-events: none;
+}
+.mat-search input {
+  width: 100%;
+  padding: 11px 40px 11px 38px;
+  border: 1.5px solid var(--border);
+  border-radius: 0px;
+  background: #fff;
+  font-family: 'Lato', sans-serif;
+  font-size: .88rem;
+  color: var(--dark);
+  transition: border-color .2s;
+}
+.mat-search input:focus { border-color: var(--rose-gold); outline: none; }
+.mat-search-clear {
+  position: absolute;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: var(--gray);
+  cursor: pointer;
+  font-size: .78rem;
+  padding: 6px;
+}
+.mat-search-clear:hover { color: var(--rose-gold); }
+
+.mat-filter-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.mat-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  border-radius: 0px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  font-size: .76rem;
+  color: var(--dark-mid);
+  cursor: pointer;
+  transition: border-color .2s, background .2s, color .2s;
+  white-space: nowrap;
+}
+.mat-filter-pill:hover { border-color: var(--rose-gold); color: var(--rose-gold); }
+.mat-filter-pill.active {
+  background: var(--rose-gold);
+  border-color: var(--rose-gold);
+  color: #fff;
+}
+.mat-filter-count {
+  font-size: .66rem;
+  opacity: .75;
+  background: rgba(0,0,0,.08);
+  padding: 1px 6px;
+  border-radius: 0px;
+}
+.mat-filter-pill.active .mat-filter-count { background: rgba(255,255,255,.28); }
+
+/* 2 wide columns of horizontal (thumb + info) cards, not 3 columns of
+   stacked image-on-top cards — uses the wizard's width instead of height,
+   so each page of results is noticeably shorter. */
 .mat-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
+  gap: 12px;
 }
 @media(max-width: 640px) { .mat-grid { grid-template-columns: 1fr; } }
+
+.mat-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 22px;
+}
+.mat-page-nav {
+  width: 36px;
+  height: 36px;
+  border-radius: 0px;
+  border: 1.5px solid var(--dark);
+  background: var(--dark);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: .78rem;
+  transition: background .2s, border-color .2s;
+}
+.mat-page-nav:hover:not(:disabled) { background: var(--rose-gold); border-color: var(--rose-gold); }
+.mat-page-nav:disabled { opacity: .3; cursor: not-allowed; }
+.mat-page-info {
+  font-family: 'Lato', sans-serif;
+  font-weight: 700;
+  font-size: .82rem;
+  color: var(--dark-mid);
+}
 
 .mat-card {
   background: #fff;
@@ -704,16 +883,20 @@
   overflow: hidden;
   transition: border-color .22s, box-shadow .22s;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: stretch;
 }
 .mat-card-checked {
   border-color: var(--rose-gold);
   box-shadow: 0 0 0 3px rgba(196,149,106,.15);
 }
 
+/* Fixed-width thumbnail beside the info instead of a full-width banner on
+   top of it — no aspect-ratio here on purpose, it stretches to match
+   whatever height the text side ends up needing (via align-items: stretch
+   on .mat-card). */
 .mat-card-img {
-  width: 100%;
-  aspect-ratio: 16/9;
+  width: 96px;
   overflow: hidden;
   background: var(--rg-pale);
   flex-shrink: 0;
@@ -733,7 +916,7 @@
   align-items: center;
   justify-content: center;
   color: #d8cfca;
-  font-size: 2rem;
+  font-size: 1.4rem;
 }
 
 .mat-card-unavail {
@@ -747,22 +930,23 @@
   background: rgba(0,0,0,.45);
   color: #fff;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 3px;
+  text-align: center;
   font-family: 'Lato', sans-serif;
   font-weight: 700;
-  font-size: .82rem;
-  letter-spacing: .5px;
+  font-size: .6rem;
+  letter-spacing: .3px;
 }
 
-.mat-stock-row { display: flex; align-items: center; }
 .mat-stock-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   font-family: 'Lato', sans-serif;
-  font-size: .75rem;
+  font-size: .68rem;
   font-weight: 700;
   border-radius: 0px;
   padding: 3px 10px;
@@ -773,30 +957,61 @@
 .mat-check-disabled { cursor: not-allowed !important; opacity: .65; }
 
 .mat-card-body {
-  padding: 14px 16px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   flex: 1;
+  min-width: 0; /* let text truncate instead of forcing the row wider */
 }
 
 .mat-check-label {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
+  min-width: 0;
 }
 .mat-check-label input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   accent-color: var(--rose-gold);
   cursor: pointer;
   flex-shrink: 0;
-  margin-top: 3px;
+  margin-top: 2px;
 }
-.mat-name { font-weight: 700; font-size: .94rem; color: var(--dark); display: block; }
-.mat-desc { font-size: .8rem; color: var(--gray); display: block; margin-top: 3px; line-height: 1.5; }
-.mat-price { font-size: .78rem; color: var(--rose-gold); font-weight: 700; display: block; margin-top: 4px; }
+.mat-check-label > div { min-width: 0; flex: 1; }
+.mat-name-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.mat-name {
+  font-weight: 700;
+  font-size: .86rem;
+  color: var(--dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mat-desc {
+  font-size: .74rem;
+  color: var(--gray);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+  margin-top: 2px;
+}
+.mat-price { font-size: .74rem; color: var(--rose-gold); font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+
+/* Stock badge + qty controls pinned to the bottom of the card so a longer
+   description on one card doesn't drag the footer down unevenly. */
+.mat-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: auto;
+}
 
 .mat-subtotal-box {
   display: flex;
@@ -805,23 +1020,23 @@
   background: var(--rg-pale);
   border: 1.5px solid var(--rose-gold);
   border-radius: 0px;
-  padding: 14px 20px;
-  margin-top: 20px;
+  padding: 12px 20px;
+  margin-top: 14px;
   font-family: 'Lato', sans-serif;
   font-size: .95rem;
   color: var(--dark);
 }
 .mat-subtotal-box strong { color: var(--rose-gold); font-size: 1.1rem; }
 
-.mat-qty-wrap { display: flex; align-items: center; gap: 8px; }
+.mat-qty-wrap { display: flex; align-items: center; gap: 6px; }
 .qty-btn {
-  width: 30px;
-  height: 30px;
+  width: 22px;
+  height: 22px;
   border-radius: 0px;
-  border: 2px solid var(--rose-gold);
+  border: 1.5px solid var(--rose-gold);
   background: transparent;
   color: var(--rose-gold);
-  font-size: 1.05rem;
+  font-size: .85rem;
   line-height: 1;
   cursor: pointer;
   display: flex;
@@ -831,8 +1046,7 @@
   font-weight: 700;
 }
 .qty-btn:hover { background: var(--rose-gold); color: #fff; }
-.qty-val { font-family:'Raleway',sans-serif; font-weight:700; font-size:.95rem; min-width:22px; text-align:center; color:var(--dark); }
-.qty-max { font-size:.76rem; color:var(--gray); }
+.qty-val { font-family:'Raleway',sans-serif; font-weight:700; font-size:.82rem; min-width:16px; text-align:center; color:var(--dark); }
 
 /* RÉCAPITULATIF */
 .recap-card {
@@ -846,7 +1060,7 @@
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  padding: 14px 20px;
+  padding: 10px 18px;
   border-bottom: 1px solid var(--border);
 }
 .recap-row:last-child { border-bottom: none; }
@@ -880,20 +1094,20 @@
   background: var(--cream);
   border: 1.5px solid var(--border);
   border-radius: 0px;
-  padding: 18px 20px;
-  margin-top: 18px;
+  padding: 14px 20px;
+  margin-top: 14px;
 }
 .res-quote-title {
   font-family: 'Montserrat', sans-serif;
-  font-size: .95rem;
+  font-size: .92rem;
   font-weight: 700;
   color: var(--dark);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 .res-quote-loading, .res-quote-result {
-  font-size: .88rem;
+  font-size: .86rem;
   color: var(--gray);
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 .res-quote-result strong { color: var(--rose-gold); }
 .res-quote-retry {
@@ -910,7 +1124,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 0;
+  padding: 6px 0;
   border-top: 1px solid var(--border);
   font-size: .9rem;
   color: var(--dark);
@@ -918,15 +1132,15 @@
 .res-total-row:first-of-type { border-top: none; }
 .res-total-grand {
   border-top: 1.5px solid var(--rose-gold);
-  margin-top: 4px;
-  padding-top: 12px;
+  margin-top: 2px;
+  padding-top: 8px;
   font-size: 1.05rem;
 }
 .res-total-grand strong { color: var(--rose-gold); font-size: 1.2rem; }
 .res-quote-disclaimer {
-  font-size: .74rem;
+  font-size: .72rem;
   color: var(--gray);
-  margin-top: 10px;
+  margin-top: 6px;
   margin-bottom: 0;
   font-style: italic;
 }
