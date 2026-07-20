@@ -796,6 +796,22 @@
 }
 .mat-name { font-weight: 700; font-size: .94rem; color: var(--dark); display: block; }
 .mat-desc { font-size: .8rem; color: var(--gray); display: block; margin-top: 3px; line-height: 1.5; }
+.mat-price { font-size: .78rem; color: var(--rose-gold); font-weight: 700; display: block; margin-top: 4px; }
+
+.mat-subtotal-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--rg-pale);
+  border: 1.5px solid var(--rose-gold);
+  border-radius: 0px;
+  padding: 14px 20px;
+  margin-top: 20px;
+  font-family: 'Lato', sans-serif;
+  font-size: .95rem;
+  color: var(--dark);
+}
+.mat-subtotal-box strong { color: var(--rose-gold); font-size: 1.1rem; }
 
 .mat-qty-wrap { display: flex; align-items: center; gap: 8px; }
 .qty-btn {
@@ -857,6 +873,62 @@
   font-weight: 500;
   line-height: 1.5;
   word-break: break-word;
+}
+
+/* DEVIS / FRAIS DE LIVRAISON */
+.res-quote-box {
+  background: var(--cream);
+  border: 1.5px solid var(--border);
+  border-radius: 0px;
+  padding: 18px 20px;
+  margin-top: 18px;
+}
+.res-quote-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 12px;
+}
+.res-quote-loading, .res-quote-result {
+  font-size: .88rem;
+  color: var(--gray);
+  margin-bottom: 12px;
+}
+.res-quote-result strong { color: var(--rose-gold); }
+.res-quote-retry {
+  margin-left: 10px;
+  background: transparent;
+  border: none;
+  color: var(--rose-gold);
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: .85rem;
+}
+.res-total-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  font-size: .9rem;
+  color: var(--dark);
+}
+.res-total-row:first-of-type { border-top: none; }
+.res-total-grand {
+  border-top: 1.5px solid var(--rose-gold);
+  margin-top: 4px;
+  padding-top: 12px;
+  font-size: 1.05rem;
+}
+.res-total-grand strong { color: var(--rose-gold); font-size: 1.2rem; }
+.res-quote-disclaimer {
+  font-size: .74rem;
+  color: var(--gray);
+  margin-top: 10px;
+  margin-bottom: 0;
+  font-style: italic;
 }
 
 @media(max-width: 767.98px) {

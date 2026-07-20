@@ -27,6 +27,7 @@ db.exec(`
     max_quantity INTEGER DEFAULT 1,
     available INTEGER DEFAULT 1,
     image_url TEXT,
+    price REAL DEFAULT 0,
     created_at TEXT
   );
 
@@ -41,6 +42,11 @@ db.exec(`
     materials TEXT DEFAULT '[]',
     message TEXT,
     status TEXT DEFAULT 'pending',
+    delivery_address TEXT,
+    distance_km REAL,
+    delivery_fee REAL,
+    materials_total REAL,
+    grand_total REAL,
     created_at TEXT
   );
 
@@ -69,6 +75,20 @@ db.exec(`
     created_at TEXT
   );
 `);
+
+// Migrate existing databases created before new columns were added
+function ensureColumn(table, column, definition) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some(c => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+ensureColumn('materials', 'price', 'REAL DEFAULT 0');
+ensureColumn('reservations', 'delivery_address', 'TEXT');
+ensureColumn('reservations', 'distance_km', 'REAL');
+ensureColumn('reservations', 'delivery_fee', 'REAL');
+ensureColumn('reservations', 'materials_total', 'REAL');
+ensureColumn('reservations', 'grand_total', 'REAL');
 
 // Seed default categories if empty
 const catCount = db.prepare("SELECT COUNT(*) as count FROM categories").get().count;

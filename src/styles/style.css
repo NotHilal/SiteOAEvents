@@ -347,42 +347,38 @@ body {
 /* Absolutely positioned (not fixed) — it's part of the normal document
    flow, sized to the full page height by `body`'s own height, so it
    scrolls together with the content instead of staying pinned to the
-   viewport. Oversized by 24px on each side + blurred so the tiling
-   seams from background-repeat never show, and no edge is visible even
-   with the blur softening its own boundary. */
+   viewport. Oversized by 24px on each side so no edge is ever visible.
+   Tiled (background-repeat) rather than cover — cover on a container this
+   tall (full document height, easily 5000px+) forces the image to zoom in
+   far enough to cover that height, cropping away almost all of the width
+   and leaving what looks like a flat wash instead of visible marble.
+   The blur is baked into fondMarbre.jpg itself (not a runtime CSS filter)
+   — filter:blur() on a full-page-height layer forces the browser to
+   rasterize/composite a huge blurred bitmap on every scroll/repaint,
+   which is what was causing the site-wide lag. fondMarbre.jpg is also a
+   2x2 mirror-tiled image (each edge mirrors the opposite edge), so the
+   repeat has no visible seam line where one tile meets the next. */
+/* The white wash is baked into this single layer (as a gradient painted
+   over the tiled image) instead of being applied section-by-section or
+   card-by-card. Any per-element background-color creates a hard edge
+   where a "washed" element meets an "unwashed" one — since the marble
+   image itself is very pale, that edge reads as a visible bar even at
+   small opacity differences. One layer, one wash, no edges anywhere. */
 .marble-layer {
   position: absolute;
   top: -24px; left: -24px; right: -24px; bottom: -24px;
   z-index: -1;
   pointer-events: none;
-  background-image: url('/fondMarbre.jpg');
-  background-repeat: repeat;
-  background-size: 2000px auto;
-  background-position: top center;
-  filter: blur(2px);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.42)), url('/fondMarbre.jpg');
+  background-repeat: no-repeat, repeat;
+  background-size: cover, 2000px auto;
+  background-position: top, top center;
   opacity: 0.9;
 }
 
-/* One consistent overlay opacity across every section/card that sits over
-   the marble — keeping it uniform (rather than several different values)
-   is what makes it read as one smooth surface instead of patchwork blocks. */
-.hero-wrapper,
-.category-section,
-.news-outer-box,
-.marquee-secton,
-.why-us-outer,
-.feature-block,
-.testimonial-block,
-.product-block-two,
-.product-block-three,
-.product-block,
-.news-block,
-.counter-block,
-.sale-block,
-.category-block,
-.contact-form {
-  background-color: rgba(255, 255, 255, 0.42) !important;
-}
+/* No section or card below should set its own background-color — that's
+   what caused the seams. Cards get their separation from a border/shadow,
+   not a different background tint (see .feature-block etc. base styles). */
 
 /* Admin dashboard isn't designed for a decorative background — keep it opaque. */
 .dashboard-wrap {

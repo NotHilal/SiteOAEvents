@@ -43,17 +43,27 @@ export default function Reservation() {
   const [materialsData, setMaterialsData] = useState([])
   const [stockUsed, setStockUsed] = useState({})
   const [cart, setCart] = useState({}) // { [id]: qty }
-  const [form, setForm] = useState({ prenom:'', nom:'', email:'', phone:'', type:'', nb:'', message:'' })
+  const [form, setForm] = useState({ prenom:'', nom:'', email:'', phone:'', address:'', type:'', nb:'', message:'' })
   const [step2Error, setStep2Error] = useState(false)
   const [submitError, setSubmitError] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [quote, setQuote] = useState(null) // { distanceKm, durationMin, fee }
+  const [quoteLoading, setQuoteLoading] = useState(false)
+  const [quoteError, setQuoteError] = useState('')
   const wizardRef = useRef(null)
 
   useEffect(() => {
     loadBlockedData()
     loadMaterials()
   }, [])
+
+  useEffect(() => {
+    if (currentStep === 4 && !quote && !quoteLoading && !quoteError && form.address.trim()) {
+      fetchQuote()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep])
 
   async function loadBlockedData() {
     try {
@@ -179,14 +189,35 @@ export default function Reservation() {
       return true
     }
     if (n === 2) {
-      const { prenom, nom, email, type, nb } = form
-      if (!prenom||!nom||!email.includes('@')||!type||!nb||parseInt(nb)<1) {
+      const { prenom, nom, email, address, type, nb } = form
+      if (!prenom||!nom||!email.includes('@')||!address.trim()||!type||!nb||parseInt(nb)<1) {
         setStep2Error(true)
         return false
       }
       return true
     }
     return true
+  }
+
+  async function fetchQuote() {
+    if (!form.address.trim()) { setQuoteError('Veuillez indiquer une adresse de livraison.'); return }
+    setQuoteLoading(true)
+    setQuoteError('')
+    try {
+      const res = await fetch('/api/quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: form.address }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.message || 'Erreur de calcul')
+      setQuote(result.data)
+    } catch (err) {
+      setQuoteError(err.message)
+      setQuote(null)
+    } finally {
+      setQuoteLoading(false)
+    }
   }
 
   function goNext() {
@@ -230,6 +261,11 @@ export default function Reservation() {
         materials: mats,
         message: message || null,
         status: 'pending',
+        delivery_address: form.address.trim() || null,
+        distance_km: quote?.distanceKm ?? null,
+        delivery_fee: quote?.fee ?? null,
+        materials_total: Math.round(materialsTotal * 100) / 100,
+        grand_total: Math.round(grandTotal * 100) / 100,
       })
       if (error) throw error
       setSuccess(true)
@@ -308,6 +344,12 @@ export default function Reservation() {
   }, {})
 
   const prevDisabled = new Date(calYear, calMonth, 1) <= new Date(now.getFullYear(), now.getMonth(), 1)
+
+  const materialsTotal = Object.entries(cart).filter(([,q]) => q > 0).reduce((sum, [id, qty]) => {
+    const m = materialsData.find(x => String(x.id) === id)
+    return sum + (parseFloat(m?.price) || 0) * qty
+  }, 0)
+  const grandTotal = materialsTotal + (quote?.fee || 0)
 
   if (success) {
     return (
@@ -572,6 +614,10 @@ export default function Reservation() {
                       <input type="tel" className="form-control" value={form.phone} onChange={e => setForm(f=>({...f,phone:e.target.value}))} />
                     </div>
                   </div>
+                  <div className="form-group">
+                    <label>Adresse de livraison <span className="req">*</span></label>
+                    <input className="form-control" placeholder="N°, rue, code postal, ville" value={form.address} onChange={e => { setForm(f=>({...f,address:e.target.value})); setQuote(null); setQuoteError('') }} style={step2Error && !form.address.trim() ? {borderColor:'#e53e3e'} : {}} />
+                  </div>
                   <div className="resa-row">
                     <div className="form-group">
                       <label>Type d'événement <span className="req">*</span></label>
@@ -654,6 +700,7 @@ export default function Reservation() {
                                   <div>
                                     <span className="mat-name">{m.name}</span>
                                     {m.description && <span className="mat-desc">{m.description}</span>}
+                                    <span className="mat-price">{(parseFloat(m.price)||0).toFixed(2)} € / unité</span>
                                   </div>
                                 </label>
                                 <div className="mat-stock-row">
@@ -678,6 +725,13 @@ export default function Reservation() {
                     </div>
                   ))}
 
+                  {materialsTotal > 0 && (
+                    <div className="mat-subtotal-box">
+                      <span>Sous-total matériaux</span>
+                      <strong>{materialsTotal.toFixed(2)} €</strong>
+                    </div>
+                  )}
+
                   <div className="step-nav">
                     <button className="step-prev-btn" onClick={goPrev}><i className="fas fa-arrow-left me-1" />Retour</button>
                     <button className="btn btn-rose-gold step-next-btn" onClick={goNext}>
@@ -700,6 +754,7 @@ export default function Reservation() {
                       { icon: 'fas fa-calendar', label: 'Date(s)', value: recapDate() },
                       { icon: 'fas fa-clock', label: 'Créneau', value: timeType==='full' ? 'Toute la journée' : [...selectedHours].sort().join(' — ') },
                       { icon: 'fas fa-envelope', label: 'Email', value: form.email },
+                      { icon: 'fas fa-map-marker-alt', label: 'Adresse', value: form.address || '—' },
                       { icon: 'fas fa-tag', label: 'Événement', value: EVENT_LABELS[form.type] || '—' },
                       { icon: 'fas fa-users', label: 'Personnes', value: form.nb ? form.nb + ' personne(s)' : '—' },
                       { icon: 'fas fa-boxes', label: 'Matériaux', value: recapMats() },
@@ -710,6 +765,32 @@ export default function Reservation() {
                         <span className="recap-val">{row.value}</span>
                       </div>
                     ))}
+                  </div>
+
+                  <div className="res-quote-box">
+                    <h4 className="res-quote-title"><i className="fas fa-truck" style={{marginRight:8}} />Frais de livraison</h4>
+                    {quoteLoading && <p className="res-quote-loading"><i className="fas fa-circle-notch fa-spin me-2" />Calcul de la distance en cours…</p>}
+                    {!quoteLoading && quoteError && (
+                      <div className="resa-alert">
+                        <i className="fas fa-exclamation-circle" />{quoteError}
+                        <button className="res-quote-retry" onClick={fetchQuote}>Réessayer</button>
+                      </div>
+                    )}
+                    {!quoteLoading && !quoteError && quote && (
+                      <p className="res-quote-result">
+                        Distance estimée : <strong>{quote.distanceKm} km</strong> — Frais de livraison : <strong>{quote.fee.toFixed(2)} €</strong>
+                      </p>
+                    )}
+                    <div className="res-total-row">
+                      <span>Sous-total matériaux</span><strong>{materialsTotal.toFixed(2)} €</strong>
+                    </div>
+                    <div className="res-total-row">
+                      <span>Livraison</span><strong>{quote ? quote.fee.toFixed(2) + ' €' : '—'}</strong>
+                    </div>
+                    <div className="res-total-row res-total-grand">
+                      <span>Total estimé</span><strong>{grandTotal.toFixed(2)} €</strong>
+                    </div>
+                    <p className="res-quote-disclaimer">Estimation indicative — le montant définitif vous sera confirmé par notre équipe.</p>
                   </div>
 
                   {submitError && (

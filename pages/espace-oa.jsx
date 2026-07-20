@@ -46,12 +46,13 @@ export default function AdminDashboard() {
   const [matPage, setMatPage] = useState(0)
   const [matFormVisible, setMatFormVisible] = useState(false)
   const [editingMat, setEditingMat] = useState(null)
-  const [matForm, setMatForm] = useState({ name:'', category:'', description:'', qty:1 })
+  const [matForm, setMatForm] = useState({ name:'', category:'', description:'', qty:1, price:'' })
   const [matImageUrl, setMatImageUrl] = useState('')
   const [matImageFile, setMatImageFile] = useState(null)
   const [matImagePreview, setMatImagePreview] = useState(null)
   const [matSaving, setMatSaving] = useState(false)
   const [matQtyError, setMatQtyError] = useState(false)
+  const [matPriceError, setMatPriceError] = useState(false)
   const fileInputRef = useRef(null)
   const [catPage, setCatPage] = useState(0)
   const [catInput, setCatInput] = useState('')
@@ -188,20 +189,22 @@ export default function AdminDashboard() {
   }
 
   function openAddMat() {
-    setEditingMat(null); setMatForm({ name:'', category:'', description:'', qty:1 })
-    setMatImageUrl(''); setMatImageFile(null); setMatImagePreview(null); setMatQtyError(false); setMatFormVisible(true)
+    setEditingMat(null); setMatForm({ name:'', category:'', description:'', qty:1, price:'' })
+    setMatImageUrl(''); setMatImageFile(null); setMatImagePreview(null); setMatQtyError(false); setMatPriceError(false); setMatFormVisible(true)
   }
   async function openEditMat(id) {
     const { data: m } = await supabase.from('materials').select('*').eq('id', id).single()
     if (!m) return
-    setEditingMat(m); setMatForm({ name: m.name, category: m.category||'', description: m.description||'', qty: m.max_quantity })
-    setMatImageUrl(m.image_url||''); setMatImageFile(null); setMatImagePreview(m.image_url||null); setMatQtyError(false); setMatFormVisible(true)
+    setEditingMat(m); setMatForm({ name: m.name, category: m.category||'', description: m.description||'', qty: m.max_quantity, price: m.price||0 })
+    setMatImageUrl(m.image_url||''); setMatImageFile(null); setMatImagePreview(m.image_url||null); setMatQtyError(false); setMatPriceError(false); setMatFormVisible(true)
   }
   async function saveMaterial() {
     const qtyNum = parseInt(String(matForm.qty))
+    const priceNum = parseFloat(String(matForm.price).replace(',', '.'))
     let valid = true
     if (!matForm.name.trim()) valid = false
     if (!qtyNum || qtyNum < 1 || !/^\d+$/.test(String(matForm.qty))) { setMatQtyError(true); valid = false }
+    if (isNaN(priceNum) || priceNum < 0) { setMatPriceError(true); valid = false }
     if (!valid) return
     setMatSaving(true)
     try {
@@ -216,7 +219,7 @@ export default function AdminDashboard() {
       } else if (!matImageUrl && editingMat?.image_url) {
         await removeStorageImg(editingMat.image_url); imageUrl = null
       }
-      const payload = { name: matForm.name.trim(), category: matForm.category||null, description: matForm.description.trim()||null, max_quantity: qtyNum, image_url: imageUrl, available: true }
+      const payload = { name: matForm.name.trim(), category: matForm.category||null, description: matForm.description.trim()||null, max_quantity: qtyNum, price: priceNum, image_url: imageUrl, available: true }
       if (editingMat) await supabase.from('materials').update(payload).eq('id', editingMat.id)
       else await supabase.from('materials').insert(payload)
       setMatFormVisible(false); await loadMaterials()
@@ -423,6 +426,11 @@ export default function AdminDashboard() {
                     <input type="number" min={1} className="adm-input" value={matForm.qty} onChange={e => { setMatForm(f=>({...f,qty:e.target.value})); setMatQtyError(false) }} style={matQtyError?{borderColor:'var(--danger)'}:{}} />
                     {matQtyError && <div style={{marginTop:6,color:'var(--danger)',fontSize:'.8rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />Veuillez entrer un nombre entier valide (≥ 1).</div>}
                   </div>
+                  <div className="adm-form-group">
+                    <label>Prix unitaire (€) <span className="req">*</span></label>
+                    <input type="number" min={0} step="0.01" className="adm-input" placeholder="Ex : 3.50" value={matForm.price} onChange={e => { setMatForm(f=>({...f,price:e.target.value})); setMatPriceError(false) }} style={matPriceError?{borderColor:'var(--danger)'}:{}} />
+                    {matPriceError && <div style={{marginTop:6,color:'var(--danger)',fontSize:'.8rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />Veuillez entrer un prix valide (≥ 0).</div>}
+                  </div>
                 </div>
                 <div className="adm-form-group" style={{marginTop:8}}>
                   <label>Image <span className="adm-label-opt">(optionnel)</span></label>
@@ -580,6 +588,8 @@ function ResaList({ reservations, filter, onStatus, onDelete, onContact }) {
                 {r.nb_persons && <span><i className="fas fa-users" style={{marginRight:4}} />{r.nb_persons} pers.</span>}
               </div>
               {r.materials?.length > 0 && <p className="resa-mats"><i className="fas fa-boxes" style={{marginRight:6}} />{r.materials.map(m=>m.name+' × '+m.quantity).join(', ')}</p>}
+              {r.delivery_address && <p className="resa-mats"><i className="fas fa-truck" style={{marginRight:6}} />{r.delivery_address}{r.distance_km!=null?` — ${r.distance_km} km`:''}{r.delivery_fee!=null?` — livraison ${r.delivery_fee.toFixed(2)} €`:''}</p>}
+              {r.grand_total!=null && <p className="resa-mats"><i className="fas fa-euro-sign" style={{marginRight:6}} /><strong>Total estimé : {r.grand_total.toFixed(2)} €</strong></p>}
               {r.message && <p className="resa-msg"><i className="fas fa-comment" style={{marginRight:6}} />{r.message}</p>}
               <p className="resa-created">Reçue le {new Date(r.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</p>
             </div>
@@ -969,6 +979,7 @@ function MatTable({ materials, page, onPageChange, onEdit, onDelete, onToggle })
           <th style={{textAlign:'center'}}>Catégorie</th>
           <th style={{textAlign:'center'}}>Description</th>
           <th style={{textAlign:'center'}}>Qté max</th>
+          <th style={{textAlign:'center'}}>Prix</th>
           <th style={{textAlign:'center'}}>Dispo</th>
           <th style={{textAlign:'center'}}>Actions</th>
         </tr></thead>
@@ -980,6 +991,7 @@ function MatTable({ materials, page, onPageChange, onEdit, onDelete, onToggle })
               <td style={{textAlign:'center'}}>{m.category||'—'}</td>
               <td style={{textAlign:'center'}}>{m.description||'—'}</td>
               <td style={{textAlign:'center'}}>{m.max_quantity}</td>
+              <td style={{textAlign:'center'}}>{(parseFloat(m.price)||0).toFixed(2)} €</td>
               <td style={{textAlign:'center'}}>
                 <button className={`toggle-avail ${m.available?'avail-on':'avail-off'}`} onClick={() => onToggle(m.id, m.available)}>{m.available?'Oui':'Non'}</button>
               </td>

@@ -1,9 +1,19 @@
 import '../src/index.css'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { useRouter } from 'next/router'
 
 export default function App({ Component, pageProps }) {
+  const router = useRouter()
+  const webflowLoadedRef = useRef(false)
+
   useEffect(() => {
     if (typeof window === 'undefined') return
+    // Only the homepage uses Webflow's data-w-id interactions — loading
+    // jQuery + 6 Webflow script chunks on every route (contact, réservation,
+    // galerie, admin...) was pure dead weight and part of the site-wide lag.
+    if (router.pathname !== '/') return
+    if (webflowLoadedRef.current) return
+    webflowLoadedRef.current = true
 
     const loadScript = (src) => {
       return new Promise((resolve, reject) => {
@@ -48,7 +58,7 @@ export default function App({ Component, pageProps }) {
     }
 
     loadWebflowEngine()
-  }, [])
+  }, [router.pathname])
 
   return (
     <>
