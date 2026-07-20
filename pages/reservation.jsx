@@ -3,9 +3,6 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import Head from 'next/head'
 import { supabase } from '../src/lib/supabase.js'
-import Loader from '../src/components/Loader.jsx'
-import Navbar from '../src/components/Navbar.jsx'
-import Footer from '../src/components/Footer.jsx'
 
 const HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
@@ -358,7 +355,6 @@ export default function Reservation() {
           <title>Réservation Réussie — OA Événementiel</title>
         </Head>
         <div className="site-wrap">
-          <Navbar />
           <section className="resa-section">
             <div className="container">
               <div className="resa-success-msg">
@@ -369,7 +365,6 @@ export default function Reservation() {
               </div>
             </div>
           </section>
-          <Footer />
         </div>
       </>
     )
@@ -383,9 +378,6 @@ export default function Reservation() {
       </Head>
 
       <div className="site-wrap">
-        <Loader />
-        <Navbar />
-
         <div
           className="page-header"
           style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=1920&q=80)' }}
@@ -815,8 +807,6 @@ export default function Reservation() {
             </div>
           </div>
         </section>
-
-        <Footer />
       </div>
     </>
   )

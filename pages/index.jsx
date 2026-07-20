@@ -1,30 +1,47 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
-import Loader from '../src/components/Loader.jsx'
-import Navbar from '../src/components/Navbar.jsx'
-import Footer from '../src/components/Footer.jsx'
 
 export default function Home() {
   const router = useRouter()
+  // The hero's entrance animation is handled with plain CSS below, driven
+  // by this flag — not by Webflow's IX2 engine. IX2's "scrolled into view"
+  // triggers run off an IntersectionObserver that only re-evaluates on a
+  // real scroll, so above-the-fold content never played its reveal on
+  // arrival (only after the visitor scrolled by hand). Below-the-fold
+  // sections still use Webflow's own scroll-triggered reveal, which works
+  // fine since the visitor genuinely scrolls to them.
+  const [heroIn, setHeroIn] = useState(false)
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const initWebflow = () => {
-        if (window.Webflow) {
-          window.Webflow.destroy()
-          window.Webflow.ready()
-          if (window.Webflow.require('ix2')) {
-            window.Webflow.require('ix2').init()
-          }
+    setHeroIn(false)
+    // Double rAF: let the "hidden" state paint first, then flip to visible
+    // on the next frame so the CSS transition actually has something to
+    // animate from instead of mounting already-visible.
+    let raf2
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setHeroIn(true))
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      if (raf2) cancelAnimationFrame(raf2)
+    }
+  }, [router.asPath])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const initWebflow = () => {
+      if (window.Webflow) {
+        window.Webflow.destroy()
+        window.Webflow.ready()
+        if (window.Webflow.require('ix2')) {
+          window.Webflow.require('ix2').init()
         }
       }
-
-      // Re-trigger layout calculation and animations binding
-      setTimeout(initWebflow, 500)
-      window.dispatchEvent(new Event('resize'))
     }
+    const timer = setTimeout(initWebflow, 500)
+    return () => clearTimeout(timer)
   }, [router.asPath])
 
   return (
@@ -38,35 +55,30 @@ export default function Home() {
       </Head>
 
       <div className="page-wrapper">
-        <Loader />
-        <Navbar />
-
         {/* HERO SECTION */}
-        <section id="Hero-Section" className="hero-section">
+        <section id="Hero-Section" className={`hero-section${heroIn ? ' hero-in' : ''}`}>
           <div className="hero-wrapper">
             <img
-              className="hero-shape"
+              className="hero-shape hero-reveal"
               src="/grey-layer-vector-file.avif"
               alt="Gray abstract wavy layers overlapping on a white background."
               sizes="(max-width: 3160px) 100vw, 3160px"
-              data-w-id="483c42ca-42d9-c614-7f4c-52daf1795b44"
               loading="lazy"
-              style={{ opacity: 0 }}
             />
             <div className="w-layout-blockcontainer container w-container">
               <div className="w-layout-grid hero-grid">
                 <div id="w-node-a700dc79-8fd1-f214-1ce4-921fd4d20a0a-a9047b99" className="hero-content">
-                  <div data-w-id="e65ad1b0-5d05-322f-0c1b-932eddc1e4b9" style={{ opacity: 0 }} className="section-subtitle-box">
+                  <div className="section-subtitle-box hero-reveal hero-reveal-1">
                     <div className="section-subtitle-icon"></div>
                     <p className="section-subtitle">Créateur d'Émotions</p>
                   </div>
-                  <h1 data-w-id="71ddfa9e-dec5-3f88-63d9-66cd039f1eeb" style={{ opacity: 0 }} className="hero-title">
+                  <h1 className="hero-title hero-reveal hero-reveal-2">
                     Organisation & Scénographie d'Événements
                   </h1>
-                  <p data-w-id="71ddfa9e-dec5-3f88-63d9-66cd039f1eef" style={{ opacity: 0 }} className="hero-text">
+                  <p className="hero-text hero-reveal hero-reveal-3">
                     Mariages, anniversaires, réceptions privées ou professionnelles... Nous concevons et décors vos plus beaux moments en Île-de-France.
                   </p>
-                  <div data-w-id="71ddfa9e-dec5-3f88-63d9-66cd039f1ef1" style={{ opacity: 0 }} className="hero-btn-box">
+                  <div className="hero-btn-box hero-reveal hero-reveal-4">
                     <Link
                       href="/reservation"
                       data-wf--primary-button--variant="base"
@@ -92,14 +104,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="hero-image-box">
-                  <div
-                    data-w-id="896993e1-7a60-1d8a-606e-720d777b5e24"
-                    style={{
-                      transform: 'translate3d(0, 0, 0) scale3d(0.5, 0.5, 1) rotateX(0) rotateY(0) rotateZ(0) skew(0, 0)',
-                      opacity: 0
-                    }}
-                    className="animated-image-wrapper"
-                  >
+                  <div className="animated-image-wrapper hero-reveal-img hero-reveal-img-1">
                     <img
                       style={{ transform: 'translate3d(0, 0, 0) scale3d(1.5, 1.5, 1) rotateX(0) rotateY(0) rotateZ(0) skew(0, 0)' }}
                       loading="lazy"
@@ -108,14 +113,7 @@ export default function Home() {
                       className="animated-image"
                     />
                   </div>
-                  <div
-                    data-w-id="bd3891a7-56f8-249e-1638-9dc16482da22"
-                    style={{
-                      transform: 'translate3d(0, 0, 0) scale3d(0.5, 0.5, 1) rotateX(0) rotateY(0) rotateZ(0) skew(0, 0)',
-                      opacity: 0
-                    }}
-                    className="animated-image-wrapper two"
-                  >
+                  <div className="animated-image-wrapper two hero-reveal-img hero-reveal-img-2">
                     <img
                       style={{ transform: 'translate3d(0, 0, 0) scale3d(1.5, 1.5, 1) rotateX(0) rotateY(0) rotateZ(0) skew(0, 0)' }}
                       loading="lazy"
@@ -544,25 +542,25 @@ export default function Home() {
           <div className="w-layout-blockcontainer container w-container">
             <div className="w-layout-grid feature-grid">
               
-              <div data-w-id="1cefc13e-28fb-376b-67fd-6a313dfad748" style={{ opacity: 0, backgroundColor: 'rgb(245,245,245)' }} className="feature-block">
+              <div data-w-id="1cefc13e-28fb-376b-67fd-6a313dfad748" style={{ opacity: 0 }} className="feature-block">
                 <img src="/return.avif" loading="lazy" alt="Floral details icon" className="feature-icon" />
                 <h4 style={{ color: 'rgb(0,0,0)' }} className="feature-title">Créativité unique</h4>
                 <p style={{ color: 'rgb(0,0,0)' }} className="feature-text">Des concepts de décoration sur-mesure imaginés pour vous.</p>
               </div>
               
-              <div id="w-node-_1cefc13e-28fb-376b-67fd-6a313dfad74e-a9047b99" data-w-id="1cefc13e-28fb-376b-67fd-6a313dfad74e" style={{ backgroundColor: 'rgb(245,245,245)', opacity: 0 }} className="feature-block">
+              <div id="w-node-_1cefc13e-28fb-376b-67fd-6a313dfad74e-a9047b99" data-w-id="1cefc13e-28fb-376b-67fd-6a313dfad74e" style={{ opacity: 0 }} className="feature-block">
                 <img src="/delivery-truck.avif" loading="lazy" alt="Installation delivery truck" className="feature-icon" />
                 <h4 style={{ color: 'rgb(0,0,0)' }} className="feature-title">Installation & Logistique</h4>
                 <p style={{ color: 'rgb(0,0,0)' }} className="feature-text">Installation de tout le mobilier et décors sur le lieu de réception.</p>
               </div>
               
-              <div data-w-id="1cefc13e-28fb-376b-67fd-6a313dfad754" style={{ opacity: 0, backgroundColor: 'rgb(245,245,245)' }} className="feature-block">
+              <div data-w-id="1cefc13e-28fb-376b-67fd-6a313dfad754" style={{ opacity: 0 }} className="feature-block">
                 <img src="/customer-service.avif" loading="lazy" alt="Support icon" className="feature-icon" />
                 <h4 style={{ color: 'rgb(0,0,0)' }} className="feature-title">Accompagnement 7j/7</h4>
                 <p style={{ color: 'rgb(0,0,0)' }} className="feature-text">Un suivi attentif et réactif tout au long du projet.</p>
               </div>
               
-              <div data-w-id="1cefc13e-28fb-376b-67fd-6a313dfad75a" style={{ opacity: 0, backgroundColor: 'rgb(245,245,245)' }} className="feature-block">
+              <div data-w-id="1cefc13e-28fb-376b-67fd-6a313dfad75a" style={{ opacity: 0 }} className="feature-block">
                 <img src="/money-back.avif" loading="lazy" alt="Partner guarantee badge" className="feature-icon" />
                 <h4 style={{ color: 'rgb(0,0,0)' }} className="feature-title">Partenaires de Confiance</h4>
                 <p style={{ color: 'rgb(0,0,0)' }} className="feature-text">Accès à notre réseau de prestataires sélectionnés.</p>
@@ -1161,8 +1159,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        <Footer />
       </div>
     </>
   )

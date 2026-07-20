@@ -1,10 +1,16 @@
 import '../src/index.css'
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/router'
+import Loader from '../src/components/Loader.jsx'
+import Navbar from '../src/components/Navbar.jsx'
+import Footer from '../src/components/Footer.jsx'
 
 export default function App({ Component, pageProps }) {
   const router = useRouter()
   const webflowLoadedRef = useRef(false)
+  // Espace OA is a standalone admin dashboard with its own layout/login gate —
+  // it doesn't use the public site's Navbar/Footer.
+  const isAdmin = router.pathname === '/espace-oa'
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -63,7 +69,12 @@ export default function App({ Component, pageProps }) {
   return (
     <>
       <div className="marble-layer" aria-hidden="true" />
+      {/* Mounted once here (not per-page) so its intro animation plays only
+          on true first load, not on every client-side route change. */}
+      {!isAdmin && <Loader />}
+      {!isAdmin && <Navbar />}
       <Component {...pageProps} />
+      {!isAdmin && <Footer />}
     </>
   )
 }

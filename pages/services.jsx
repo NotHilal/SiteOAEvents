@@ -2,9 +2,6 @@ import { useEffect } from 'react'
 import Link from 'next/link'
 import Head from 'next/head'
 import AOS from 'aos'
-import Loader from '../src/components/Loader.jsx'
-import Navbar from '../src/components/Navbar.jsx'
-import Footer from '../src/components/Footer.jsx'
 
 const SERVICES = [
   {
@@ -79,9 +76,6 @@ export default function Services() {
       </Head>
       
       <div className="site-wrap">
-        <Loader />
-        <Navbar />
-
         <div
           className="page-header"
           style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1920&q=80)' }}
@@ -121,8 +115,6 @@ export default function Services() {
             ))}
           </div>
         </section>
-
-        <Footer />
       </div>
     </>
   )

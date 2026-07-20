@@ -380,9 +380,51 @@ body {
    what caused the seams. Cards get their separation from a border/shadow,
    not a different background tint (see .feature-block etc. base styles). */
 
+/* The Webflow template itself ships several full-width section wrappers
+   with a solid, unblurred background-color (--light/white or
+   --whitesmoke), left over from the original template design. Each one
+   fully hides the marble layer for its entire width with a razor-hard
+   edge against the (already-transparent) sections above and below —
+   that's the "marble shows up in some areas but not others, with visible
+   seams" bug. Neutralized here so the whole homepage relies on the single
+   global wash from .marble-layer, same as the sections that were already
+   transparent (feature/product/project/testimonial/subscribe sections). */
+.hero-wrapper,
+.category-section,
+.marquee-secton,
+.why-us-outer,
+.news-outer-box {
+  background-color: transparent !important;
+}
+
+/* Small cards (category-box, product cards, testimonial cards, counter
+   blocks, news blocks...) keep their own solid/whitesmoke fill on
+   purpose — they're meant to read as distinct cards floating on the
+   marble, not as another full-bleed wash. */
+
+/* .feature-block ships from the Webflow template with a flat whitesmoke
+   fill (see furnish.css) and index.jsx additionally hardcodes the same
+   color as an inline style — inline styles win over any stylesheet, so
+   removing only the CSS rule wasn't enough; the inline override in
+   index.jsx also had to go. Replaced with a thin border so the four
+   feature cards still read as distinct blocks over the marble. */
+.feature-block {
+  background-color: transparent !important;
+  border: 1px solid var(--border);
+}
+
 /* Admin dashboard isn't designed for a decorative background — keep it opaque. */
 .dashboard-wrap {
   background: #fff;
+}
+
+
+/* Webflow's own runtime script (loaded on the homepage for the IX2 scroll
+   animations, see _app.jsx) injects a fixed "Made in Webflow" promo badge
+   into the DOM outside of React's control. Hidden site-wide since it
+   persists across client-side navigation once injected. */
+.w-webflow-badge {
+  display: none !important;
 }
 
 

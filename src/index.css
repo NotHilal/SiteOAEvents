@@ -102,6 +102,33 @@
   transform: scale3d(1, 1, 1) !important;
 }
 
+/* Hero entrance animation — deliberately independent of Webflow's IX2
+   engine (see pages/index.jsx), so it plays reliably every time the
+   homepage mounts instead of depending on a scroll-triggered observer. */
+.hero-reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity .7s cubic-bezier(.16,.84,.44,1), transform .7s cubic-bezier(.16,.84,.44,1);
+}
+.hero-reveal-1 { transition-delay: .05s; }
+.hero-reveal-2 { transition-delay: .15s; }
+.hero-reveal-3 { transition-delay: .25s; }
+.hero-reveal-4 { transition-delay: .35s; }
+
+.hero-reveal-img {
+  opacity: 0;
+  transform: translateY(18px) scale(.94);
+  transition: opacity .8s cubic-bezier(.16,.84,.44,1), transform .8s cubic-bezier(.16,.84,.44,1);
+}
+.hero-reveal-img-1 { transition-delay: .2s; }
+.hero-reveal-img-2 { transition-delay: .35s; }
+
+.hero-in .hero-reveal,
+.hero-in .hero-reveal-img {
+  opacity: 1;
+  transform: none;
+}
+
 /* General Layout Tweaks */
 .page-wrapper {
   overflow: hidden;

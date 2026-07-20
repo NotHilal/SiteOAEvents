@@ -3,9 +3,6 @@ import Link from 'next/link'
 import Head from 'next/head'
 import AOS from 'aos'
 import { supabase } from '../src/lib/supabase.js'
-import Loader from '../src/components/Loader.jsx'
-import Navbar from '../src/components/Navbar.jsx'
-import Footer from '../src/components/Footer.jsx'
 
 const WEB3FORMS_KEY = '380ad0e4-4abc-4a00-81d1-d81067d54129'
 
@@ -69,9 +66,6 @@ export default function Contact() {
       </Head>
 
       <div className="site-wrap">
-        <Loader />
-        <Navbar />
-
         <div
           className="page-header"
           style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1920&q=80)' }}
@@ -185,8 +179,6 @@ export default function Contact() {
             </div>
           </div>
         </section>
-
-        <Footer />
       </div>
     </>
   )

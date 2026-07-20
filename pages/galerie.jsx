@@ -3,9 +3,6 @@ import Link from 'next/link'
 import Head from 'next/head'
 import Lightbox from 'yet-another-react-lightbox'
 import AOS from 'aos'
-import Loader from '../src/components/Loader.jsx'
-import Navbar from '../src/components/Navbar.jsx'
-import Footer from '../src/components/Footer.jsx'
 
 const PHOTOS = [
   { src: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=800&q=80', cat: 'mariage', label: 'Mariage' },
@@ -56,9 +53,6 @@ export default function Galerie() {
       </Head>
 
       <div className="site-wrap">
-        <Loader />
-        <Navbar />
-
         <div
           className="page-header"
           style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1920&q=80)' }}
@@ -114,8 +108,6 @@ export default function Galerie() {
           index={lightboxIndex}
           slides={lightboxSlides}
         />
-
-        <Footer />
       </div>
     </>
   )
