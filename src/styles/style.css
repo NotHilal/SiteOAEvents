@@ -382,9 +382,17 @@
 
 
 /* ===== MARBLE BACKGROUND ===== */
+html {
+  overflow-x: hidden;
+}
 body {
   position: relative;
   background-color: #fff !important;
+  /* .marble-layer below is deliberately oversized by 24px on each side
+     (see its own comment) so its tiled edge is never visible — but nothing
+     was clipping that intentional bleed, so it was silently widening the
+     whole document and creating a site-wide horizontal scrollbar. */
+  overflow-x: hidden;
 }
 
 /* Absolutely positioned (not fixed) — it's part of the normal document

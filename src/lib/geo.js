@@ -73,5 +73,7 @@ export async function computeDeliveryQuote(destinationAddress) {
     distanceKm: Math.round(distanceKm * 10) / 10,
     durationMin: Math.round(durationMin),
     fee,
+    baseFee,
+    perKm,
   };
 }

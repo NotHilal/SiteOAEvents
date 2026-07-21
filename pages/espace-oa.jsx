@@ -36,6 +36,7 @@ export default function AdminDashboard() {
   const [blockedDatesMap, setBlockedDatesMap] = useState({})
   const [blockedHoursMap, setBlockedHoursMap] = useState({})
   const [resaFilter, setResaFilter] = useState('all')
+  const [resaSearch, setResaSearch] = useState('')
   const [msgFilter, setMsgFilter] = useState('all')
   const [calYear, setCalYear] = useState(new Date().getFullYear())
   const [calMonth, setCalMonth] = useState(new Date().getMonth())
@@ -70,6 +71,21 @@ export default function AdminDashboard() {
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [settingsError, setSettingsError] = useState('')
+
+  // Lock page scroll while any modal is open — without this, a fixed,
+  // screen-centered modal reads as "detached" from a background that keeps
+  // scrolling underneath it. Freezing the page instead makes the modal feel
+  // like the thing you're actually looking at, not a floating overlay.
+  useEffect(() => {
+    const anyModalOpen = !!(dayModal || resaDetail || deleteModal || catModalOpen || contactModal || msgDetail)
+    // html has an explicit overflow-x set (see style.css, for the horizontal-
+    // scrollbar fix) which stops the browser from propagating body's overflow
+    // to the viewport — so html itself must be locked too, or this silently
+    // does nothing and the page keeps scrolling behind the modal.
+    document.documentElement.style.overflowY = anyModalOpen ? 'hidden' : ''
+    document.body.style.overflow = anyModalOpen ? 'hidden' : ''
+    return () => { document.documentElement.style.overflowY = ''; document.body.style.overflow = '' }
+  }, [dayModal, resaDetail, deleteModal, catModalOpen, contactModal, msgDetail])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -177,6 +193,26 @@ export default function AdminDashboard() {
   async function updateResaStatus(id, status) {
     await supabase.from('reservations').update({ status }).eq('id', id)
     setReservations(prev => prev.map(r => r.id === id ? { ...r, status } : r))
+    if (status === 'confirmed' || status === 'refused') {
+      notifyReservationStatus(id)
+    }
+  }
+  async function notifyReservationStatus(reservationId) {
+    try {
+      const sessionStr = localStorage.getItem('oa_session')
+      const session = sessionStr ? JSON.parse(sessionStr) : null
+      await fetch('/api/reservations/notify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ reservationId }),
+      })
+      // Best-effort: the client is only informed by email, there's no UI
+      // feedback loop here — a failure (e.g. Resend not configured yet)
+      // shouldn't block the admin from continuing their work.
+    } catch {}
   }
   function confirmDelete(subtitle, callback) {
     setDeleteModal({ subtitle, callback })
@@ -376,7 +412,21 @@ export default function AdminDashboard() {
                 ))}
               </div>
             </div>
-            <ResaList reservations={reservations} filter={resaFilter} onStatus={updateResaStatus} onDelete={id => deleteResa(id, null)} onContact={r => setContactModal(r)} />
+            <div className="mat-search" style={{maxWidth:340,marginBottom:18}}>
+              <i className="fas fa-search" />
+              <input
+                type="text"
+                placeholder="Rechercher par nom, prénom ou n° de commande…"
+                value={resaSearch}
+                onChange={e => setResaSearch(e.target.value)}
+              />
+              {resaSearch && (
+                <button className="mat-search-clear" onClick={() => setResaSearch('')}>
+                  <i className="fas fa-times" />
+                </button>
+              )}
+            </div>
+            <ResaList reservations={reservations} filter={resaFilter} search={resaSearch} onStatus={updateResaStatus} onDelete={id => deleteResa(id, null)} onContact={r => setContactModal(r)} onViewPricing={r => setResaDetail({ id: r.id, backDate: null })} />
           </div>
 
           {/* CALENDRIER */}
@@ -590,13 +640,13 @@ export default function AdminDashboard() {
         {/* MODALS */}
         {(dayModal || resaDetail) && (
           <div className="modal-overlay" style={{display:'flex'}} onClick={e => { if(e.target===e.currentTarget) closeModal() }}>
-            <div className="modal-card day-modal-card">
+            <div className={`modal-card ${resaDetail ? 'detail-modal-card' : 'day-modal-card'}`}>
               <button className="modal-close" onClick={closeModal}><i className="fas fa-times" /></button>
               {resaDetail && (
                 <ResaDetail
                   resa={reservations.find(r => r.id === resaDetail.id)}
                   backDate={resaDetail.backDate}
-                  onBack={() => { setResaDetail(null); setDayModal({ dateStr: resaDetail.backDate, mode:'calendar', page:0 }) }}
+                  onBack={resaDetail.backDate ? () => { setResaDetail(null); setDayModal({ dateStr: resaDetail.backDate, mode:'calendar', page:0 }) } : null}
                   onStatus={updateResaStatus}
                   onDelete={() => deleteResa(resaDetail.id, resaDetail.backDate)}
                 />
@@ -691,10 +741,19 @@ export default function AdminDashboard() {
 
 /* ── Sub-components ─────────────────────────────────── */
 
-function ResaList({ reservations, filter, onStatus, onDelete, onContact }) {
-  const filtered = filter === 'all' ? reservations : reservations.filter(r => r.status === filter)
+function ResaList({ reservations, filter, search, onStatus, onDelete, onContact, onViewPricing }) {
+  const byStatus = filter === 'all' ? reservations : reservations.filter(r => r.status === filter)
+  const q = (search || '').trim().toLowerCase()
+  const filtered = !q ? byStatus : byStatus.filter(r => {
+    const name = [r.prenom, r.nom].filter(Boolean).join(' ').toLowerCase()
+    return name.includes(q)
+      || (r.prenom || '').toLowerCase().includes(q)
+      || (r.nom || '').toLowerCase().includes(q)
+      || (r.reference || '').toLowerCase().includes(q)
+      || (r.id || '').toLowerCase().includes(q)
+  })
   if (!filtered.length) return (
-    <div className="adm-empty"><i className="fas fa-inbox" /><p>Aucune demande{filter!=='all'?' dans cette catégorie':''}.</p></div>
+    <div className="adm-empty"><i className="fas fa-inbox" /><p>{q ? 'Aucune demande ne correspond à votre recherche.' : `Aucune demande${filter!=='all'?' dans cette catégorie':''}.`}</p></div>
   )
   return (
     <div id="reservations-list">
@@ -704,6 +763,7 @@ function ResaList({ reservations, filter, onStatus, onDelete, onContact }) {
           <div key={r.id} className="resa-card">
             <div className="resa-card-head">
               <div>
+                {r.reference && <span className="resa-card-name" style={{color:'var(--gray)',fontWeight:600}}><i className="fas fa-hashtag" style={{marginRight:6}} />{r.reference}</span>}
                 {name && <span className="resa-card-name"><i className="fas fa-user" style={{marginRight:6}} />{name}</span>}
                 <span className="resa-card-email"><i className="fas fa-envelope" style={{marginRight:6}} />{r.email}</span>
                 {r.phone && <span className="resa-card-phone"><i className="fas fa-phone" style={{marginRight:6}} />{r.phone}</span>}
@@ -725,6 +785,7 @@ function ResaList({ reservations, filter, onStatus, onDelete, onContact }) {
             <div className="resa-card-actions">
               {r.status!=='confirmed' && <button className="adm-btn-success" onClick={() => onStatus(r.id,'confirmed')}><i className="fas fa-check" style={{marginRight:4}} />Confirmer</button>}
               {r.status!=='refused' && <button className="adm-btn-danger" onClick={() => onStatus(r.id,'refused')}><i className="fas fa-times" style={{marginRight:4}} />Refuser</button>}
+              <button className="adm-btn-ghost" onClick={() => onViewPricing(r)}><i className="fas fa-receipt" style={{marginRight:4}} />Voir le détail</button>
               <button className="adm-btn-ghost" onClick={() => onContact(r)}><i className="fas fa-envelope" style={{marginRight:4}} />Email</button>
               {r.phone && <a className="adm-btn-success" href={`tel:${r.phone}`}><i className="fas fa-phone" style={{marginRight:4}} />Appeler</a>}
               <button className="adm-btn-delete" onClick={() => onDelete(r.id)}><i className="fas fa-trash" /></button>
@@ -1040,11 +1101,15 @@ function ResaDetail({ resa, backDate, onBack, onStatus, onDelete }) {
   const emailBody = `Bonjour ${name},\n\nNous avons bien reçu votre demande de réservation pour le ${dateDisplay}.\n\n[Votre réponse ici]\n\nCordialement,\nL'équipe OA Événementiel`
   const mailto = `mailto:${resa.email}?subject=${encodeURIComponent('Votre demande de réservation — OA Événementiel')}&body=${encodeURIComponent(emailBody)}`
   const created = new Date(resa.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})
+  const hasPricing = resa.materials?.length > 0 || resa.delivery_address || resa.grand_total != null
   return (
     <div>
-      <button className="detail-back" onClick={onBack}><i className="fas fa-arrow-left" style={{marginRight:8}} />Retour au {backDate&&new Date(backDate+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}</button>
+      {onBack && (
+        <button className="detail-back" onClick={onBack}><i className="fas fa-arrow-left" style={{marginRight:8}} />Retour au {backDate&&new Date(backDate+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}</button>
+      )}
       <div className="detail-head">
         <div>
+          {resa.reference && <div className="detail-email" style={{fontWeight:700}}><i className="fas fa-hashtag" style={{marginRight:8}} />{resa.reference}</div>}
           <div className="detail-name"><i className="fas fa-user" style={{marginRight:8}} />{name}</div>
           <div className="detail-email"><i className="fas fa-envelope" style={{marginRight:8}} />{resa.email}</div>
           {resa.phone&&<div className="detail-phone"><i className="fas fa-phone" style={{marginRight:8}} />{resa.phone}</div>}
@@ -1057,15 +1122,65 @@ function ResaDetail({ resa, backDate, onBack, onStatus, onDelete }) {
         {resa.nb_persons&&<div className="detail-info-item"><i className="fas fa-users" /><div><small>Personnes</small><strong>{resa.nb_persons}</strong></div></div>}
         <div className="detail-info-item"><i className="fas fa-clock" /><div><small>Reçue le</small><strong>{created}</strong></div></div>
       </div>
-      <div className="detail-block">
-        <h4 className="detail-block-title"><i className="fas fa-boxes" style={{marginRight:8}} />Matériel demandé</h4>
-        <div className="detail-mats">
-          {resa.materials?.length>0
-            ? resa.materials.map((m,i)=><div key={i} className="detail-mat-row"><span className="detail-mat-name"><i className="fas fa-box" style={{marginRight:8}} />{m.name}</span><span className="detail-mat-qty">× {m.quantity}</span></div>)
-            : <p className="detail-empty-mat">Aucun matériel sélectionné</p>
-          }
+
+      {hasPricing && (
+        <div className="detail-block">
+          <h4 className="detail-block-title"><i className="fas fa-receipt" style={{marginRight:8}} />Détail du prix</h4>
+          <div className="price-detail-card">
+            {resa.materials?.length > 0 ? resa.materials.map((m,i) => (
+              <div key={i} className="price-detail-row">
+                <span className="price-detail-label">
+                  <i className="fas fa-box" style={{marginRight:8,color:'var(--rose-gold)'}} />{m.name} × {m.quantity}
+                  {m.price!=null && <span className="price-detail-sub">{m.price.toFixed(2)} €/unité</span>}
+                </span>
+                {m.price!=null && <span className="price-detail-amount">{(m.price*m.quantity).toFixed(2)} €</span>}
+              </div>
+            )) : (
+              <div className="price-detail-row"><span className="price-detail-label">Aucun matériel sélectionné</span></div>
+            )}
+            {resa.materials_total != null && resa.materials?.length > 0 && (
+              <div className="price-detail-row">
+                <span className="price-detail-label"><strong>Sous-total matériaux</strong></span>
+                <span className="price-detail-amount">{resa.materials_total.toFixed(2)} €</span>
+              </div>
+            )}
+            {resa.delivery_address && (
+              <>
+                <div className="price-detail-row">
+                  <span className="price-detail-label">
+                    <i className="fas fa-map-marker-alt" style={{marginRight:8,color:'var(--rose-gold)'}} />Livraison
+                    <span className="price-detail-sub">{resa.delivery_address}{resa.distance_km!=null?` — ${resa.distance_km} km`:''}</span>
+                  </span>
+                </div>
+                {resa.quote_base_fee != null && (
+                  <div className="price-detail-row">
+                    <span className="price-detail-label">Frais de base</span>
+                    <span className="price-detail-amount">{resa.quote_base_fee.toFixed(2)} €</span>
+                  </div>
+                )}
+                {resa.quote_per_km != null && resa.distance_km != null && (
+                  <div className="price-detail-row">
+                    <span className="price-detail-label">Frais kilométrique<span className="price-detail-sub">{resa.quote_per_km.toFixed(2)} €/km × {resa.distance_km} km</span></span>
+                    <span className="price-detail-amount">{(resa.quote_per_km*resa.distance_km).toFixed(2)} €</span>
+                  </div>
+                )}
+                {resa.delivery_fee != null && (
+                  <div className="price-detail-row">
+                    <span className="price-detail-label"><strong>Total livraison</strong></span>
+                    <span className="price-detail-amount">{resa.delivery_fee.toFixed(2)} €</span>
+                  </div>
+                )}
+              </>
+            )}
+            {resa.grand_total != null && (
+              <div className="price-detail-row price-detail-total">
+                <span className="price-detail-label">Total estimé</span>
+                <span className="price-detail-amount">{resa.grand_total.toFixed(2)} €</span>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
       <PaymentsBlock reservationId={resa.id} />
       {resa.message&&<div className="detail-block"><h4 className="detail-block-title"><i className="fas fa-comment" style={{marginRight:8}} />Message / Créneau</h4><p className="detail-message">{resa.message}</p></div>}
       <div className="detail-actions">

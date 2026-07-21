@@ -2,18 +2,9 @@ import React from 'react'
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import Head from 'next/head'
-import { loadStripe } from '@stripe/stripe-js'
 import { supabase } from '../src/lib/supabase.js'
-import CardPaymentForm from '../src/components/CardPaymentForm.jsx'
 
-// NEXT_PUBLIC_* vars are inlined at build time, so this check works both
-// server- and client-side without an API round-trip. Stays null (no crash)
-// until an admin adds a real Stripe publishable key to .env.
-const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
-  : null
-
-const HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
+const HOURS =['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
 const MONTHS_SHORT = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.']
 const DAYS_SHORT = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam']
@@ -65,24 +56,14 @@ export default function Reservation() {
   const [quoteError, setQuoteError] = useState('')
   const wizardRef = useRef(null)
 
-  // Payment step — appears after the reservation request itself is created,
-  // only if an admin has configured at least one payment method (Réglages).
-  const [paymentMethodsAvail, setPaymentMethodsAvail] = useState({ card: false, virement: false })
-  const [paymentPhase, setPaymentPhase] = useState('form') // form | choose | card | bank
-  const [createdReservationId, setCreatedReservationId] = useState(null)
-  const [paymentSchedule, setPaymentSchedule] = useState([])
-  const [paymentInitError, setPaymentInitError] = useState('')
-  const [paymentInitLoading, setPaymentInitLoading] = useState(false)
-  const [clientSecret, setClientSecret] = useState(null)
-  const [bankInfo, setBankInfo] = useState(null)
-  const [paymentSummary, setPaymentSummary] = useState(null) // shown on the success screen
+  // Shown on the success screen once the request is submitted — the order
+  // reference the client will need on /suivi to check status and pay once
+  // confirmed (payment happens there, not here — see PaymentFlow.jsx).
+  const [orderReference, setOrderReference] = useState(null)
 
   useEffect(() => {
     loadBlockedData()
     loadMaterials()
-    fetch('/api/payments/methods').then(r => r.json()).then(res => {
-      if (res.data) setPaymentMethodsAvail(res.data)
-    }).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -302,7 +283,9 @@ export default function Reservation() {
       .filter(([,q]) => q > 0)
       .map(([id, qty]) => {
         const m = materialsData.find(x => String(x.id) === id)
-        return { id, name: m?.name || '?', quantity: qty }
+        // Price snapshotted at booking time — if it's edited in Matériel
+        // later, past reservations still show what the client actually saw.
+        return { id, name: m?.name || '?', quantity: qty, price: parseFloat(m?.price) || 0 }
       })
     try {
       const { data, error } = await supabase.from('reservations').insert({
@@ -320,20 +303,15 @@ export default function Reservation() {
         delivery_address: form.address.trim() || null,
         distance_km: quote?.distanceKm ?? null,
         delivery_fee: quote?.fee ?? null,
+        quote_base_fee: quote?.baseFee ?? null,
+        quote_per_km: quote?.perKm ?? null,
         materials_total: Math.round(materialsTotal * 100) / 100,
         grand_total: Math.round(grandTotal * 100) / 100,
       })
       if (error) throw error
 
-      if (!paymentMethodsAvail.card && !paymentMethodsAvail.virement) {
-        // No payment method configured yet by the admin (Réglages) — keep
-        // the original "request submitted" behavior instead of dead-ending
-        // the client on a payment step that has nothing to offer.
-        setSuccess(true)
-      } else {
-        setCreatedReservationId(data.id)
-        setPaymentPhase('choose')
-      }
+      setOrderReference(data.reference || null)
+      setSuccess(true)
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }
@@ -342,60 +320,6 @@ export default function Reservation() {
     } finally {
       setSubmitting(false)
     }
-  }
-
-  async function chooseCard() {
-    setPaymentInitLoading(true)
-    setPaymentInitError('')
-    try {
-      const res = await fetch('/api/payments/create-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reservationId: createdReservationId }),
-      })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.message || 'Erreur lors de la préparation du paiement')
-      setClientSecret(result.data.clientSecret)
-      setPaymentSchedule(result.data.schedule)
-      setPaymentPhase('card')
-    } catch (err) {
-      setPaymentInitError(err.message)
-    } finally {
-      setPaymentInitLoading(false)
-    }
-  }
-
-  async function chooseVirement() {
-    setPaymentInitLoading(true)
-    setPaymentInitError('')
-    try {
-      const res = await fetch('/api/payments/init-virement', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reservationId: createdReservationId }),
-      })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.message || 'Erreur lors de la préparation du virement')
-      setBankInfo(result.data.bank)
-      setPaymentSchedule(result.data.schedule)
-      setPaymentPhase('bank')
-    } catch (err) {
-      setPaymentInitError(err.message)
-    } finally {
-      setPaymentInitLoading(false)
-    }
-  }
-
-  function handleCardPaymentSuccess() {
-    setPaymentSummary({ method: 'card', firstAmount: paymentSchedule[0]?.amount, count: paymentSchedule.length })
-    setSuccess(true)
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  function finishVirement() {
-    setPaymentSummary({ method: 'virement', firstAmount: paymentSchedule[0]?.amount, count: paymentSchedule.length })
-    setSuccess(true)
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const formatDateLabel = (ds) => {
@@ -494,13 +418,16 @@ export default function Reservation() {
                 <span className="success-icon"><i className="fas fa-check-circle" /></span>
                 <h3>Demande envoyée !</h3>
                 <p>Votre demande de réservation a bien été reçue. Nous vous répondrons dans les plus brefs délais pour confirmer les détails.</p>
-                {paymentSummary?.method === 'card' && (
-                  <p><i className="fas fa-check-circle" style={{color:'#4caf50',marginRight:6}} />Premier versement de {paymentSummary.firstAmount?.toFixed(2)} € réglé{paymentSummary.count > 1 ? ` (1 sur ${paymentSummary.count} versements)` : ''}.</p>
+                {orderReference && (
+                  <p className="recap-card" style={{display:'inline-block',padding:'14px 24px',margin:'16px 0'}}>
+                    Numéro de commande : <strong style={{letterSpacing:'1px'}}>{orderReference}</strong>
+                  </p>
                 )}
-                {paymentSummary?.method === 'virement' && (
-                  <p><i className="fas fa-info-circle" style={{marginRight:6}} />En attente de votre virement de {paymentSummary.firstAmount?.toFixed(2)} €{paymentSummary.count > 1 ? ` (1 sur ${paymentSummary.count} versements)` : ''} — voir les coordonnées bancaires envoyées.</p>
-                )}
-                <Link href="/" className="btn btn-rose-gold mt-3">Retour à l'accueil</Link>
+                <p>Vous recevrez un email dès que votre demande sera confirmée, avec un lien pour régler votre réservation. Conservez votre numéro de commande — il vous permet de suivre votre demande à tout moment.</p>
+                <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap',marginTop:8}}>
+                  <Link href="/suivi" className="btn btn-rose-gold mt-3">Suivre ma demande</Link>
+                  <Link href="/" className="step-prev-btn mt-3" style={{padding:'14px 38px'}}>Retour à l'accueil</Link>
+                </div>
               </div>
             </div>
           </section>
@@ -943,8 +870,7 @@ export default function Reservation() {
                   <span className="step-tag">Étape 4 / 4</span>
                   <h2 className="step-title">Récapitulatif</h2>
 
-                  {paymentPhase === 'form' && (
-                    <>
+                  <>
                       <p className="step-desc">Vérifiez les informations avant d'envoyer votre demande.</p>
 
                       <div className="recap-card">
@@ -966,6 +892,25 @@ export default function Reservation() {
                         ))}
                       </div>
 
+                      {materialsTotal > 0 && (
+                        <div className="res-quote-box">
+                          <h4 className="res-quote-title"><i className="fas fa-boxes" style={{marginRight:8}} />Détail des articles</h4>
+                          {Object.entries(cart).filter(([,q]) => q > 0).map(([id, qty]) => {
+                            const m = materialsData.find(x => String(x.id) === id)
+                            const unitPrice = parseFloat(m?.price) || 0
+                            return (
+                              <div key={id} className="res-total-row">
+                                <span>{m?.name || '?'} <small style={{color:'var(--gray)'}}>({unitPrice.toFixed(2)} €/u × {qty})</small></span>
+                                <strong>{(unitPrice * qty).toFixed(2)} €</strong>
+                              </div>
+                            )
+                          })}
+                          <div className="res-total-row res-total-grand">
+                            <span>Sous-total matériaux</span><strong>{materialsTotal.toFixed(2)} €</strong>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="res-quote-box">
                         <h4 className="res-quote-title"><i className="fas fa-truck" style={{marginRight:8}} />Frais de livraison</h4>
                         {quoteLoading && <p className="res-quote-loading"><i className="fas fa-circle-notch fa-spin me-2" />Calcul de la distance en cours…</p>}
@@ -976,9 +921,18 @@ export default function Reservation() {
                           </div>
                         )}
                         {!quoteLoading && !quoteError && quote && (
-                          <p className="res-quote-result">
-                            Distance estimée : <strong>{quote.distanceKm} km</strong> — Frais de livraison : <strong>{quote.fee.toFixed(2)} €</strong>
-                          </p>
+                          <>
+                            <div className="res-total-row">
+                              <span>Distance estimée</span><strong>{quote.distanceKm} km</strong>
+                            </div>
+                            <div className="res-total-row">
+                              <span>Frais de base</span><strong>{quote.baseFee.toFixed(2)} €</strong>
+                            </div>
+                            <div className="res-total-row">
+                              <span>Frais kilométrique <small style={{color:'var(--gray)'}}>({quote.perKm.toFixed(2)} €/km × {quote.distanceKm} km)</small></span>
+                              <strong>{(quote.perKm * quote.distanceKm).toFixed(2)} €</strong>
+                            </div>
+                          </>
                         )}
                         <div className="res-total-row">
                           <span>Sous-total matériaux</span><strong>{materialsTotal.toFixed(2)} €</strong>
@@ -1009,71 +963,7 @@ export default function Reservation() {
                           }
                         </button>
                       </div>
-                    </>
-                  )}
-
-                  {paymentPhase === 'choose' && (
-                    <div>
-                      <p className="step-desc">Votre demande a bien été envoyée. Choisissez comment régler votre premier versement.</p>
-                      <div className="res-quote-box" style={{marginBottom:20}}>
-                        <div className="res-total-row res-total-grand">
-                          <span>Total à régler</span><strong>{grandTotal.toFixed(2)} €</strong>
-                        </div>
-                      </div>
-                      <div style={{display:'flex', gap:14, flexWrap:'wrap'}}>
-                        {paymentMethodsAvail.card && (
-                          <button className="btn btn-rose-gold" onClick={chooseCard} disabled={paymentInitLoading}>
-                            <i className="fas fa-credit-card me-2" />Payer par carte
-                          </button>
-                        )}
-                        {paymentMethodsAvail.virement && (
-                          <button className="step-prev-btn" onClick={chooseVirement} disabled={paymentInitLoading} style={{padding:'14px 38px'}}>
-                            <i className="fas fa-university me-2" />Payer par virement
-                          </button>
-                        )}
-                      </div>
-                      {paymentInitLoading && <p className="mt-3"><i className="fas fa-circle-notch fa-spin me-2" />Préparation du paiement…</p>}
-                      {paymentInitError && (
-                        <div className="resa-alert mt-3"><i className="fas fa-exclamation-circle" />{paymentInitError}</div>
-                      )}
-                    </div>
-                  )}
-
-                  {paymentPhase === 'card' && (
-                    <div>
-                      <p className="step-desc">Réglez votre premier versement par carte bancaire — le reste sera prélevé automatiquement aux échéances ci-dessous.</p>
-                      <ScheduleList schedule={paymentSchedule} />
-                      <CardPaymentForm
-                        stripePromise={stripePromise}
-                        clientSecret={clientSecret}
-                        amount={paymentSchedule[0]?.amount || 0}
-                        onSuccess={handleCardPaymentSuccess}
-                      />
-                    </div>
-                  )}
-
-                  {paymentPhase === 'bank' && bankInfo && (
-                    <div>
-                      <p className="step-desc">Réglez par virement bancaire aux coordonnées ci-dessous, en respectant l'échéancier.</p>
-                      <div className="recap-card">
-                        {bankInfo.holder && (
-                          <div className="recap-row"><span className="recap-lbl"><i className="fas fa-user" />Titulaire</span><span className="recap-val">{bankInfo.holder}</span></div>
-                        )}
-                        <div className="recap-row"><span className="recap-lbl"><i className="fas fa-university" />IBAN</span><span className="recap-val">{bankInfo.iban}</span></div>
-                        {bankInfo.bic && (
-                          <div className="recap-row"><span className="recap-lbl"><i className="fas fa-hashtag" />BIC</span><span className="recap-val">{bankInfo.bic}</span></div>
-                        )}
-                      </div>
-                      <ScheduleList schedule={paymentSchedule} />
-                      <p className="resa-privacy">Chaque versement sera marqué comme reçu par notre équipe une fois le virement constaté sur notre compte.</p>
-                      <div className="step-nav">
-                        <span />
-                        <button className="btn btn-rose-gold step-next-btn" onClick={finishVirement}>
-                          J'ai noté, terminer ma demande <i className="fas fa-check ms-1" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  </>
                 </div>
               )}
             </div>
@@ -1081,26 +971,5 @@ export default function Reservation() {
         </section>
       </div>
     </>
-  )
-}
-
-function ScheduleList({ schedule }) {
-  if (!schedule?.length) return null
-  return (
-    <div className="recap-card" style={{marginBottom:20}}>
-      <div className="recap-row" style={{borderBottom:'1px solid var(--border)'}}>
-        <span className="recap-lbl"><i className="fas fa-calendar-alt" />Échéancier</span>
-        <span className="recap-val">{schedule.length} versement{schedule.length>1?'s':''}</span>
-      </div>
-      {schedule.map(s => (
-        <div key={s.index} className="recap-row">
-          <span className="recap-lbl">
-            {s.label}
-            {s.dueDate && <> — {new Date(s.dueDate + 'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</>}
-          </span>
-          <span className="recap-val">{s.amount.toFixed(2)} €</span>
-        </div>
-      ))}
-    </div>
   )
 }

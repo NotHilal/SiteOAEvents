@@ -114,11 +114,34 @@ ensureColumn('reservations', 'materials_total', 'REAL');
 ensureColumn('reservations', 'grand_total', 'REAL');
 ensureColumn('reservations', 'stripe_customer_id', 'TEXT');
 ensureColumn('reservations', 'payment_method', 'TEXT'); // 'card' | 'virement'
+ensureColumn('reservations', 'reference', 'TEXT'); // human-facing order number, e.g. OA-K7M2QX
+ensureColumn('reservations', 'notified_status', 'TEXT'); // last status an email was sent for — avoids re-sending on repeat clicks
+// Delivery rate actually used for this quote, captured at booking time —
+// so the price breakdown shown later always matches what delivery_fee was
+// computed from, even if the base fee/per-km rate in Réglages changes afterwards.
+ensureColumn('reservations', 'quote_base_fee', 'REAL');
+ensureColumn('reservations', 'quote_per_km', 'REAL');
 
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_payments_reservation ON payments(reservation_id);
   CREATE INDEX IF NOT EXISTS idx_payments_due_status ON payments(due_date, status);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_reservations_reference ON reservations(reference);
 `);
+
+// Alphabet avoids visually ambiguous characters (0/O, 1/I/L) since this
+// code is meant to be read off an email and typed back on /suivi.
+const REFERENCE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export function generateReservationReference() {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    let code = 'OA-';
+    for (let i = 0; i < 6; i++) {
+      code += REFERENCE_ALPHABET[Math.floor(Math.random() * REFERENCE_ALPHABET.length)];
+    }
+    const exists = db.prepare('SELECT 1 FROM reservations WHERE reference = ?').get(code);
+    if (!exists) return code;
+  }
+  throw new Error('Impossible de générer une référence unique');
+}
 
 // Seed default categories if empty
 const catCount = db.prepare("SELECT COUNT(*) as count FROM categories").get().count;

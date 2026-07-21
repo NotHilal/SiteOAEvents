@@ -229,6 +229,61 @@ a { color:var(--rose-gold); }
 .day-modal-card { max-width:580px; max-height:90vh; overflow-y:auto; }
 .day-modal-title { font-family:'Montserrat', sans-serif; font-size:1.3rem; margin-bottom:18px; color:var(--dark); }
 
+/* MODAL DÉTAIL RÉSERVATION — wider + roomier than the day-list modal so the
+   price breakdown has room to breathe instead of wrapping awkwardly, and a
+   thin gold accent bar across the top for a bit of ceremony. */
+.modal-card.detail-modal-card { max-width:920px; max-height:88vh; overflow-y:auto; padding:44px 44px 36px; position:relative; }
+.detail-modal-card::before {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:4px;
+  background:linear-gradient(90deg, var(--rose-gold), #e8cfa0, rgba(201,161,90,.15));
+}
+
+/* Itemized price breakdown (materials + delivery + total) — laid out like a
+   simple invoice: label/sub-note on the left, right-aligned amount, subtotal
+   and grand-total rows visually set apart. */
+.price-detail-card {
+  background:#fff;
+  border:1.5px solid var(--border);
+  border-radius:0px;
+  padding:6px 20px;
+}
+.price-detail-row {
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:20px;
+  padding:12px 0;
+}
+.price-detail-row + .price-detail-row { border-top:1px dashed var(--border); }
+.price-detail-label {
+  font-size:.88rem;
+  color:var(--dark-mid);
+  font-family:'Lato',sans-serif;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+.price-detail-label strong { color:var(--dark); font-weight:700; }
+.price-detail-sub { font-size:.76rem; color:var(--gray); }
+.price-detail-amount {
+  font-weight:700;
+  font-size:.92rem;
+  color:var(--dark);
+  white-space:nowrap;
+  flex-shrink:0;
+}
+.price-detail-total {
+  border-top:2px solid var(--rose-gold) !important;
+  margin-top:2px;
+}
+.price-detail-total .price-detail-label { font-size:1rem; font-weight:800; color:var(--dark); }
+.price-detail-total .price-detail-amount { font-size:1.15rem; color:var(--rose-gold); }
+
+@media (max-width:600px) {
+  .modal-card.detail-modal-card { padding:24px; max-width:calc(100vw - 32px); }
+}
+
 .day-resas { display:flex; flex-direction:column; gap:10px; margin-bottom:20px; }
 .day-resa-card { background:var(--cream); border-radius: 0px; padding:14px 16px; border:1.5px solid var(--border); }
 .day-resa-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:6px; }
@@ -354,8 +409,33 @@ a { color:var(--rose-gold); }
 .avail-off { background:#f8d7da; color:#842029; }
 
 /* MODAL CONTACT */
-.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; z-index:999; padding:20px; }
-.modal-card { background:rgba(255, 255, 255, 0.95); backdrop-filter:blur(25px); border-radius: 0px; padding:36px; max-width:440px; width:100%; position:relative; box-shadow:0 20px 60px rgba(0,0,0,.2); }
+.modal-overlay {
+  position:fixed; inset:0;
+  background:rgba(20,16,10,.6);
+  backdrop-filter:blur(6px);
+  display:flex; align-items:center; justify-content:center;
+  z-index:999; padding:24px;
+  animation:modalOverlayIn .18s ease-out;
+}
+.modal-card {
+  background:rgba(255, 255, 255, 0.97);
+  backdrop-filter:blur(25px);
+  border-radius: 0px;
+  padding:36px;
+  max-width:440px;
+  width:100%;
+  position:relative;
+  box-shadow:0 30px 80px rgba(0,0,0,.35), 0 4px 16px rgba(0,0,0,.15);
+  animation:modalCardIn .3s cubic-bezier(.16,.84,.44,1);
+}
+@keyframes modalOverlayIn { from { opacity:0; } to { opacity:1; } }
+@keyframes modalCardIn {
+  from { opacity:0; transform:scale(.95) translateY(14px); }
+  to   { opacity:1; transform:scale(1) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay, .modal-card { animation:none; }
+}
 .modal-close { position:absolute; top:16px; right:16px; background:var(--cream); border:none; width:32px; height:32px; border-radius: 0px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--gray); font-size:.9rem; transition:all .22s; }
 .modal-close:hover { background:var(--border); }
 .modal-title { font-family:'Montserrat', sans-serif; font-size:1.3rem; margin-bottom:20px; }
@@ -455,7 +535,7 @@ a { color:var(--rose-gold); }
 .badge-lg { font-size:.8rem !important; padding:6px 14px !important; white-space:nowrap; flex-shrink:0; }
 
 .detail-info-grid {
-  display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:16px;
 }
 .detail-info-item {
   display:flex; align-items:flex-start; gap:10px;

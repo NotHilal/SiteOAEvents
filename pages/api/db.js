@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import db from '../../src/lib/sqlite-db';
+import db, { generateReservationReference } from '../../src/lib/sqlite-db';
 
 // Helper to check token authorization
 function isAuthorized(req) {
@@ -183,7 +183,11 @@ export default function handler(req, res) {
 
           const id = item.id || crypto.randomUUID();
           const created_at = item.created_at || new Date().toISOString();
-          const record = serializeRow(table, { ...item, id, created_at });
+          const extra = {};
+          if (table === 'reservations' && !item.reference) {
+            extra.reference = generateReservationReference();
+          }
+          const record = serializeRow(table, { ...item, ...extra, id, created_at });
 
           const keys = Object.keys(record);
           const validKeys = keys.filter(isValidColumn);

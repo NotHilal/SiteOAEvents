@@ -51,6 +51,9 @@ export default function Footer() {
                   <li className="list-item">
                     <Link href="/contact" className="list-text-link">Contact</Link>
                   </li>
+                  <li className="list-item">
+                    <Link href="/suivi" className="list-text-link">Suivre ma demande</Link>
+                  </li>
                 </ul>
               </div>
 

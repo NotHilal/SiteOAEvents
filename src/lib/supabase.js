@@ -159,7 +159,11 @@ export const supabase = {
       if (!sessionStr) return { data: { session: null }, error: null };
       try {
         const session = JSON.parse(sessionStr);
-        const [, payloadStr] = session.access_token.split('.');
+        // Token is `${payloadStr}.${signature}` (payload first) — grab index
+        // 0. This used to destructure index 1 (the signature) by mistake,
+        // so atob()+JSON.parse() always threw, the catch below always fired,
+        // and every reload silently looked like a fresh logout.
+        const [payloadStr] = session.access_token.split('.');
         const payload = JSON.parse(atob(payloadStr));
         if (Date.now() > payload.exp) {
           localStorage.removeItem('oa_session');
