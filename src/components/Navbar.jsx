@@ -5,23 +5,6 @@ export default function Navbar() {
   const router = useRouter()
   const isHome = router.pathname === '/'
 
-  const handleAbout = (e) => {
-    e.preventDefault()
-    if (isHome) {
-      document.getElementById('About-Us')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    } else {
-      router.push('/')
-      setTimeout(() => {
-        document.getElementById('About-Us')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 400)
-    }
-  }
-
-  const isActive = (path) => {
-    if (path === '#about') return false
-    return router.pathname === path
-  }
-
   return (
     <section className="main-header">
       <div className="w-layout-blockcontainer container w-container">
@@ -61,15 +44,21 @@ export default function Navbar() {
               <p className="header-menu-text">Galerie</p>
               <div className="header-menu-line"></div>
             </Link>
-            <a
-              href="#about"
-              onClick={handleAbout}
+            <Link
+              href="/suivi"
+              className={`header-menu-link w-inline-block ${router.pathname === '/suivi' ? 'w--current' : ''}`}
+            >
+              <p className="header-menu-text">Suivi de commande</p>
+              <div className="header-menu-line"></div>
+            </Link>
+            <Link
+              href="/a-propos"
               data-w-id="120dca71-39d2-8c1e-9ed1-e619c73f2c94"
-              className="header-menu-link w-inline-block"
+              className={`header-menu-link w-inline-block ${router.pathname === '/a-propos' ? 'w--current' : ''}`}
             >
               <p className="header-menu-text">À Propos</p>
               <div className="header-menu-line"></div>
-            </a>
+            </Link>
             <Link
               href="/contact"
               data-w-id="120dca71-39d2-8c1e-9ed1-e619c73f2c97"
@@ -144,14 +133,19 @@ export default function Navbar() {
           >
             <div className="mobile-dropdown-title">Galerie</div>
           </Link>
-          <a
-            href="#about"
-            onClick={handleAbout}
+          <Link
+            href="/suivi"
+            className={`mobile-dropdown-link w-inline-block ${router.pathname === '/suivi' ? 'w--current' : ''}`}
+          >
+            <div className="mobile-dropdown-title">Suivi de commande</div>
+          </Link>
+          <Link
+            href="/a-propos"
             data-w-id="c6458aca-98af-15a7-c01c-17afce9b98dd"
-            className="mobile-dropdown-link w-inline-block"
+            className={`mobile-dropdown-link w-inline-block ${router.pathname === '/a-propos' ? 'w--current' : ''}`}
           >
             <div className="mobile-dropdown-title">À Propos</div>
-          </a>
+          </Link>
           <Link
             href="/contact"
             data-w-id="c6458aca-98af-15a7-c01c-17afce9b98da"

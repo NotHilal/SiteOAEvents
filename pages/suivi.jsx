@@ -95,8 +95,8 @@ export default function Suivi() {
   return (
     <>
       <Head>
-        <title>Suivre ma demande — OA Événementiel</title>
-        <meta name="description" content="Suivez le statut de votre demande de réservation et réglez votre paiement en ligne." />
+        <title>Suivi de commande — OA Événementiel</title>
+        <meta name="description" content="Consultez les informations de votre demande ou commande d'événement : statut, détails et paiement en ligne." />
       </Head>
 
       <div className="site-wrap">
@@ -106,11 +106,11 @@ export default function Suivi() {
         >
           <div className="page-header-overlay" />
           <div className="container">
-            <h1>Suivre ma demande</h1>
+            <h1>Suivi de commande</h1>
             <nav aria-label="breadcrumb">
               <ol className="breadcrumb justify-content-center">
                 <li className="breadcrumb-item"><Link href="/">Accueil</Link></li>
-                <li className="breadcrumb-item active">Suivi</li>
+                <li className="breadcrumb-item active">Suivi de commande</li>
               </ol>
             </nav>
           </div>

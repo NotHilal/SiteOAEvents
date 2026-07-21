@@ -379,7 +379,10 @@ export default function AdminDashboard() {
       </Head>
       <div className="dashboard-wrap">
         <aside className="sidebar">
-          <div className="sidebar-logo">OA <span>Événementiel</span></div>
+          <div className="sidebar-brand">
+            <div className="sidebar-logo">OA <span>Événementiel</span></div>
+            <p className="sidebar-tag">Espace de gestion</p>
+          </div>
           <nav className="sidebar-nav">
             {[
               { key:'demandes',   icon:'fas fa-inbox',        label:'Demandes',   badge:pendingCount,  blink:false },
@@ -395,7 +398,16 @@ export default function AdminDashboard() {
               </button>
             ))}
           </nav>
-          <button className="sidebar-logout" onClick={handleLogout}><i className="fas fa-sign-out-alt" /> Déconnexion</button>
+          <div className="sidebar-footer">
+            <div className="sidebar-user">
+              <div className="sidebar-user-avatar"><i className="fas fa-user" /></div>
+              <div className="sidebar-user-info">
+                <p className="sidebar-user-name">{user?.email || 'Admin'}</p>
+                <p className="sidebar-user-role">Administrateur</p>
+              </div>
+            </div>
+            <button className="sidebar-logout" onClick={handleLogout}><i className="fas fa-sign-out-alt" /> Déconnexion</button>
+          </div>
         </aside>
 
         <main className="admin-main">
@@ -403,13 +415,19 @@ export default function AdminDashboard() {
           {/* DEMANDES */}
           <div className={`tab-content${activeTab==='demandes'?' active':''}`} id="tab-demandes">
             <div className="adm-header">
-              <h1 className="adm-title">Demandes de réservation</h1>
+              <div>
+                <p className="adm-eyebrow">Gestion des demandes</p>
+                <h1 className="adm-title">Demandes de réservation</h1>
+              </div>
               <div className="adm-filters">
-                {['all','pending','confirmed','refused'].map(f => (
-                  <button key={f} className={`filter-btn${resaFilter===f?' active':''}`} onClick={() => setResaFilter(f)}>
-                    {f==='all'?'Toutes':STATUS_LABEL[f]}
-                  </button>
-                ))}
+                {['all','pending','confirmed','refused'].map(f => {
+                  const count = f==='all' ? reservations.length : reservations.filter(r => r.status===f).length
+                  return (
+                    <button key={f} className={`filter-btn${resaFilter===f?' active':''}`} onClick={() => setResaFilter(f)}>
+                      {f==='all'?'Toutes':STATUS_LABEL[f]}<span className="filter-count">{count}</span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
             <div className="mat-search" style={{maxWidth:340,marginBottom:18}}>
@@ -431,7 +449,7 @@ export default function AdminDashboard() {
 
           {/* CALENDRIER */}
           <div className={`tab-content${activeTab==='calendrier'?' active':''}`} id="tab-calendrier">
-            <div className="adm-header"><h1 className="adm-title">Calendrier</h1></div>
+            <div className="adm-header"><div><p className="adm-eyebrow">Planning</p><h1 className="adm-title">Calendrier</h1></div></div>
             <CalNav year={calYear} month={calMonth} view={calView}
               onPrev={() => { if(calView==='year'){setCalYear(y=>y-1)}else{if(calMonth===0){setCalMonth(11);setCalYear(y=>y-1)}else setCalMonth(m=>m-1)} }}
               onNext={() => { if(calView==='year'){setCalYear(y=>y+1)}else{if(calMonth===11){setCalMonth(0);setCalYear(y=>y+1)}else setCalMonth(m=>m+1)} }}
@@ -450,8 +468,11 @@ export default function AdminDashboard() {
           {/* BLOCAGES */}
           <div className={`tab-content${activeTab==='blocages'?' active':''}`} id="tab-blocages">
             <div className="adm-header">
-              <h1 className="adm-title">Blocages</h1>
-              <p className="adm-sub">Cliquez sur un jour pour le bloquer ou gérer ses créneaux.</p>
+              <div>
+                <p className="adm-eyebrow">Disponibilités</p>
+                <h1 className="adm-title">Blocages</h1>
+                <p className="adm-sub">Cliquez sur un jour pour le bloquer ou gérer ses créneaux.</p>
+              </div>
             </div>
             <CalNav year={blocYear} month={blocMonth} view={blocView}
               onPrev={() => { if(blocView==='year'){setBlocYear(y=>y-1)}else{if(blocMonth===0){setBlocMonth(11);setBlocYear(y=>y-1)}else setBlocMonth(m=>m-1)} }}
@@ -471,13 +492,19 @@ export default function AdminDashboard() {
           {/* MESSAGERIE */}
           <div className={`tab-content${activeTab==='messagerie'?' active':''}`} id="tab-messagerie">
             <div className="adm-header">
-              <h1 className="adm-title">Messagerie</h1>
+              <div>
+                <p className="adm-eyebrow">Boîte de réception</p>
+                <h1 className="adm-title">Messagerie</h1>
+              </div>
               <div className="adm-filters">
-                {['all','unread','read'].map(f => (
-                  <button key={f} className={`filter-btn${msgFilter===f?' active':''}`} onClick={() => setMsgFilter(f)}>
-                    {f==='all'?'Tous':f==='unread'?'Non lus':'Lus'}
-                  </button>
-                ))}
+                {['all','unread','read'].map(f => {
+                  const count = f==='all' ? messages.length : f==='unread' ? messages.filter(m=>!m.read).length : messages.filter(m=>m.read).length
+                  return (
+                    <button key={f} className={`filter-btn${msgFilter===f?' active':''}`} onClick={() => setMsgFilter(f)}>
+                      {f==='all'?'Tous':f==='unread'?'Non lus':'Lus'}<span className="filter-count">{count}</span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
             <MsgList messages={messages} filter={msgFilter}
@@ -489,7 +516,10 @@ export default function AdminDashboard() {
           {/* MATÉRIAUX */}
           <div className={`tab-content${activeTab==='materiaux'?' active':''}`} id="tab-materiaux">
             <div className="adm-header">
-              <h1 className="adm-title">Matériel</h1>
+              <div>
+                <p className="adm-eyebrow">Inventaire</p>
+                <h1 className="adm-title">Matériel</h1>
+              </div>
               <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
                 <button className="adm-btn-ghost" onClick={() => setCatModalOpen(true)}><i className="fas fa-folder-plus" style={{marginRight:8}} />Ajouter une catégorie</button>
                 <button className="adm-btn-primary" onClick={openAddMat}><i className="fas fa-plus" style={{marginRight:8}} />Ajouter un article</button>
@@ -553,8 +583,11 @@ export default function AdminDashboard() {
           {/* RÉGLAGES */}
           <div className={`tab-content${activeTab==='reglages'?' active':''}`} id="tab-reglages">
             <div className="adm-header">
-              <h1 className="adm-title">Réglages</h1>
-              <p className="adm-sub">Point de départ et frais de livraison utilisés pour le calcul automatique lors d'une réservation.</p>
+              <div>
+                <p className="adm-eyebrow">Configuration</p>
+                <h1 className="adm-title">Réglages</h1>
+                <p className="adm-sub">Point de départ et frais de livraison utilisés pour le calcul automatique lors d'une réservation.</p>
+              </div>
             </div>
             <div className="mat-form-card" style={{maxWidth:560}}>
               <div className="adm-form-group">
@@ -647,8 +680,6 @@ export default function AdminDashboard() {
                   resa={reservations.find(r => r.id === resaDetail.id)}
                   backDate={resaDetail.backDate}
                   onBack={resaDetail.backDate ? () => { setResaDetail(null); setDayModal({ dateStr: resaDetail.backDate, mode:'calendar', page:0 }) } : null}
-                  onStatus={updateResaStatus}
-                  onDelete={() => deleteResa(resaDetail.id, resaDetail.backDate)}
                 />
               )}
               {dayModal && !resaDetail && dayModal.mode === 'calendar' && (
@@ -760,15 +791,26 @@ function ResaList({ reservations, filter, search, onStatus, onDelete, onContact,
       {filtered.map(r => {
         const name = [r.prenom, r.nom].filter(Boolean).join(' ')
         return (
-          <div key={r.id} className="resa-card">
+          <div key={r.id} className="resa-card" data-status={r.status}>
             <div className="resa-card-head">
-              <div>
-                {r.reference && <span className="resa-card-name" style={{color:'var(--gray)',fontWeight:600}}><i className="fas fa-hashtag" style={{marginRight:6}} />{r.reference}</span>}
+              <div className="resa-card-head-main">
+                {r.reference && (
+                  <div className="resa-card-ref-line">
+                    <span className="resa-card-ref"><i className="fas fa-hashtag" />{r.reference}</span>
+                    <button className="resa-detail-link" onClick={() => onViewPricing(r)}><i className="fas fa-receipt" />Voir le détail</button>
+                  </div>
+                )}
                 {name && <span className="resa-card-name"><i className="fas fa-user" style={{marginRight:6}} />{name}</span>}
                 <span className="resa-card-email"><i className="fas fa-envelope" style={{marginRight:6}} />{r.email}</span>
                 {r.phone && <span className="resa-card-phone"><i className="fas fa-phone" style={{marginRight:6}} />{r.phone}</span>}
               </div>
-              <span className={`status-badge ${STATUS_CLASS[r.status]||''}`}>{STATUS_LABEL[r.status]||r.status}</span>
+              <div className="resa-card-head-side">
+                <span className={`status-badge ${STATUS_CLASS[r.status]||''}`}>{STATUS_LABEL[r.status]||r.status}</span>
+                <div className="resa-icon-actions">
+                  {r.phone && <a className="resa-icon-btn" href={`tel:${r.phone}`} title="Appeler"><i className="fas fa-phone" /></a>}
+                  <button className="resa-icon-btn" onClick={() => onContact(r)} title="Email"><i className="fas fa-envelope" /></button>
+                </div>
+              </div>
             </div>
             <div className="resa-card-body">
               <div className="resa-meta">
@@ -783,12 +825,9 @@ function ResaList({ reservations, filter, search, onStatus, onDelete, onContact,
               <p className="resa-created">Reçue le {new Date(r.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</p>
             </div>
             <div className="resa-card-actions">
-              {r.status!=='confirmed' && <button className="adm-btn-success" onClick={() => onStatus(r.id,'confirmed')}><i className="fas fa-check" style={{marginRight:4}} />Confirmer</button>}
-              {r.status!=='refused' && <button className="adm-btn-danger" onClick={() => onStatus(r.id,'refused')}><i className="fas fa-times" style={{marginRight:4}} />Refuser</button>}
-              <button className="adm-btn-ghost" onClick={() => onViewPricing(r)}><i className="fas fa-receipt" style={{marginRight:4}} />Voir le détail</button>
-              <button className="adm-btn-ghost" onClick={() => onContact(r)}><i className="fas fa-envelope" style={{marginRight:4}} />Email</button>
-              {r.phone && <a className="adm-btn-success" href={`tel:${r.phone}`}><i className="fas fa-phone" style={{marginRight:4}} />Appeler</a>}
-              <button className="adm-btn-delete" onClick={() => onDelete(r.id)}><i className="fas fa-trash" /></button>
+              {r.status!=='confirmed' && <button className="resa-action-btn action-confirm" onClick={() => onStatus(r.id,'confirmed')}><i className="fas fa-check" />Confirmer</button>}
+              {r.status!=='refused' && <button className="resa-action-btn action-refuse" onClick={() => onStatus(r.id,'refused')}><i className="fas fa-times" />Refuser</button>}
+              <button className="resa-action-btn action-delete" onClick={() => onDelete(r.id)}><i className="fas fa-trash" />Supprimer</button>
             </div>
           </div>
         )
@@ -945,7 +984,7 @@ function DayCalModal({ dateStr, page, reservations, blockedDatesMap, blockedHour
           {pageResas.map(r => {
             const rd=getRDates(r); const dateLabel=rd.length<=1?new Date((rd[0]||r.date)+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'long'}):(new Date(rd[0]+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})+' → '+new Date(rd[rd.length-1]+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}))
             return (
-              <div key={r.id} className="day-resa-card day-resa-clickable" onClick={() => onResaClick(r.id)}>
+              <div key={r.id} className="day-resa-card day-resa-clickable" data-status={r.status} onClick={() => onResaClick(r.id)}>
                 <div className="day-resa-head">
                   <span className="day-resa-email"><i className="fas fa-envelope" style={{marginRight:6}} />{r.email}</span>
                   <span className={`status-badge ${STATUS_CLASS[r.status]||''}`}>{STATUS_LABEL[r.status]||r.status}</span>
@@ -1091,15 +1130,13 @@ function PaymentsBlock({ reservationId }) {
   )
 }
 
-function ResaDetail({ resa, backDate, onBack, onStatus, onDelete }) {
+function ResaDetail({ resa, backDate, onBack }) {
   if (!resa) return null
   const rd = getRDates(resa)
   const dateDisplay = rd.length<=1
     ? (() => { const s=new Date((rd[0]||resa.date)+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); return s.charAt(0).toUpperCase()+s.slice(1) })()
     : new Date(rd[0]+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})+' → '+new Date(rd[rd.length-1]+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})+' · '+rd.length+' jour'+(rd.length>1?'s':'')
   const name = [resa.prenom, resa.nom].filter(Boolean).join(' ') || 'Client'
-  const emailBody = `Bonjour ${name},\n\nNous avons bien reçu votre demande de réservation pour le ${dateDisplay}.\n\n[Votre réponse ici]\n\nCordialement,\nL'équipe OA Événementiel`
-  const mailto = `mailto:${resa.email}?subject=${encodeURIComponent('Votre demande de réservation — OA Événementiel')}&body=${encodeURIComponent(emailBody)}`
   const created = new Date(resa.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})
   const hasPricing = resa.materials?.length > 0 || resa.delivery_address || resa.grand_total != null
   return (
@@ -1183,13 +1220,6 @@ function ResaDetail({ resa, backDate, onBack, onStatus, onDelete }) {
       )}
       <PaymentsBlock reservationId={resa.id} />
       {resa.message&&<div className="detail-block"><h4 className="detail-block-title"><i className="fas fa-comment" style={{marginRight:8}} />Message / Créneau</h4><p className="detail-message">{resa.message}</p></div>}
-      <div className="detail-actions">
-        {resa.status!=='confirmed'&&<button className="adm-btn-success" onClick={() => onStatus(resa.id,'confirmed')}><i className="fas fa-check" style={{marginRight:4}} />Confirmer</button>}
-        {resa.status!=='refused'&&<button className="adm-btn-danger" onClick={() => onStatus(resa.id,'refused')}><i className="fas fa-times" style={{marginRight:4}} />Refuser</button>}
-        <a href={mailto} className="adm-btn-ghost"><i className="fas fa-envelope" style={{marginRight:4}} />Répondre par email</a>
-        {resa.phone&&<a href={`tel:${resa.phone}`} className="adm-btn-success"><i className="fas fa-phone" style={{marginRight:4}} />Appeler</a>}
-        <button className="adm-btn-delete" onClick={onDelete}><i className="fas fa-trash" /></button>
-      </div>
     </div>
   )
 }

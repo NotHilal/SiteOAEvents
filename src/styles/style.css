@@ -144,10 +144,12 @@
 
 
 /* ===== SERVICES PAGE ===== */
+/* No background/backdrop-filter here — see the .marble-layer comment
+   below: a per-section overlay + blur washes the marble texture out to a
+   near-flat white on this page specifically, which is the "no marble on
+   Prestations" bug. Border alone gives the section its edge. */
 .services-full-section {
   padding: 120px 0;
-  background: rgba(255, 255, 255, 0.35) !important;
-  backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
 }
 
@@ -227,10 +229,10 @@
 
 
 /* ===== GALLERY PAGE ===== */
+/* Same fix as .services-full-section — no per-section background/blur, so
+   the global .marble-layer wash actually stays visible here too. */
 .gallery-page-section {
   padding: 120px 0;
-  background: rgba(255, 255, 255, 0.35) !important;
-  backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
 }
 
@@ -276,10 +278,9 @@
 
 
 /* ===== CONTACT PAGE ===== */
+/* Same fix as .services-full-section / .gallery-page-section. */
 .contact-section {
   padding: 120px 0;
-  background: rgba(255, 255, 255, 0.35) !important;
-  backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
 }
 
@@ -382,17 +383,18 @@
 
 
 /* ===== MARBLE BACKGROUND ===== */
+/* overflow-x:hidden lives on html ONLY. Setting it on body too (as before)
+   stops the browser from propagating body's overflow to the viewport —
+   html and body then become two independent scrolling boxes, each able to
+   render its own scrollbar, which is what caused a double vertical
+   scrollbar. html alone is enough to clip .marble-layer's intentional
+   24px bleed (see its own comment) horizontally. */
 html {
   overflow-x: hidden;
 }
 body {
   position: relative;
   background-color: #fff !important;
-  /* .marble-layer below is deliberately oversized by 24px on each side
-     (see its own comment) so its tiled edge is never visible — but nothing
-     was clipping that intentional bleed, so it was silently widening the
-     whole document and creating a site-wide horizontal scrollbar. */
-  overflow-x: hidden;
 }
 
 /* Absolutely positioned (not fixed) — it's part of the normal document
@@ -478,6 +480,96 @@ body {
   display: none !important;
 }
 
+
+/* ===== FOOTER =====
+   Redesigned leaner: dropped the old "Prestations" sub-list (all four of
+   its links pointed at the same /services page Navigation already links
+   to — pure duplication) and replaced the Webflow template's dense
+   4-column grid with three simple columns sized for how little content
+   is actually here. */
+.main-footer {
+  padding-top: 56px;
+  margin: 48px 20px 20px;
+  border: 1px solid rgba(0,0,0,.12);
+  box-shadow: inset 0 1px 0 rgba(0,0,0,.03), 0 18px 50px rgba(0,0,0,.05);
+  overflow: visible;
+}
+/* Bracket corners on top of the hairline border — a gallery-label /
+   engraved-plaque treatment instead of a plain box outline. */
+.footer-corner {
+  position: absolute;
+  width: 26px; height: 26px;
+  pointer-events: none;
+}
+.footer-corner-tl { top: 0; left: 0; border-top: 2px solid var(--dark); border-left: 2px solid var(--dark); }
+.footer-corner-tr { top: 0; right: 0; border-top: 2px solid var(--dark); border-right: 2px solid var(--dark); }
+.footer-corner-bl { bottom: 0; left: 0; border-bottom: 2px solid var(--dark); border-left: 2px solid var(--dark); }
+.footer-corner-br { bottom: 0; right: 0; border-bottom: 2px solid var(--dark); border-right: 2px solid var(--dark); }
+.footer-cols {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  column-gap: 40px;
+  row-gap: 32px;
+}
+@media (max-width: 767px) {
+  .footer-cols { grid-template-columns: 1fr; }
+}
+
+.footer-brand-col .footer-logo-link { margin-bottom: 16px; display: inline-block; }
+.footer-brand-col .footer-text {
+  font-size: 14px; line-height: 1.7; color: var(--gray);
+  max-width: 300px; margin-bottom: 18px;
+}
+
+.footer-widget-title {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--dark); margin-bottom: 14px;
+}
+.list-item { margin-bottom: 9px; }
+.list-text-link { font-size: 14px; color: var(--gray); transition: color .2s; }
+.list-text-link:hover { color: var(--dark); }
+.footer-contact-line { font-size: 14px; color: var(--gray); }
+.footer-contact-line i { width: 16px; margin-right: 6px; color: var(--gray); }
+.footer-cta-link { font-weight: 700; color: var(--dark) !important; }
+.footer-cta-link:hover { opacity: .6; }
+
+.social-list { display: flex; gap: 8px; margin-top: 2px; }
+.social-list-item {
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(0,0,0,.15); color: var(--dark); font-size: 13px;
+  transition: all .2s;
+}
+.social-list-item:hover { background: var(--dark); color: #fff; border-color: var(--dark); }
+
+.footer-bottom { margin-top: 36px; }
+.footer-bottom-inner-box {
+  padding-top: 18px; padding-bottom: 18px;
+  border-top: 1px solid rgba(0,0,0,.08);
+}
+.footer-copyright-text { font-size: 12.5px; color: var(--gray); letter-spacing: .2px; }
+.footer-shape { display: none; }
+
+/* ===== À PROPOS (mockup placeholders) ===== */
+.apropos-photo-placeholder {
+  width: 100%;
+  min-height: 380px;
+  border-radius: 20px;
+  border: 1.5px dashed rgba(0,0,0,.2);
+  background: rgba(0,0,0,.02);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--gray);
+}
+.apropos-photo-placeholder i { font-size: 2.2rem; opacity: .35; }
+.apropos-photo-placeholder p { font-size: .9rem; font-weight: 600; margin: 0; }
+
+.apropos-cta-section { padding: 90px 20px 110px; text-align: center; }
+.apropos-cta-title { font-family: 'Montserrat', sans-serif; font-size: clamp(1.8rem, 3vw, 2.4rem); margin-bottom: 12px; color: #000; }
+.apropos-cta-text { color: var(--gray); margin-bottom: 28px; }
 
 /* ===== UTILITIES ===== */
 .text-rose-gold { color: #000000; }

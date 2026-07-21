@@ -774,7 +774,7 @@ export default function Home() {
         </section>
 
         {/* WHY CHOOSE US / STATS SECTION */}
-        <section className="why-choose-us pb-zero">
+        <section id="About-Us" className="why-choose-us pb-zero">
           <div className="why-us-outer">
             <div className="bg funfact-bg-two" style={{ opacity: 0.15, backgroundImage: 'url(https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=800&q=80)', backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
             <div className="w-layout-blockcontainer container-small w-container">

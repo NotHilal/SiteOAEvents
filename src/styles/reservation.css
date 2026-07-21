@@ -15,12 +15,13 @@
 
 .resa-section {
   padding: 28px 0 48px;
-  /* No backdrop-filter here: background is already 88% opaque so blur bought
-     almost nothing visually, and it was one of three nested/stacked blur
-     layers (this + .step-panel + every .form-control) on top of the
-     scrolling marble background — the actual cause of scroll/typing lag on
-     this page. Single blur layer now lives on .step-panel only. */
-  background: rgba(255, 255, 255, 0.88);
+  /* No own background: same fix as .services-full-section /
+     .gallery-page-section / .contact-section — a section-wide wash hides
+     the global .marble-layer texture. Safe to drop here too: the
+     performance issue this section used to work around was blur *stacking*
+     (this + .step-panel + every .form-control each blurring), not opacity,
+     and .form-control/.recap-card/.step-panel all carry their own
+     background already so removing this one doesn't hurt readability. */
   border-bottom: 1px solid var(--border);
 }
 
