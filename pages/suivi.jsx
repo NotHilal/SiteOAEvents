@@ -189,10 +189,19 @@ export default function Suivi() {
                         <span className="success-icon"><i className="fas fa-check-circle" /></span>
                         <h3>Merci !</h3>
                         <p>
-                          {paidJustNow.method === 'card'
-                            ? `Votre versement de ${paidJustNow.firstAmount?.toFixed(2)} € a bien été réglé.`
-                            : `Votre virement de ${paidJustNow.firstAmount?.toFixed(2)} € est noté — nous le confirmerons dès réception.`}
+                          {paidJustNow.count > 1
+                            ? (paidJustNow.method === 'card'
+                                ? `Votre 1er versement de ${paidJustNow.firstAmount?.toFixed(2)} € (sur ${paidJustNow.count}) a bien été réglé.`
+                                : `Votre 1er virement de ${paidJustNow.firstAmount?.toFixed(2)} € (sur ${paidJustNow.count}) est noté — nous le confirmerons dès réception.`)
+                            : (paidJustNow.method === 'card'
+                                ? `Votre paiement de ${paidJustNow.firstAmount?.toFixed(2)} € a bien été réglé en totalité.`
+                                : `Votre virement de ${paidJustNow.firstAmount?.toFixed(2)} € est noté — nous le confirmerons dès réception.`)}
                         </p>
+                        {paidJustNow.count > 1 && (
+                          <p style={{marginTop:6}}>
+                            Il vous reste {paidJustNow.count - 1} versement{paidJustNow.count - 1 > 1 ? 's' : ''} à venir{paidJustNow.method === 'card' ? ', prélevé' + (paidJustNow.count - 1 > 1 ? 's' : '') + ' automatiquement aux échéances prévues' : ''}.
+                          </p>
+                        )}
                       </div>
                     ) : order.fullyPaid ? (
                       <div className="resa-alert" style={{background:'#f0fdf4',color:'#166534',borderColor:'#86efac'}}>

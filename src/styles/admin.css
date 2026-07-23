@@ -144,7 +144,8 @@ a { color:var(--rose-gold); }
 
 .resa-card-head { display:flex; align-items:flex-start; justify-content:space-between; padding:18px 22px 0; gap:16px; }
 .resa-card-head-main { min-width:0; }
-.resa-card-name  { display:block; font-weight:700; font-size:1rem; color:var(--dark); margin-bottom:3px; }
+.resa-name-row { display:flex; align-items:center; gap:10px; margin-bottom:3px; }
+.resa-card-name  { display:block; font-weight:700; font-size:1rem; color:var(--dark); margin-bottom:0; }
 .resa-card-name i { color:var(--rose-gold); margin-right:6px; }
 .resa-card-email { font-weight:600; font-size:.88rem; color:var(--dark-mid); margin-right:14px; }
 .resa-card-email i, .resa-card-phone i { color:var(--rose-gold); margin-right:6px; }
@@ -218,17 +219,28 @@ a { color:var(--rose-gold); }
 .badge-refused::before   { background:var(--danger); }
 
 /* Shown on a reservation card once at least one of its installments has
-   been marked paid — points the admin at Stripe to double-check the charge
-   actually went through rather than trusting the client-visible success
-   message alone. */
+   been marked paid — the pill itself just states what was received; the
+   "vérifier" line + Stripe link sits below/outside it so the pill stays a
+   simple status readout, not a giant clickable block. */
+.resa-payment-block { margin-top:0; display:flex; flex-direction:column; align-items:flex-end; text-align:right; }
 .resa-payment-notice {
-  display:inline-flex; align-items:center; gap:6px; max-width:220px;
-  font-family:'Montserrat',sans-serif; font-weight:600; font-size:.68rem; line-height:1.3;
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:'Montserrat',sans-serif; font-weight:600; font-size:.72rem;
   color:#0f5132; background:#eefaf1; border:1px solid #bfe6cb; border-radius: var(--r-sm);
-  padding:6px 10px; text-decoration:none; text-align:right;
+  padding:6px 10px;
 }
-.resa-payment-notice:hover { background:#dff3e5; }
 .resa-payment-notice i { color:var(--success); }
+.resa-payment-verify {
+  display:flex; align-items:center; gap:8px; margin-top:6px;
+  font-size:.76rem; color:var(--gray);
+}
+.resa-verify-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:'Montserrat',sans-serif; font-weight:700; font-size:.7rem; letter-spacing:.4px;
+  color:#fff; background:var(--dark); border-radius: var(--r-full);
+  padding:5px 12px; text-decoration:none; transition:opacity .18s;
+}
+.resa-verify-btn:hover { opacity:.85; }
 
 @keyframes badge-pulse {
   0%, 100% { opacity:1; transform:scale(1); }

@@ -9,7 +9,7 @@ export default function Document() {
       data-wf-site="686b79afb668ce59a9047b8f"
     >
       <Head>
-        <link rel="icon" type="image/png" href="/LogoOA.png" />
+        <link rel="icon" type="image/png" href="/logo-icon.png" />
         <meta name="description" content="OA Événementiel : organisation de mariages, anniversaires, événements professionnels et location de décoration en Île-de-France." />
         
         {/* Google Fonts */}

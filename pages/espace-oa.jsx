@@ -31,7 +31,7 @@ export default function AdminDashboard() {
   const [loginLoading, setLoginLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('demandes')
   const [reservations, setReservations] = useState([])
-  const [paidReservationIds, setPaidReservationIds] = useState(new Set())
+  const [paymentSummaries, setPaymentSummaries] = useState({})
   const [messages, setMessages] = useState([])
   const [materials, setMaterials] = useState([])
   const [categories, setCategories] = useState([])
@@ -124,18 +124,25 @@ export default function AdminDashboard() {
   }, [user])
 
   async function loadAll() {
-    await Promise.all([loadReservations(), loadPaidPayments(), loadMessages(), loadBlockedData(), loadMaterials(), loadCategories(), loadSettings()])
+    await Promise.all([loadReservations(), loadPaymentSummaries(), loadMessages(), loadBlockedData(), loadMaterials(), loadCategories(), loadSettings()])
   }
   async function loadReservations() {
     const { data } = await supabase.from('reservations').select('*').order('created_at', { ascending: false })
     setReservations(data || [])
   }
-  // Used to show a "paiement reçu" indicator on each reservation card — a
-  // single query for every paid installment rather than one query per
-  // reservation, matched client-side by reservation_id.
-  async function loadPaidPayments() {
-    const { data } = await supabase.from('payments').select('reservation_id').eq('status', 'paid')
-    setPaidReservationIds(new Set((data || []).map(p => p.reservation_id)))
+  // Used to show a "paiement reçu" indicator (montant + N/total versements)
+  // on each reservation card — one query for every installment across every
+  // reservation, grouped client-side, rather than one query per reservation.
+  async function loadPaymentSummaries() {
+    const { data } = await supabase.from('payments').select('reservation_id, amount, status').order('installment_index')
+    const map = {}
+    ;(data || []).forEach(p => {
+      if (!map[p.reservation_id]) map[p.reservation_id] = { total: 0, paidCount: 0, paidAmount: 0 }
+      const s = map[p.reservation_id]
+      s.total += 1
+      if (p.status === 'paid') { s.paidCount += 1; s.paidAmount += p.amount }
+    })
+    setPaymentSummaries(map)
   }
   async function loadMessages() {
     const { data } = await supabase.from('contacts').select('*').order('created_at', { ascending: false })
@@ -484,7 +491,7 @@ export default function AdminDashboard() {
                 </button>
               )}
             </div>
-            <ResaList reservations={reservations} paidReservationIds={paidReservationIds} filter={resaFilter} search={resaSearch} onStatus={updateResaStatus} onDelete={id => deleteResa(id, null)} onContact={r => setContactModal(r)} onViewPricing={r => setResaDetail({ id: r.id, backDate: null })} />
+            <ResaList reservations={reservations} paymentSummaries={paymentSummaries} filter={resaFilter} search={resaSearch} onStatus={updateResaStatus} onDelete={id => deleteResa(id, null)} onContact={r => setContactModal(r)} onViewPricing={r => setResaDetail({ id: r.id, backDate: null })} />
           </div>
 
           {/* CALENDRIER */}
@@ -869,7 +876,7 @@ const STRIPE_DASHBOARD_URL = (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 
   ? 'https://dashboard.stripe.com/payments'
   : 'https://dashboard.stripe.com/test/payments'
 
-function ResaList({ reservations, paidReservationIds, filter, search, onStatus, onDelete, onContact, onViewPricing }) {
+function ResaList({ reservations, paymentSummaries, filter, search, onStatus, onDelete, onContact, onViewPricing }) {
   const byStatus = filter === 'all' ? reservations : reservations.filter(r => r.status === filter)
   const q = (search || '').trim().toLowerCase()
   const filtered = !q ? byStatus : byStatus.filter(r => {
@@ -897,27 +904,34 @@ function ResaList({ reservations, paidReservationIds, filter, search, onStatus, 
                     <button className="resa-detail-link" onClick={() => onViewPricing(r)}><i className="fas fa-receipt" />Voir le détail</button>
                   </div>
                 )}
-                {name && <span className="resa-card-name"><i className="fas fa-user" style={{marginRight:6}} />{name}</span>}
+                <div className="resa-name-row">
+                  {name && <span className="resa-card-name"><i className="fas fa-user" style={{marginRight:6}} />{name}</span>}
+                  <div className="resa-icon-actions">
+                    {r.phone && <a className="resa-icon-btn" href={`tel:${r.phone}`} title="Appeler"><i className="fas fa-phone" /></a>}
+                    <button className="resa-icon-btn" onClick={() => onContact(r)} title="Email"><i className="fas fa-envelope" /></button>
+                  </div>
+                </div>
                 <span className="resa-card-email"><i className="fas fa-envelope" style={{marginRight:6}} />{r.email}</span>
                 {r.phone && <span className="resa-card-phone"><i className="fas fa-phone" style={{marginRight:6}} />{r.phone}</span>}
               </div>
               <div className="resa-card-head-side">
                 <span className={`status-badge ${STATUS_CLASS[r.status]||''}`}>{STATUS_LABEL[r.status]||r.status}</span>
-                {paidReservationIds?.has(r.id) && (
-                  <a
-                    className="resa-payment-notice"
-                    href={STRIPE_DASHBOARD_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Un versement a été marqué payé pour cette réservation — vérifier sur Stripe"
-                  >
-                    <i className="fas fa-bell" /><i className="fas fa-check" /> Tentative de paiement reçu, vérifier sur : Stripe
-                  </a>
-                )}
-                <div className="resa-icon-actions">
-                  {r.phone && <a className="resa-icon-btn" href={`tel:${r.phone}`} title="Appeler"><i className="fas fa-phone" /></a>}
-                  <button className="resa-icon-btn" onClick={() => onContact(r)} title="Email"><i className="fas fa-envelope" /></button>
-                </div>
+                {paymentSummaries?.[r.id]?.paidCount > 0 && (() => {
+                  const s = paymentSummaries[r.id]
+                  return (
+                    <div className="resa-payment-block">
+                      <span className="resa-payment-notice">
+                        <i className="fas fa-bell" /><i className="fas fa-check" /> Paiement de {s.paidAmount.toFixed(2)} € reçu ({s.paidCount}/{s.total})
+                      </span>
+                      <div className="resa-payment-verify">
+                        <span>Cliquer ici pour vérifier :</span>
+                        <a href={STRIPE_DASHBOARD_URL} target="_blank" rel="noopener noreferrer" className="resa-verify-btn">
+                          Stripe <i className="fas fa-arrow-right" />
+                        </a>
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
             <div className="resa-card-body">
