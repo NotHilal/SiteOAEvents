@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "preview": "next start",
-    "pay:run-scheduled": "node scripts/run-scheduled-payments.js"
+    "preview": "next start"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^6.8.0",

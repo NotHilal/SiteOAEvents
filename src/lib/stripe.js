@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import db from './sqlite-db.js';
 
 // Lazy singleton: instantiating Stripe with an empty key throws immediately,
 // which would crash every page (this module gets pulled in by API routes
@@ -22,44 +23,97 @@ export function isStripeConfigured() {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+function getSetting(key, fallback) {
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+  return row && row.value != null && row.value !== '' ? row.value : fallback;
+}
+function getSettingNumber(key, fallback) {
+  const parsed = parseFloat(getSetting(key, String(fallback)));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+// The last installment of any plan always falls 3 days before the event —
+// close enough to the date that materials/logistics are locked in, but with
+// enough buffer to actually process the charge. Not admin-configurable: it's
+// a fixed anchor the automatic schedule below is built around.
+const LAST_INSTALLMENT_DAYS_BEFORE_EVENT = 3;
+
+// Per-tier config for the 2x/3x/4x installment plans — only the minimum
+// order amount is admin-configurable (Espace OA > Réglages > Paiement en
+// plusieurs fois); the schedule's dates are computed automatically (see
+// computeInstallmentSchedule) rather than set per-tier.
+export function getTierConfig(tier) {
+  if (tier === 2) return { minAmount: getSettingNumber('installment_2x_min_amount', 0) };
+  if (tier === 3) return { minAmount: getSettingNumber('installment_3x_min_amount', 0) };
+  if (tier === 4) return { minAmount: getSettingNumber('installment_min_total_4x', 300) };
+  return null;
+}
+
+// Used by /api/payments/methods (and re-checked server-side in
+// create-intent.js) to decide whether a given 2x/3x/4x plan should be
+// offered for a specific reservation, and if not, why — rather than
+// showing a choice that create-intent would then reject. A tier is eligible
+// only if there's enough room between now and (event - 3 days) to space out
+// its installments at least a day apart.
+export function getInstallmentTierEligibility(tier, grandTotal, eventDateStr, now = new Date()) {
+  if (tier === 1) return { eligible: true, reason: null };
+  const cfg = getTierConfig(tier);
+  if (!cfg) return { eligible: false, reason: 'Option indisponible.' };
+  const n = tier;
+  const eventDate = new Date(eventDateStr + 'T00:00:00');
+  const lastDueDate = addDays(eventDate, -LAST_INSTALLMENT_DAYS_BEFORE_EVENT);
+  const daysWindow = Math.floor((lastDueDate.getTime() - now.getTime()) / DAY_MS);
+  if (daysWindow < n - 1) {
+    const minDaysNeeded = LAST_INSTALLMENT_DAYS_BEFORE_EVENT + (n - 1);
+    return { eligible: false, reason: `Disponible uniquement si l'événement a lieu dans plus de ${minDaysNeeded} jours.` };
+  }
+  const total = parseFloat(grandTotal) || 0;
+  if (cfg.minAmount > 0 && total < cfg.minAmount) {
+    return { eligible: false, reason: `Disponible à partir de ${cfg.minAmount} € de commande.` };
+  }
+  return { eligible: true, reason: null };
+}
+
+export function getAllInstallmentTiers(grandTotal, eventDateStr, now = new Date()) {
+  return {
+    2: getInstallmentTierEligibility(2, grandTotal, eventDateStr, now),
+    3: getInstallmentTierEligibility(3, grandTotal, eventDateStr, now),
+    4: getInstallmentTierEligibility(4, grandTotal, eventDateStr, now),
+  };
+}
+
 /**
- * Splits `grandTotal` into an installment schedule paid before `eventDateStr`
- * (the first day of the reservation). The schedule adapts to how much lead
- * time there is:
- *  - < 10 days out  : single full payment now (no time for installments)
- *  - < 37 days out  : 2 installments — 50% now, 50% at J-7
- *  - otherwise      : 3 installments — 30% now, 40% at J-30, 30% at J-7
+ * Builds the installment schedule for an explicitly-chosen plan: `tier` is
+ * 1 (full payment) or 2/3/4 (that many equal installments). The dates are
+ * computed automatically rather than read from fixed offsets: the first
+ * installment is always due today, the last is always due
+ * LAST_INSTALLMENT_DAYS_BEFORE_EVENT days before the event, and any
+ * installments in between are spread evenly across that window — so the
+ * schedule adapts on its own to however much time is actually left, instead
+ * of assuming a lead time long enough for admin-set fixed offsets to fit.
  * The last installment absorbs any rounding remainder so the sum always
  * equals grandTotal exactly.
  */
-export function computeInstallmentSchedule(grandTotal, eventDateStr, now = new Date()) {
+export function computeInstallmentSchedule(grandTotal, eventDateStr, tier = 1, now = new Date()) {
   const total = Math.round((parseFloat(grandTotal) || 0) * 100) / 100;
-  const eventDate = new Date(eventDateStr + 'T00:00:00');
-  const daysUntilEvent = Math.floor((eventDate.getTime() - now.getTime()) / DAY_MS);
   const today = fmtDate(now);
+  const n = [2, 3, 4].includes(tier) ? tier : 1;
 
-  let parts; // [{ ratio, label, dueDate }]
-  if (daysUntilEvent < 10) {
-    parts = [{ ratio: 1, label: 'Paiement intégral', dueDate: today }];
-  } else if (daysUntilEvent < 37) {
-    parts = [
-      { ratio: 0.5, label: 'Acompte (50%)', dueDate: today },
-      { ratio: 0.5, label: 'Solde (50%) — J-7', dueDate: fmtDate(addDays(eventDate, -7)) },
-    ];
+  let parts;
+  if (n === 1) {
+    parts = [{ label: 'Paiement intégral', dueDate: today }];
   } else {
-    parts = [
-      { ratio: 0.3, label: 'Acompte (30%)', dueDate: today },
-      { ratio: 0.4, label: '2ème versement (40%) — J-30', dueDate: fmtDate(addDays(eventDate, -30)) },
-      { ratio: 0.3, label: 'Solde (30%) — J-7', dueDate: fmtDate(addDays(eventDate, -7)) },
-    ];
+    const eventDate = new Date(eventDateStr + 'T00:00:00');
+    const lastDueDate = addDays(eventDate, -LAST_INSTALLMENT_DAYS_BEFORE_EVENT);
+    const daysWindow = Math.max(0, Math.floor((lastDueDate.getTime() - now.getTime()) / DAY_MS));
+    parts = Array.from({ length: n }, (_, i) => ({
+      label: i === 0 ? `Acompte (1/${n})` : i === n - 1 ? `Solde (1/${n})` : `${i + 1}ème versement (1/${n})`,
+      dueDate: fmtDate(addDays(now, Math.round((i * daysWindow) / (n - 1)))),
+    }));
   }
 
-  const schedule = parts.map((p, i) => ({
-    index: i,
-    label: p.label,
-    dueDate: p.dueDate,
-    amount: Math.round(total * p.ratio * 100) / 100,
-  }));
+  const base = Math.round((total / parts.length) * 100) / 100;
+  const schedule = parts.map((p, i) => ({ index: i, label: p.label, dueDate: p.dueDate, amount: base }));
   const roundedSum = schedule.reduce((s, p) => s + p.amount, 0);
   const remainder = Math.round((total - roundedSum) * 100) / 100;
   if (remainder !== 0) {
@@ -93,44 +147,72 @@ export async function getOrCreateCustomer(reservation) {
 }
 
 /**
- * Creates the PaymentIntent for the first installment. `setup_future_usage`
- * saves the payment method on the customer so later installments can be
- * charged off-session by the scheduled script without the client re-entering
- * their card.
+ * Creates the PaymentIntent for the first installment. Card-only on purpose
+ * — `payment_method_types: ['card']` instead of `automatic_payment_methods`
+ * means Stripe's PaymentElement renders straight to the card form with no
+ * method switcher (no Klarna/Bancontact/Amazon Pay/Satispay/etc. tabs).
+ * `setup_future_usage` saves the card on the customer so later installments
+ * can be scheduled with Stripe once this first one succeeds (see
+ * createInstallmentAutoCharge) — only requested when there actually IS a
+ * later installment to charge.
  */
-export async function createFirstInstallmentIntent({ customerId, amount, reservationId, installmentId }) {
+export async function createFirstInstallmentIntent({ customerId, amount, reservationId, installmentId, needsFutureUsage }) {
   const stripe = getStripe();
   return stripe.paymentIntents.create({
     amount: Math.round(amount * 100),
     currency: 'eur',
     customer: customerId,
-    setup_future_usage: 'off_session',
-    automatic_payment_methods: { enabled: true },
+    ...(needsFutureUsage ? { setup_future_usage: 'off_session' } : {}),
+    payment_method_types: ['card'],
     metadata: { reservation_id: reservationId, installment_id: installmentId },
   });
 }
 
-/**
- * Charges a later installment off-session using the payment method saved
- * from the first payment. Called by scripts/run-scheduled-payments.js, never
- * directly by the client.
- */
-export async function chargeInstallmentOffSession({ customerId, amount, reservationId, installmentId }) {
+// A Subscription Schedule phase needs a real Product (inline product data
+// isn't accepted there, unlike on a plain PaymentIntent/invoice item) — one
+// generic product is created once and reused for every installment charge,
+// its id cached in `settings` so we don't create a duplicate on every call.
+async function getInstallmentProductId() {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'stripe_installment_product_id'").get();
+  if (row?.value) return row.value;
   const stripe = getStripe();
-  const customer = await stripe.customers.retrieve(customerId);
-  const paymentMethodId = typeof customer.invoice_settings?.default_payment_method === 'string'
-    ? customer.invoice_settings.default_payment_method
-    : customer.invoice_settings?.default_payment_method?.id;
-  if (!paymentMethodId) {
-    throw new Error(`Aucun moyen de paiement enregistré pour le client ${customerId} (réservation ${reservationId}).`);
-  }
-  return stripe.paymentIntents.create({
-    amount: Math.round(amount * 100),
-    currency: 'eur',
+  const product = await stripe.products.create({ name: 'Versement de réservation' });
+  db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('stripe_installment_product_id', ?, ?)")
+    .run(product.id, new Date().toISOString());
+  return product.id;
+}
+
+/**
+ * Schedules a single future installment to be charged automatically, on its
+ * due date, against the customer's saved default payment method — via a
+ * dedicated Stripe Subscription Schedule with a single one-off phase
+ * (`iterations: 1`, `end_behavior: 'cancel'`).
+ *
+ * Each installment gets its OWN independent schedule rather than sharing one
+ * schedule with a phase per installment: Stripe's dunning/cancellation
+ * behavior (a subscription can go `unpaid` after exhausted retries, after
+ * which Stripe stops actively collecting its future invoices) is scoped to
+ * a single subscription. Keeping every installment on its own schedule means
+ * one failing/exhausted installment can never silently stop the others from
+ * being collected.
+ */
+export async function createInstallmentAutoCharge({ customerId, amount, dueDateStr, reservationId, installmentId }) {
+  const stripe = getStripe();
+  const productId = await getInstallmentProductId();
+  const dueTs = Math.floor(new Date(dueDateStr + 'T09:00:00').getTime() / 1000);
+  const nowTs = Math.floor(Date.now() / 1000);
+  return stripe.subscriptionSchedules.create({
     customer: customerId,
-    payment_method: paymentMethodId,
-    off_session: true,
-    confirm: true,
+    start_date: dueTs > nowTs ? dueTs : 'now',
+    end_behavior: 'cancel',
+    phases: [{
+      items: [{
+        price_data: { currency: 'eur', product: productId, unit_amount: Math.round(amount * 100), recurring: { interval: 'month' } },
+        quantity: 1,
+      }],
+      iterations: 1,
+      collection_method: 'charge_automatically',
+    }],
     metadata: { reservation_id: reservationId, installment_id: installmentId },
   });
 }

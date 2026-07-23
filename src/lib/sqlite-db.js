@@ -121,6 +121,13 @@ ensureColumn('reservations', 'notified_status', 'TEXT'); // last status an email
 // computed from, even if the base fee/per-km rate in Réglages changes afterwards.
 ensureColumn('reservations', 'quote_base_fee', 'REAL');
 ensureColumn('reservations', 'quote_per_km', 'REAL');
+// Later installments are charged automatically by a dedicated Stripe
+// Subscription Schedule per installment (one schedule = one future charge),
+// rather than a single schedule with one phase per installment — so a
+// payment failure on one installment can never affect the others (see
+// src/lib/stripe.js createInstallmentAutoCharge). This column correlates an
+// incoming invoice.paid/invoice.payment_failed webhook back to its row.
+ensureColumn('payments', 'stripe_subscription_id', 'TEXT');
 
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_payments_reservation ON payments(reservation_id);
@@ -206,6 +213,9 @@ const settingDefaults = [
   ['bank_holder', ''],
   ['bank_iban', ''],
   ['bank_bic', ''],
+  ['installment_min_total_4x', '300'],
+  ['installment_2x_min_amount', '0'],
+  ['installment_3x_min_amount', '0'],
 ];
 const seedSettingsTx = db.transaction(() => {
   for (const [key, value] of settingDefaults) {

@@ -8,8 +8,8 @@ const EVENT_LABELS = {
   'evenement-pro':'Événement professionnel',
   'location-deco':'Location décoration','autre':'Autre'
 }
-const STATUS_LABEL = { pending:'En attente', confirmed:'Confirmée', refused:'Refusée' }
-const STATUS_CLASS = { pending:'badge-pending', confirmed:'badge-confirmed', refused:'badge-refused' }
+const STATUS_LABEL = { pending:'En attente', awaiting_payment:'En attente de paiement', confirmed:'Confirmée', terminee:'Terminée', refused:'Refusée' }
+const STATUS_CLASS = { pending:'badge-pending', awaiting_payment:'badge-awaiting', confirmed:'badge-confirmed', terminee:'badge-terminee', refused:'badge-refused' }
 
 function fmtDate(ds) {
   return new Date(ds + 'T12:00:00').toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' })
@@ -95,8 +95,8 @@ export default function Suivi() {
   return (
     <>
       <Head>
-        <title>Suivre ma demande — OA Événementiel</title>
-        <meta name="description" content="Suivez le statut de votre demande de réservation et réglez votre paiement en ligne." />
+        <title>Suivi de commande — OA Événementiel</title>
+        <meta name="description" content="Consultez les informations de votre demande ou commande d'événement : statut, détails et paiement en ligne." />
       </Head>
 
       <div className="site-wrap">
@@ -106,11 +106,11 @@ export default function Suivi() {
         >
           <div className="page-header-overlay" />
           <div className="container">
-            <h1>Suivre ma demande</h1>
+            <h1>Suivi de commande</h1>
             <nav aria-label="breadcrumb">
               <ol className="breadcrumb justify-content-center">
                 <li className="breadcrumb-item"><Link href="/">Accueil</Link></li>
-                <li className="breadcrumb-item active">Suivi</li>
+                <li className="breadcrumb-item active">Suivi de commande</li>
               </ol>
             </nav>
           </div>
@@ -199,7 +199,7 @@ export default function Suivi() {
                   </div>
                 )}
 
-                {order.status === 'confirmed' && (
+                {order.status === 'awaiting_payment' && (
                   <div className="mt-4">
                     {paidJustNow ? (
                       <div className="resa-success-msg" style={{padding:'32px 16px'}}>
@@ -213,7 +213,7 @@ export default function Suivi() {
                       </div>
                     ) : order.fullyPaid ? (
                       <div className="resa-alert" style={{background:'#f0fdf4',color:'#166534',borderColor:'#86efac'}}>
-                        <i className="fas fa-check-circle" />Réservation entièrement réglée — à très bientôt !
+                        <i className="fas fa-check-circle" />Tous les versements ont été reçus — votre réservation sera définitivement confirmée sous peu.
                       </div>
                     ) : (
                       <>
@@ -221,6 +221,18 @@ export default function Suivi() {
                         <PaymentFlow reservationId={order.id} grandTotal={order.grand_total || 0} onComplete={handlePaymentComplete} />
                       </>
                     )}
+                  </div>
+                )}
+
+                {order.status === 'confirmed' && (
+                  <div className="resa-alert mt-4" style={{background:'#f0fdf4',color:'#166534',borderColor:'#86efac'}}>
+                    <i className="fas fa-check-circle" />Réservation définitivement confirmée et réglée — à très bientôt !
+                  </div>
+                )}
+
+                {order.status === 'terminee' && (
+                  <div className="resa-alert mt-4" style={{background:'#f0fdf4',color:'#166534',borderColor:'#86efac'}}>
+                    <i className="fas fa-check-circle" />Événement terminé — merci d'avoir fait confiance à OA Événementiel !
                   </div>
                 )}
               </div>

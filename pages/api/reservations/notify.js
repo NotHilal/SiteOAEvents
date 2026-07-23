@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import db from '../../../src/lib/sqlite-db.js';
-import { sendEmail, confirmationEmail, refusalEmail } from '../../../src/lib/email.js';
+import { sendEmail, awaitingPaymentEmail, confirmationEmail, refusalEmail } from '../../../src/lib/email.js';
 
 // Same HMAC bearer-token check duplicated across pages/api/db.js,
 // pages/api/upload.js — kept consistent with that existing pattern.
@@ -49,8 +49,8 @@ export default async function handler(req, res) {
     if (!resa) {
       return res.status(404).json({ message: 'Réservation introuvable' });
     }
-    if (!['confirmed', 'refused'].includes(resa.status)) {
-      return res.status(400).json({ message: 'Cette réservation n\'est ni confirmée ni refusée.' });
+    if (!['awaiting_payment', 'confirmed', 'refused'].includes(resa.status)) {
+      return res.status(400).json({ message: 'Cette réservation n\'est ni acceptée, ni confirmée, ni refusée.' });
     }
     if (resa.notified_status === resa.status) {
       return res.status(200).json({ data: { skipped: true } });
@@ -58,11 +58,12 @@ export default async function handler(req, res) {
 
     const name = [resa.prenom, resa.nom].filter(Boolean).join(' ') || 'Client';
     let subject, html;
-    if (resa.status === 'confirmed') {
+    if (resa.status === 'awaiting_payment' || resa.status === 'confirmed') {
       const dates = (() => { try { return JSON.parse(resa.dates) || [resa.date]; } catch { return [resa.date]; } })();
       const dateLabel = new Date(dates[0] + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
       const trackingUrl = `${getSiteUrl(req)}/suivi`;
-      ({ subject, html } = confirmationEmail({ name, reference: resa.reference, dateLabel, grandTotal: resa.grand_total || 0, trackingUrl }));
+      const emailFn = resa.status === 'awaiting_payment' ? awaitingPaymentEmail : confirmationEmail;
+      ({ subject, html } = emailFn({ name, reference: resa.reference, dateLabel, grandTotal: resa.grand_total || 0, trackingUrl }));
     } else {
       ({ subject, html } = refusalEmail({ name, reference: resa.reference }));
     }

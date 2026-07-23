@@ -58,18 +58,38 @@ function trackingButton(trackingUrl) {
   return `<a href="${trackingUrl}" style="display:inline-block;margin-top:20px;background:#c9a15a;color:#ffffff;text-decoration:none;font-weight:bold;letter-spacing:1px;text-transform:uppercase;font-size:13px;padding:14px 28px;border-radius:2px;">Suivre ma demande</a>`;
 }
 
-export function confirmationEmail({ name, reference, dateLabel, grandTotal, trackingUrl }) {
-  const subject = `Votre réservation ${reference} est confirmée — OA Événementiel`;
+// Sent when the admin accepts a request (pending → awaiting_payment) — the
+// reservation isn't definitively confirmed yet, payment is what finalizes it.
+export function awaitingPaymentEmail({ name, reference, dateLabel, grandTotal, trackingUrl }) {
+  const subject = `Votre demande ${reference} est acceptée — réglez pour confirmer — OA Événementiel`;
   const html = layout(subject, `
     <p>Bonjour ${escapeHtml(name)},</p>
-    <p>Bonne nouvelle — votre demande de réservation pour le <strong>${escapeHtml(dateLabel)}</strong> est <strong style="color:#2e7d32;">confirmée</strong> !</p>
+    <p>Bonne nouvelle — votre demande de réservation pour le <strong>${escapeHtml(dateLabel)}</strong> est <strong style="color:#2e7d32;">acceptée</strong> !</p>
     <p style="background:#f7f6f4;border-radius:4px;padding:16px 20px;margin:20px 0;">
       Numéro de commande : <strong style="letter-spacing:1px;">${escapeHtml(reference)}</strong><br/>
       Montant total estimé : <strong>${grandTotal.toFixed(2)} €</strong>
     </p>
-    <p>Pour finaliser votre réservation, il ne reste plus qu'à régler votre premier versement. Cliquez ci-dessous et entrez votre numéro de commande avec votre email pour accéder aux moyens de paiement.</p>
+    <p>Pour confirmer définitivement votre réservation, il ne reste plus qu'à régler votre premier versement. Cliquez ci-dessous et entrez votre numéro de commande avec votre email pour accéder aux moyens de paiement.</p>
     ${trackingButton(trackingUrl)}
     <p style="margin-top:24px;color:#666;font-size:13px;">Conservez ce numéro de commande — il vous permettra de suivre votre demande et de régler vos versements à tout moment.</p>
+  `);
+  return { subject, html };
+}
+
+// Sent once the admin marks the reservation as confirmed after checking that
+// payment has been received — the reservation is now definitively locked in.
+export function confirmationEmail({ name, reference, dateLabel, grandTotal, trackingUrl }) {
+  const subject = `Votre réservation ${reference} est définitivement confirmée — OA Événementiel`;
+  const html = layout(subject, `
+    <p>Bonjour ${escapeHtml(name)},</p>
+    <p>Votre paiement a bien été reçu — votre réservation pour le <strong>${escapeHtml(dateLabel)}</strong> est désormais <strong style="color:#2e7d32;">définitivement confirmée</strong> !</p>
+    <p style="background:#f7f6f4;border-radius:4px;padding:16px 20px;margin:20px 0;">
+      Numéro de commande : <strong style="letter-spacing:1px;">${escapeHtml(reference)}</strong><br/>
+      Montant total estimé : <strong>${grandTotal.toFixed(2)} €</strong>
+    </p>
+    <p>Vous pouvez à tout moment suivre votre commande et consulter vos versements ci-dessous.</p>
+    ${trackingButton(trackingUrl)}
+    <p style="margin-top:24px;color:#666;font-size:13px;">Conservez ce numéro de commande — il vous permettra de suivre votre demande à tout moment.</p>
   `);
   return { subject, html };
 }

@@ -1,5 +1,6 @@
 # ───── Fichiers sensibles ─────
 js/supabase-config.js
+.env
 
 # ───── Système ─────
 .DS_Store

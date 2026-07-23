@@ -29,7 +29,7 @@ Construit en entier mais **désactivé tant que les clés ne sont pas renseigné
 - **DB** : nouvelle table `payments` (échéancier par réservation), colonnes `stripe_customer_id`/`payment_method` sur `reservations`.
 - **`src/lib/stripe.js`** : client Stripe paresseux (ne crashe pas si pas de clé), `computeInstallmentSchedule()` (1 versement si événement < 10 jours, 2 si < 37 jours, 3 sinon).
 - **Routes API** : `pages/api/payments/create-intent.js` (carte), `init-virement.js` (virement, sans Stripe), `webhook.js` (confirmation fiable des paiements via signature Stripe), `methods.js` (dit publiquement si carte/virement sont actifs, sans exposer l'IBAN).
-- **`scripts/run-scheduled-payments.js`** : prélève les échéances suivantes (carte uniquement) — à exécuter une fois par jour via le Planificateur de tâches Windows (pas de cron intégré, site auto-hébergé). Commande : `npm run pay:run-scheduled`.
+- Les échéances suivantes (carte) sont prélevées automatiquement par Stripe lui-même via un Subscription Schedule par versement (voir `createInstallmentAutoCharge` dans `src/lib/stripe.js`) — plus de script à planifier manuellement.
 - **Formulaire réservation** (`pages/reservation.jsx`) : après l'envoi de la demande, si un moyen de paiement est configuré, choix carte (Stripe Elements) ou virement (RIB + échéancier affichés), sinon comportement inchangé.
 - **Admin** (`pages/espace-oa.jsx`) : bloc "Paiements" dans le détail de chaque réservation, avec bouton "Marquer reçu" pour confirmer manuellement un virement.
 

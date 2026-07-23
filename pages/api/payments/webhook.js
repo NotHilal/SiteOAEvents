@@ -1,5 +1,5 @@
 import db from '../../../src/lib/sqlite-db.js';
-import { getStripe, isStripeConfigured } from '../../../src/lib/stripe.js';
+import { getStripe, isStripeConfigured, createInstallmentAutoCharge } from '../../../src/lib/stripe.js';
 
 // Stripe requires the exact raw request body to verify the signature —
 // Next's default JSON body parser would re-serialize it and break that,
@@ -48,13 +48,32 @@ export default async function handler(req, res) {
         db.prepare("UPDATE payments SET status = 'paid', paid_at = ? WHERE id = ?").run(new Date().toISOString(), payment.id);
 
         // First installment: remember the payment method as the customer's
-        // default so later installments can be charged off-session without
-        // the client re-entering their card (see chargeInstallmentOffSession
-        // in src/lib/stripe.js).
+        // default (needed for the auto-charges below to work off-session),
+        // then schedule every remaining installment as its own independent
+        // Stripe Subscription Schedule — only done now, once we know the
+        // card actually works and is saved, never before.
         if (payment.installment_index === 0 && intent.customer && intent.payment_method) {
           await stripe.customers.update(intent.customer, {
             invoice_settings: { default_payment_method: intent.payment_method },
           });
+
+          const remaining = db.prepare(
+            "SELECT * FROM payments WHERE reservation_id = ? AND installment_index > 0 AND method = 'card' AND status = 'pending'"
+          ).all(payment.reservation_id);
+          for (const installment of remaining) {
+            try {
+              const schedule = await createInstallmentAutoCharge({
+                customerId: intent.customer,
+                amount: installment.amount,
+                dueDateStr: installment.due_date,
+                reservationId: payment.reservation_id,
+                installmentId: installment.id,
+              });
+              db.prepare('UPDATE payments SET stripe_subscription_id = ? WHERE id = ?').run(schedule.id, installment.id);
+            } catch (err) {
+              console.error('[Stripe Webhook] Échec de la planification du versement', installment.id, err.message);
+            }
+          }
         }
       }
     } else if (event.type === 'payment_intent.payment_failed') {
@@ -63,6 +82,27 @@ export default async function handler(req, res) {
       if (payment) {
         const message = intent.last_payment_error?.message || 'Paiement refusé';
         db.prepare("UPDATE payments SET status = 'failed', failure_message = ? WHERE id = ?").run(message, payment.id);
+      }
+    } else if (event.type === 'invoice.paid' || event.type === 'invoice.payment_failed') {
+      // Later installments are billed through a per-installment Subscription
+      // Schedule (see createInstallmentAutoCharge) — the invoice only
+      // carries the underlying subscription id, so we look up that
+      // subscription's `.schedule` (the id we stored on the payment row)
+      // to find which installment this is.
+      const invoice = event.data.object;
+      if (invoice.subscription) {
+        const sub = await stripe.subscriptions.retrieve(invoice.subscription);
+        const payment = sub.schedule
+          ? db.prepare('SELECT * FROM payments WHERE stripe_subscription_id = ?').get(sub.schedule)
+          : null;
+        if (payment) {
+          if (event.type === 'invoice.paid') {
+            db.prepare("UPDATE payments SET status = 'paid', paid_at = ? WHERE id = ?").run(new Date().toISOString(), payment.id);
+          } else {
+            const message = invoice.last_finalization_error?.message || 'Prélèvement automatique refusé';
+            db.prepare("UPDATE payments SET status = 'failed', failure_message = ? WHERE id = ?").run(message, payment.id);
+          }
+        }
       }
     }
     return res.status(200).json({ received: true });

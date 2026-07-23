@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import db from '../../../src/lib/sqlite-db.js';
-import { computeInstallmentSchedule } from '../../../src/lib/stripe.js';
+import { computeInstallmentSchedule, getInstallmentTierEligibility } from '../../../src/lib/stripe.js';
 
 // Public on purpose, same trust model as create-intent.js: the reservation's
 // unguessable id is the capability. No Stripe involved at all here — this
@@ -14,8 +14,13 @@ export default async function handler(req, res) {
   }
 
   const { reservationId } = req.body || {};
+  const plan = req.body?.plan;
   if (!reservationId) {
     return res.status(400).json({ message: 'reservationId manquant' });
+  }
+  const tier = plan == null ? 1 : parseInt(plan, 10);
+  if (![1, 2, 3, 4].includes(tier)) {
+    return res.status(400).json({ message: 'plan invalide' });
   }
 
   try {
@@ -36,11 +41,25 @@ export default async function handler(req, res) {
 
     let existing = db.prepare('SELECT * FROM payments WHERE reservation_id = ? ORDER BY installment_index').all(reservationId);
 
+    if (existing.length > 0 && !existing.some(p => p.status === 'paid')) {
+      // Nothing has actually been received yet, so nothing is locked in —
+      // discard the stale schedule and rebuild it below against the current
+      // Réglages settings / the plan the client just picked. Otherwise an
+      // admin changing the installment settings (or the client picking a
+      // different plan) would silently keep seeing the old schedule.
+      db.prepare('DELETE FROM payments WHERE reservation_id = ?').run(reservationId);
+      existing = [];
+    }
+
     if (existing.length === 0) {
       const eventDate = (() => {
         try { return (JSON.parse(reservation.dates) || [])[0] || reservation.date; } catch { return reservation.date; }
       })();
-      const schedule = computeInstallmentSchedule(reservation.grand_total, eventDate);
+      const eligibility = getInstallmentTierEligibility(tier, reservation.grand_total, eventDate, new Date());
+      if (!eligibility.eligible) {
+        return res.status(400).json({ message: eligibility.reason || 'Ce plan de paiement n\'est pas disponible pour cette réservation.' });
+      }
+      const schedule = computeInstallmentSchedule(reservation.grand_total, eventDate, tier, new Date());
       const now = new Date().toISOString();
       const insertPayment = db.prepare(`
         INSERT INTO payments (id, reservation_id, method, amount, installment_index, installment_label, due_date, status, created_at)
