@@ -31,6 +31,7 @@ export default function AdminDashboard() {
   const [loginLoading, setLoginLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('demandes')
   const [reservations, setReservations] = useState([])
+  const [paidReservationIds, setPaidReservationIds] = useState(new Set())
   const [messages, setMessages] = useState([])
   const [materials, setMaterials] = useState([])
   const [categories, setCategories] = useState([])
@@ -123,11 +124,18 @@ export default function AdminDashboard() {
   }, [user])
 
   async function loadAll() {
-    await Promise.all([loadReservations(), loadMessages(), loadBlockedData(), loadMaterials(), loadCategories(), loadSettings()])
+    await Promise.all([loadReservations(), loadPaidPayments(), loadMessages(), loadBlockedData(), loadMaterials(), loadCategories(), loadSettings()])
   }
   async function loadReservations() {
     const { data } = await supabase.from('reservations').select('*').order('created_at', { ascending: false })
     setReservations(data || [])
+  }
+  // Used to show a "paiement reçu" indicator on each reservation card — a
+  // single query for every paid installment rather than one query per
+  // reservation, matched client-side by reservation_id.
+  async function loadPaidPayments() {
+    const { data } = await supabase.from('payments').select('reservation_id').eq('status', 'paid')
+    setPaidReservationIds(new Set((data || []).map(p => p.reservation_id)))
   }
   async function loadMessages() {
     const { data } = await supabase.from('contacts').select('*').order('created_at', { ascending: false })
@@ -476,7 +484,7 @@ export default function AdminDashboard() {
                 </button>
               )}
             </div>
-            <ResaList reservations={reservations} filter={resaFilter} search={resaSearch} onStatus={updateResaStatus} onDelete={id => deleteResa(id, null)} onContact={r => setContactModal(r)} onViewPricing={r => setResaDetail({ id: r.id, backDate: null })} />
+            <ResaList reservations={reservations} paidReservationIds={paidReservationIds} filter={resaFilter} search={resaSearch} onStatus={updateResaStatus} onDelete={id => deleteResa(id, null)} onContact={r => setContactModal(r)} onViewPricing={r => setResaDetail({ id: r.id, backDate: null })} />
           </div>
 
           {/* CALENDRIER */}
@@ -854,7 +862,14 @@ function InstallmentTierFields({ title, minAmount, onMinAmount, last }) {
   )
 }
 
-function ResaList({ reservations, filter, search, onStatus, onDelete, onContact, onViewPricing }) {
+// pk_test_... vs pk_live_... tells us which Stripe dashboard (test or live
+// mode) the "vérifier sur Stripe" link on a paid reservation should open —
+// the two modes have entirely separate payment lists.
+const STRIPE_DASHBOARD_URL = (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '').startsWith('pk_live_')
+  ? 'https://dashboard.stripe.com/payments'
+  : 'https://dashboard.stripe.com/test/payments'
+
+function ResaList({ reservations, paidReservationIds, filter, search, onStatus, onDelete, onContact, onViewPricing }) {
   const byStatus = filter === 'all' ? reservations : reservations.filter(r => r.status === filter)
   const q = (search || '').trim().toLowerCase()
   const filtered = !q ? byStatus : byStatus.filter(r => {
@@ -888,6 +903,17 @@ function ResaList({ reservations, filter, search, onStatus, onDelete, onContact,
               </div>
               <div className="resa-card-head-side">
                 <span className={`status-badge ${STATUS_CLASS[r.status]||''}`}>{STATUS_LABEL[r.status]||r.status}</span>
+                {paidReservationIds?.has(r.id) && (
+                  <a
+                    className="resa-payment-notice"
+                    href={STRIPE_DASHBOARD_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Un versement a été marqué payé pour cette réservation — vérifier sur Stripe"
+                  >
+                    <i className="fas fa-bell" /><i className="fas fa-check" /> Tentative de paiement reçu, vérifier sur : Stripe
+                  </a>
+                )}
                 <div className="resa-icon-actions">
                   {r.phone && <a className="resa-icon-btn" href={`tel:${r.phone}`} title="Appeler"><i className="fas fa-phone" /></a>}
                   <button className="resa-icon-btn" onClick={() => onContact(r)} title="Email"><i className="fas fa-envelope" /></button>

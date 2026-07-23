@@ -24,19 +24,6 @@ export default function Suivi() {
   const [paidJustNow, setPaidJustNow] = useState(null)
   const [showPriceDetail, setShowPriceDetail] = useState(false)
 
-  // Re-run the last successful lookup on reload so the visitor doesn't have
-  // to retype their email + numéro de commande every time — sessionStorage
-  // (not localStorage) so it clears itself once the tab is closed.
-  useEffect(() => {
-    const savedEmail = sessionStorage.getItem('oa_suivi_email')
-    const savedRef = sessionStorage.getItem('oa_suivi_reference')
-    if (savedEmail && savedRef) {
-      setEmail(savedEmail)
-      setReference(savedRef)
-      runSearch(savedEmail, savedRef)
-    }
-  }, [])
-
   // Freeze the page behind the modal — see the same lock in espace-oa.jsx.
   // html carries an explicit overflow-x (style.css) which stops body's
   // overflow from propagating to the viewport, so html needs locking too.
@@ -59,12 +46,8 @@ export default function Suivi() {
       const result = await res.json()
       if (!res.ok) throw new Error(result.message || 'Erreur de recherche')
       setOrder(result.data)
-      sessionStorage.setItem('oa_suivi_email', emailVal.trim())
-      sessionStorage.setItem('oa_suivi_reference', referenceVal.trim())
     } catch (err) {
       setError(err.message)
-      sessionStorage.removeItem('oa_suivi_email')
-      sessionStorage.removeItem('oa_suivi_reference')
     } finally {
       setLoading(false)
     }
@@ -78,8 +61,8 @@ export default function Suivi() {
   function handleNewSearch() {
     setOrder(null)
     setPaidJustNow(null)
-    sessionStorage.removeItem('oa_suivi_email')
-    sessionStorage.removeItem('oa_suivi_reference')
+    setEmail('')
+    setReference('')
   }
 
   function handlePaymentComplete(summary) {

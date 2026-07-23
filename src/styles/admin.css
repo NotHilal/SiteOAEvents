@@ -217,6 +217,19 @@ a { color:var(--rose-gold); }
 .badge-refused   { background:#fdf1f1; color:#842029; border-color:#f3c6c8; }
 .badge-refused::before   { background:var(--danger); }
 
+/* Shown on a reservation card once at least one of its installments has
+   been marked paid — points the admin at Stripe to double-check the charge
+   actually went through rather than trusting the client-visible success
+   message alone. */
+.resa-payment-notice {
+  display:inline-flex; align-items:center; gap:6px; max-width:220px;
+  font-family:'Montserrat',sans-serif; font-weight:600; font-size:.68rem; line-height:1.3;
+  color:#0f5132; background:#eefaf1; border:1px solid #bfe6cb; border-radius: var(--r-sm);
+  padding:6px 10px; text-decoration:none; text-align:right;
+}
+.resa-payment-notice:hover { background:#dff3e5; }
+.resa-payment-notice i { color:var(--success); }
+
 @keyframes badge-pulse {
   0%, 100% { opacity:1; transform:scale(1); }
   50%       { opacity:.6; transform:scale(1.15); }
