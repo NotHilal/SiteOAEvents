@@ -142,6 +142,19 @@
   transform: none;
 }
 
+/* Outline variant of .theme-button (Webflow, furnish.css) — used for the
+   "Espace OA" header link so it doesn't compete with the solid "Réserver"
+   CTA next to it. */
+.theme-button-outline {
+  background-color: transparent;
+  color: var(--dark);
+  border: 1px solid var(--dark);
+}
+.theme-button-outline:hover {
+  background-color: var(--dark);
+  color: var(--light, #fff);
+}
+
 
 /* ===== SERVICES PAGE ===== */
 /* No background/backdrop-filter here — see the .marble-layer comment

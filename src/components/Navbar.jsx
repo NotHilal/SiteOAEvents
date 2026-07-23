@@ -78,6 +78,14 @@ export default function Navbar() {
           
           <div className="header-btn-box">
             <div className="header-btn">
+              <Link href="/espace-oa" className="theme-button theme-button-outline w-inline-block">
+                <div className="theme-button-content">
+                  <div className="theme-button-text">Espace OA</div>
+                  <div className="theme-button-hover-text">Espace OA</div>
+                </div>
+              </Link>
+            </div>
+            <div className="header-btn">
               <Link
                 href="/reservation"
                 data-wf--primary-button--variant="base"
@@ -168,11 +176,20 @@ export default function Navbar() {
           </Link>
           
           <Link
+            href="/espace-oa"
+            className="theme-button theme-button-outline w-inline-block"
+            style={{ marginTop: '20px', width: '100%', textAlign: 'center' }}
+          >
+            <div className="theme-button-content" style={{ justifyContent: 'center' }}>
+              <div className="theme-button-text">Espace OA</div>
+            </div>
+          </Link>
+          <Link
             href="/reservation"
             data-wf--primary-button--variant="base"
             data-w-id="08c8af99-e448-a937-dcfa-7ee6c8bdc474"
             className="theme-button w-inline-block"
-            style={{ marginTop: '20px', width: '100%', textAlign: 'center' }}
+            style={{ marginTop: '10px', width: '100%', textAlign: 'center' }}
           >
             <div className="theme-button-content" style={{ justifyContent: 'center' }}>
               <div className="theme-button-text">Réserver</div>
