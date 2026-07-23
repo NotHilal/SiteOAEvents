@@ -11,11 +11,11 @@ import { isStripeConfigured, getAllInstallmentTiers } from '../../../src/lib/str
 // for that specific reservation, based on its event date and total — so the
 // client can grey out any tier it doesn't qualify for yet, with an
 // explanation, instead of offering a choice create-intent would reject.
-export default function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'bank_iban'").get();
+  const row = await db.prepare("SELECT value FROM settings WHERE key = 'bank_iban'").get();
   const data = {
     card: isStripeConfigured(),
     virement: !!(row && row.value),
@@ -23,12 +23,12 @@ export default function handler(req, res) {
 
   const { reservationId } = req.query;
   if (reservationId) {
-    const reservation = db.prepare('SELECT dates, date, grand_total FROM reservations WHERE id = ?').get(reservationId);
+    const reservation = await db.prepare('SELECT dates, date, grand_total FROM reservations WHERE id = ?').get(reservationId);
     if (reservation) {
       const eventDate = (() => {
         try { return (JSON.parse(reservation.dates) || [])[0] || reservation.date; } catch { return reservation.date; }
       })();
-      data.installmentTiers = getAllInstallmentTiers(reservation.grand_total, eventDate);
+      data.installmentTiers = await getAllInstallmentTiers(reservation.grand_total, eventDate);
     }
   }
 

@@ -10,14 +10,14 @@ export default function Navbar() {
       <div className="w-layout-blockcontainer container w-container">
         <div className="header-main-box">
           <Link href="/" className={`header-logo-link w-inline-block ${isHome ? 'w--current' : ''}`}>
-            {/* Remplacer "/LogoOA.png" par "/logo_template.avif" pour utiliser le logo du template */}
             <img
               loading="lazy"
-              src="/LogoOA.png"
-              alt="OA Événementiel Logo"
+              src="/logo-icon.png"
+              alt=""
               className="header-logo"
-              style={{ width: '130px', height: '35px', objectFit: 'contain' }}
+              style={{ width: 'auto', height: '44px', objectFit: 'contain' }}
             />
+            <span className="header-logo-text">OA <em>Événementiel</em></span>
           </Link>
           <div className="header-menu-box">
             <Link
@@ -109,14 +109,14 @@ export default function Navbar() {
       <div className="mobile-menu">
         <div className="mobile-logo-box">
           <Link href="/" className={`header-logo-link w-inline-block ${isHome ? 'w--current' : ''}`}>
-            {/* Remplacer "/LogoOA.png" par "/logo_template.avif" pour utiliser le logo du template */}
             <img
               loading="lazy"
-              src="/LogoOA.png"
-              alt="OA Événementiel Logo"
+              src="/logo-icon.png"
+              alt=""
               className="header-logo"
-              style={{ width: '110px', height: '30px', objectFit: 'contain' }}
+              style={{ width: 'auto', height: '36px', objectFit: 'contain' }}
             />
+            <span className="header-logo-text">OA <em>Événementiel</em></span>
           </Link>
           <img
             data-w-id="c6458aca-98af-15a7-c01c-17afce9b98cf"

@@ -58,7 +58,7 @@ class QueryBuilder {
   async getRequestHeaders() {
     const headers = { 'Content-Type': 'application/json' };
     if (typeof window !== 'undefined') {
-      const session = localStorage.getItem('oa_session');
+      const session = sessionStorage.getItem('oa_session');
       if (session) {
         try {
           const parsed = JSON.parse(session);
@@ -155,7 +155,7 @@ export const supabase = {
   auth: {
     async getSession() {
       if (typeof window === 'undefined') return { data: { session: null }, error: null };
-      const sessionStr = localStorage.getItem('oa_session');
+      const sessionStr = sessionStorage.getItem('oa_session');
       if (!sessionStr) return { data: { session: null }, error: null };
       try {
         const session = JSON.parse(sessionStr);
@@ -166,7 +166,7 @@ export const supabase = {
         const [payloadStr] = session.access_token.split('.');
         const payload = JSON.parse(atob(payloadStr));
         if (Date.now() > payload.exp) {
-          localStorage.removeItem('oa_session');
+          sessionStorage.removeItem('oa_session');
           return { data: { session: null }, error: null };
         }
         return { data: { session }, error: null };
@@ -205,14 +205,14 @@ export const supabase = {
       }
 
       const data = await response.json();
-      localStorage.setItem('oa_session', JSON.stringify(data.session));
+      sessionStorage.setItem('oa_session', JSON.stringify(data.session));
       authListeners.forEach(listener => listener('SIGNED_IN', data.session));
 
       return { data, error: null };
     },
 
     async signOut() {
-      localStorage.removeItem('oa_session');
+      sessionStorage.removeItem('oa_session');
       authListeners.forEach(listener => listener('SIGNED_OUT', null));
       return { error: null };
     }
@@ -227,7 +227,7 @@ export const supabase = {
           formData.append('path', filePath);
 
           const headers = {};
-          const sessionStr = localStorage.getItem('oa_session');
+          const sessionStr = sessionStorage.getItem('oa_session');
           if (sessionStr) {
             try {
               const parsed = JSON.parse(sessionStr);
@@ -262,7 +262,7 @@ export const supabase = {
 
         async remove(paths) {
           const headers = { 'Content-Type': 'application/json' };
-          const sessionStr = localStorage.getItem('oa_session');
+          const sessionStr = sessionStorage.getItem('oa_session');
           if (sessionStr) {
             try {
               const parsed = JSON.parse(sessionStr);

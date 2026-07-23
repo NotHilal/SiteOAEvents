@@ -5,7 +5,7 @@ import db from '../../src/lib/sqlite-db.js';
 // combinations) is already hard to guess, but pairing it with the email
 // means a stranger can't browse other people's bookings even if they
 // happened to guess a valid reference.
-export default function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
@@ -16,7 +16,7 @@ export default function handler(req, res) {
   }
 
   try {
-    const resa = db.prepare(`
+    const resa = await db.prepare(`
       SELECT * FROM reservations
       WHERE lower(email) = lower(?) AND upper(reference) = upper(?)
     `).get(email.trim(), reference.trim());
@@ -32,7 +32,7 @@ export default function handler(req, res) {
     try { dates = JSON.parse(resa.dates) || []; } catch {}
     try { materials = JSON.parse(resa.materials) || []; } catch {}
 
-    const payments = db.prepare('SELECT installment_index, installment_label, due_date, amount, status FROM payments WHERE reservation_id = ? ORDER BY installment_index').all(resa.id);
+    const payments = await db.prepare('SELECT installment_index, installment_label, due_date, amount, status FROM payments WHERE reservation_id = ? ORDER BY installment_index').all(resa.id);
     const fullyPaid = payments.length > 0 && payments.every(p => p.status === 'paid');
 
     return res.status(200).json({

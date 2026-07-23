@@ -45,7 +45,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const resa = db.prepare('SELECT * FROM reservations WHERE id = ?').get(reservationId);
+    const resa = await db.prepare('SELECT * FROM reservations WHERE id = ?').get(reservationId);
     if (!resa) {
       return res.status(404).json({ message: 'Réservation introuvable' });
     }
@@ -69,7 +69,7 @@ export default async function handler(req, res) {
     }
 
     await sendEmail({ to: resa.email, subject, html });
-    db.prepare('UPDATE reservations SET notified_status = ? WHERE id = ?').run(resa.status, resa.id);
+    await db.prepare('UPDATE reservations SET notified_status = ? WHERE id = ?').run(resa.status, resa.id);
 
     return res.status(200).json({ data: { sent: true } });
   } catch (error) {

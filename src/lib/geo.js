@@ -11,8 +11,8 @@ const USER_AGENT = 'OA-Evenementiel-Website/1.0 (contact@oa-evenementiel.fr)';
 // clean "72 Rue Victor Basch 92120 Montrouge" form people actually expect.
 const BAN_URL = 'https://api-adresse.data.gouv.fr/search/';
 
-function getSetting(key, fallback) {
-  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+async function getSetting(key, fallback) {
+  const row = await db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
   return row && row.value != null ? row.value : fallback;
 }
 
@@ -41,7 +41,7 @@ async function getDrivingDistanceKm(origin, dest) {
 }
 
 async function getDepotCoords() {
-  const address = getSetting('depot_address', '72 rue Victor Basch, 92120 Montrouge, France');
+  const address = await getSetting('depot_address', '72 rue Victor Basch, 92120 Montrouge, France');
   if (depotCoordsCache.has(address)) return depotCoordsCache.get(address);
   const coords = await geocodeAddress(address);
   depotCoordsCache.set(address, coords);
@@ -66,8 +66,8 @@ export async function computeDeliveryQuote(destinationAddress) {
     geocodeAddress(destinationAddress),
   ]);
   const { distanceKm, durationMin } = await getDrivingDistanceKm(depot, dest);
-  const baseFee = parseFloat(getSetting('delivery_base_fee', '15'));
-  const perKm = parseFloat(getSetting('delivery_per_km', '1.2'));
+  const baseFee = parseFloat(await getSetting('delivery_base_fee', '15'));
+  const perKm = parseFloat(await getSetting('delivery_per_km', '1.2'));
   const fee = Math.round((baseFee + perKm * distanceKm) * 100) / 100;
   return {
     distanceKm: Math.round(distanceKm * 10) / 10,

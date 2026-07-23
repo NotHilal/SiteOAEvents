@@ -20,6 +20,27 @@
   --footer-bg  : #000000;
 }
 
+/* ===== HEADER LOGO ===== */
+/* Wordmark written as real text next to the icon instead of baked into the
+   logo image — the image's own tagline text became illegible once the
+   image was shrunk to navbar height, real text stays crisp at any size. */
+.header-logo-link {
+  align-items: center;
+  margin-left: -10px;
+}
+.header-logo-text {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: .02em;
+  color: var(--dark);
+  white-space: nowrap;
+}
+.header-logo-text em {
+  font-style: normal;
+  font-weight: 400;
+}
+
 /* ===== PRELOADER (Utilisé par Loader.jsx) ===== */
 #overlayer {
   width: 100%; height: 100%;

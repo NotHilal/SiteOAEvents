@@ -23,12 +23,12 @@ export function isStripeConfigured() {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function getSetting(key, fallback) {
-  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+async function getSetting(key, fallback) {
+  const row = await db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
   return row && row.value != null && row.value !== '' ? row.value : fallback;
 }
-function getSettingNumber(key, fallback) {
-  const parsed = parseFloat(getSetting(key, String(fallback)));
+async function getSettingNumber(key, fallback) {
+  const parsed = parseFloat(await getSetting(key, String(fallback)));
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
@@ -42,10 +42,10 @@ const LAST_INSTALLMENT_DAYS_BEFORE_EVENT = 3;
 // order amount is admin-configurable (Espace OA > Réglages > Paiement en
 // plusieurs fois); the schedule's dates are computed automatically (see
 // computeInstallmentSchedule) rather than set per-tier.
-export function getTierConfig(tier) {
-  if (tier === 2) return { minAmount: getSettingNumber('installment_2x_min_amount', 0) };
-  if (tier === 3) return { minAmount: getSettingNumber('installment_3x_min_amount', 0) };
-  if (tier === 4) return { minAmount: getSettingNumber('installment_min_total_4x', 300) };
+export async function getTierConfig(tier) {
+  if (tier === 2) return { minAmount: await getSettingNumber('installment_2x_min_amount', 0) };
+  if (tier === 3) return { minAmount: await getSettingNumber('installment_3x_min_amount', 0) };
+  if (tier === 4) return { minAmount: await getSettingNumber('installment_min_total_4x', 300) };
   return null;
 }
 
@@ -55,9 +55,9 @@ export function getTierConfig(tier) {
 // showing a choice that create-intent would then reject. A tier is eligible
 // only if there's enough room between now and (event - 3 days) to space out
 // its installments at least a day apart.
-export function getInstallmentTierEligibility(tier, grandTotal, eventDateStr, now = new Date()) {
+export async function getInstallmentTierEligibility(tier, grandTotal, eventDateStr, now = new Date()) {
   if (tier === 1) return { eligible: true, reason: null };
-  const cfg = getTierConfig(tier);
+  const cfg = await getTierConfig(tier);
   if (!cfg) return { eligible: false, reason: 'Option indisponible.' };
   const n = tier;
   const eventDate = new Date(eventDateStr + 'T00:00:00');
@@ -74,12 +74,13 @@ export function getInstallmentTierEligibility(tier, grandTotal, eventDateStr, no
   return { eligible: true, reason: null };
 }
 
-export function getAllInstallmentTiers(grandTotal, eventDateStr, now = new Date()) {
-  return {
-    2: getInstallmentTierEligibility(2, grandTotal, eventDateStr, now),
-    3: getInstallmentTierEligibility(3, grandTotal, eventDateStr, now),
-    4: getInstallmentTierEligibility(4, grandTotal, eventDateStr, now),
-  };
+export async function getAllInstallmentTiers(grandTotal, eventDateStr, now = new Date()) {
+  const [t2, t3, t4] = await Promise.all([
+    getInstallmentTierEligibility(2, grandTotal, eventDateStr, now),
+    getInstallmentTierEligibility(3, grandTotal, eventDateStr, now),
+    getInstallmentTierEligibility(4, grandTotal, eventDateStr, now),
+  ]);
+  return { 2: t2, 3: t3, 4: t4 };
 }
 
 /**
@@ -173,11 +174,11 @@ export async function createFirstInstallmentIntent({ customerId, amount, reserva
 // generic product is created once and reused for every installment charge,
 // its id cached in `settings` so we don't create a duplicate on every call.
 async function getInstallmentProductId() {
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'stripe_installment_product_id'").get();
+  const row = await db.prepare("SELECT value FROM settings WHERE key = 'stripe_installment_product_id'").get();
   if (row?.value) return row.value;
   const stripe = getStripe();
   const product = await stripe.products.create({ name: 'Versement de réservation' });
-  db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('stripe_installment_product_id', ?, ?)")
+  await db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('stripe_installment_product_id', ?, ?)")
     .run(product.id, new Date().toISOString());
   return product.id;
 }

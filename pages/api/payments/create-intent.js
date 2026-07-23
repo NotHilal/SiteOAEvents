@@ -26,7 +26,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const reservation = db.prepare('SELECT * FROM reservations WHERE id = ?').get(reservationId);
+    const reservation = await db.prepare('SELECT * FROM reservations WHERE id = ?').get(reservationId);
     if (!reservation) {
       return res.status(404).json({ message: 'Réservation introuvable' });
     }
@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       phone: reservation.phone || undefined,
     };
 
-    const existing = db.prepare('SELECT * FROM payments WHERE reservation_id = ? ORDER BY installment_index').all(reservationId);
+    const existing = await db.prepare('SELECT * FROM payments WHERE reservation_id = ? ORDER BY installment_index').all(reservationId);
 
     if (existing.length > 0 && existing.some(p => p.status === 'paid')) {
       // At least one installment has already been charged — the schedule is
@@ -85,7 +85,7 @@ export default async function handler(req, res) {
           try { await stripe.subscriptionSchedules.cancel(p.stripe_subscription_id); } catch {}
         }
       }
-      db.prepare('DELETE FROM payments WHERE reservation_id = ?').run(reservationId);
+      await db.prepare('DELETE FROM payments WHERE reservation_id = ?').run(reservationId);
     }
 
     const eventDate = (() => {
@@ -95,7 +95,7 @@ export default async function handler(req, res) {
     // Re-validate server-side — the client only sees eligibility as of when
     // it last loaded /api/payments/methods, which could be stale (or simply
     // bypassed) by the time this request arrives.
-    const eligibility = getInstallmentTierEligibility(tier, reservation.grand_total, eventDate, new Date());
+    const eligibility = await getInstallmentTierEligibility(tier, reservation.grand_total, eventDate, new Date());
     if (!eligibility.eligible) {
       return res.status(400).json({ message: eligibility.reason || 'Ce plan de paiement n\'est pas disponible pour cette réservation.' });
     }
@@ -104,7 +104,7 @@ export default async function handler(req, res) {
 
     const customerId = await getOrCreateCustomer(reservation);
     if (!reservation.stripe_customer_id) {
-      db.prepare('UPDATE reservations SET stripe_customer_id = ?, payment_method = ? WHERE id = ?').run(customerId, 'card', reservationId);
+      await db.prepare('UPDATE reservations SET stripe_customer_id = ?, payment_method = ? WHERE id = ?').run(customerId, 'card', reservationId);
     }
 
     const now = new Date().toISOString();
@@ -113,12 +113,13 @@ export default async function handler(req, res) {
       VALUES (?, ?, 'card', ?, ?, ?, ?, 'pending', ?)
     `);
     const paymentIds = schedule.map(() => crypto.randomUUID());
-    const transaction = db.transaction(() => {
-      schedule.forEach((installment, i) => {
-        insertPayment.run(paymentIds[i], reservationId, installment.amount, installment.index, installment.label, installment.dueDate, now);
-      });
+    const transaction = db.transaction(async () => {
+      for (let i = 0; i < schedule.length; i++) {
+        const installment = schedule[i];
+        await insertPayment.run(paymentIds[i], reservationId, installment.amount, installment.index, installment.label, installment.dueDate, now);
+      }
     });
-    transaction();
+    await transaction();
 
     const firstIntent = await createFirstInstallmentIntent({
       customerId,
@@ -127,7 +128,7 @@ export default async function handler(req, res) {
       installmentId: paymentIds[0],
       needsFutureUsage: schedule.length > 1,
     });
-    db.prepare('UPDATE payments SET stripe_payment_intent_id = ? WHERE id = ?').run(firstIntent.id, paymentIds[0]);
+    await db.prepare('UPDATE payments SET stripe_payment_intent_id = ? WHERE id = ?').run(firstIntent.id, paymentIds[0]);
 
     return res.status(200).json({
       data: {

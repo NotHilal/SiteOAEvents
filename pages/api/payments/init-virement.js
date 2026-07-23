@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const reservation = db.prepare('SELECT * FROM reservations WHERE id = ?').get(reservationId);
+    const reservation = await db.prepare('SELECT * FROM reservations WHERE id = ?').get(reservationId);
     if (!reservation) {
       return res.status(404).json({ message: 'Réservation introuvable' });
     }
@@ -32,14 +32,14 @@ export default async function handler(req, res) {
       return res.status(400).json({ message: 'Aucun montant à payer pour cette réservation' });
     }
 
-    const bankRows = db.prepare("SELECT key, value FROM settings WHERE key IN ('bank_holder','bank_iban','bank_bic')").all();
+    const bankRows = await db.prepare("SELECT key, value FROM settings WHERE key IN ('bank_holder','bank_iban','bank_bic')").all();
     const bank = {};
     bankRows.forEach(r => { bank[r.key] = r.value; });
     if (!bank.bank_iban) {
       return res.status(503).json({ message: "Le virement bancaire n'est pas encore configuré (IBAN manquant dans Réglages)." });
     }
 
-    let existing = db.prepare('SELECT * FROM payments WHERE reservation_id = ? ORDER BY installment_index').all(reservationId);
+    let existing = await db.prepare('SELECT * FROM payments WHERE reservation_id = ? ORDER BY installment_index').all(reservationId);
 
     if (existing.length > 0 && !existing.some(p => p.status === 'paid')) {
       // Nothing has actually been received yet, so nothing is locked in —
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
       // Réglages settings / the plan the client just picked. Otherwise an
       // admin changing the installment settings (or the client picking a
       // different plan) would silently keep seeing the old schedule.
-      db.prepare('DELETE FROM payments WHERE reservation_id = ?').run(reservationId);
+      await db.prepare('DELETE FROM payments WHERE reservation_id = ?').run(reservationId);
       existing = [];
     }
 
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
       const eventDate = (() => {
         try { return (JSON.parse(reservation.dates) || [])[0] || reservation.date; } catch { return reservation.date; }
       })();
-      const eligibility = getInstallmentTierEligibility(tier, reservation.grand_total, eventDate, new Date());
+      const eligibility = await getInstallmentTierEligibility(tier, reservation.grand_total, eventDate, new Date());
       if (!eligibility.eligible) {
         return res.status(400).json({ message: eligibility.reason || 'Ce plan de paiement n\'est pas disponible pour cette réservation.' });
       }
@@ -65,14 +65,14 @@ export default async function handler(req, res) {
         INSERT INTO payments (id, reservation_id, method, amount, installment_index, installment_label, due_date, status, created_at)
         VALUES (?, ?, 'virement', ?, ?, ?, ?, 'pending', ?)
       `);
-      const transaction = db.transaction(() => {
-        schedule.forEach((installment) => {
-          insertPayment.run(crypto.randomUUID(), reservationId, installment.amount, installment.index, installment.label, installment.dueDate, now);
-        });
+      const transaction = db.transaction(async () => {
+        for (const installment of schedule) {
+          await insertPayment.run(crypto.randomUUID(), reservationId, installment.amount, installment.index, installment.label, installment.dueDate, now);
+        }
       });
-      transaction();
-      db.prepare("UPDATE reservations SET payment_method = 'virement' WHERE id = ?").run(reservationId);
-      existing = db.prepare('SELECT * FROM payments WHERE reservation_id = ? ORDER BY installment_index').all(reservationId);
+      await transaction();
+      await db.prepare("UPDATE reservations SET payment_method = 'virement' WHERE id = ?").run(reservationId);
+      existing = await db.prepare('SELECT * FROM payments WHERE reservation_id = ? ORDER BY installment_index').all(reservationId);
     }
 
     return res.status(200).json({

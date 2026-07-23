@@ -9,10 +9,10 @@
     "preview": "next start"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.4",
     "@stripe/react-stripe-js": "^6.8.0",
     "@stripe/stripe-js": "^9.10.0",
     "aos": "^2.3.4",
-    "better-sqlite3": "^12.11.1",
     "formidable": "^3.5.4",
     "next": "^16.2.10",
     "react": "^18.3.1",

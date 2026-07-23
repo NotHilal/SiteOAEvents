@@ -74,7 +74,7 @@ function serializeRow(table, data) {
 const ALLOWED_TABLES = ['materials', 'reservations', 'blocked_dates', 'blocked_hours', 'contacts', 'categories', 'settings', 'payments'];
 const isValidColumn = (col) => /^[a-zA-Z0-9_]+$/.test(col);
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   const { table, select, filters: filtersStr, order: orderStr, limit, action } = req.query;
 
   if (!table) {
@@ -159,7 +159,7 @@ export default function handler(req, res) {
         }
       }
 
-      const rows = db.prepare(sql).all(...params);
+      const rows = await db.prepare(sql).all(...params);
       const data = rows.map(row => deserializeRow(table, row));
       return res.status(200).json({ data });
     }
@@ -174,7 +174,7 @@ export default function handler(req, res) {
       const items = isArray ? payload : [payload];
       const insertedItems = [];
 
-      const transaction = db.transaction(() => {
+      const transaction = db.transaction(async () => {
         for (let item of items) {
           const isUpsert = item.__upsert === true;
           if (isUpsert) {
@@ -185,28 +185,28 @@ export default function handler(req, res) {
           const created_at = item.created_at || new Date().toISOString();
           const extra = {};
           if (table === 'reservations' && !item.reference) {
-            extra.reference = generateReservationReference();
+            extra.reference = await generateReservationReference();
           }
           const record = serializeRow(table, { ...item, ...extra, id, created_at });
 
           const keys = Object.keys(record);
           const validKeys = keys.filter(isValidColumn);
-          
+
           const columns = validKeys.join(', ');
           const placeholders = validKeys.map(() => '?').join(', ');
-          
+
           let insertSql = `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`;
           if (isUpsert || table === 'blocked_dates') {
             insertSql = `INSERT OR REPLACE INTO ${table} (${columns}) VALUES (${placeholders})`;
           }
-          
+
           const values = validKeys.map(k => record[k]);
-          db.prepare(insertSql).run(...values);
+          await db.prepare(insertSql).run(...values);
           insertedItems.push(deserializeRow(table, record));
         }
       });
 
-      transaction();
+      await transaction();
       return res.status(200).json({ data: isArray ? insertedItems : insertedItems[0] });
     }
 
@@ -254,7 +254,7 @@ export default function handler(req, res) {
         sql += ` WHERE ${whereClauses.join(' AND ')}`;
       }
 
-      db.prepare(sql).run(...params);
+      await db.prepare(sql).run(...params);
 
       // Query and return updated data
       let selectSql = `SELECT * FROM ${table}`;
@@ -276,7 +276,7 @@ export default function handler(req, res) {
         }
       }
 
-      const updatedRows = db.prepare(selectSql).all(...selectParams);
+      const updatedRows = await db.prepare(selectSql).all(...selectParams);
       const updatedData = updatedRows.map(row => deserializeRow(table, row));
 
       return res.status(200).json({ data: updatedData });
@@ -312,7 +312,7 @@ export default function handler(req, res) {
         sql += ` WHERE ${whereClauses.join(' AND ')}`;
       }
 
-      const info = db.prepare(sql).run(...params);
+      const info = await db.prepare(sql).run(...params);
       return res.status(200).json({ data: { deleted: info.changes } });
     }
 

@@ -43,7 +43,7 @@ a { color:var(--rose-gold); }
   border-radius:var(--r-lg) var(--r-lg) 0 0;
   background:linear-gradient(90deg, var(--rose-gold), #e8cfa0, rgba(201,161,90,.15));
 }
-.login-logo { font-family:'Montserrat', sans-serif; font-size:1.5rem; font-weight:700; color:var(--dark); margin-bottom:22px; }
+.login-logo { display:inline-block; font-family:'Montserrat', sans-serif; font-size:1.5rem; font-weight:700; color:var(--dark); margin-bottom:22px; }
 .login-logo span { color:var(--rose-gold); }
 .login-title { font-family:'Montserrat', sans-serif; font-weight:300; font-size:1.7rem; margin-bottom:6px; letter-spacing:-.01em; }
 .login-sub  { color:var(--gray); font-size:.86rem; margin-bottom:34px; }
@@ -76,7 +76,7 @@ a { color:var(--rose-gold); }
 .sidebar { width:250px; background:var(--sidebar-bg); display:flex; flex-direction:column; flex-shrink:0; position:sticky; top:0; height:100vh; overflow-y:auto; }
 
 .sidebar-brand { padding:28px 24px 20px; border-bottom:1px solid rgba(255,255,255,.08); }
-.sidebar-logo { font-family:'Montserrat', sans-serif; font-size:1.1rem; font-weight:700; color:#fff; }
+.sidebar-logo { display:inline-block; font-family:'Montserrat', sans-serif; font-size:1.1rem; font-weight:700; color:#fff; }
 .sidebar-logo span { color:var(--rose-gold); }
 .sidebar-tag { color:rgba(255,255,255,.38); margin:5px 0 0; }
 

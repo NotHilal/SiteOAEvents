@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import Head from 'next/head'
+import Link from 'next/link'
 import { supabase } from '../src/lib/supabase.js'
 
 const HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
@@ -381,7 +382,7 @@ export default function AdminDashboard() {
       </Head>
       <div className="login-wrap">
         <div className="login-card">
-          <div className="login-logo">OA <span>Événementiel</span></div>
+          <Link href="/" className="login-logo">OA <span>Événementiel</span></Link>
           <h2 className="login-title">Espace de gestion</h2>
           <p className="login-sub">Accès réservé à l'administrateur</p>
           {loginError && <div className="login-error">{loginError}</div>}
@@ -411,7 +412,7 @@ export default function AdminDashboard() {
       <div className="dashboard-wrap">
         <aside className="sidebar">
           <div className="sidebar-brand">
-            <div className="sidebar-logo">OA <span>Événementiel</span></div>
+            <Link href="/" className="sidebar-logo">OA <span>Événementiel</span></Link>
             <p className="sidebar-tag">Espace de gestion</p>
           </div>
           <nav className="sidebar-nav">
