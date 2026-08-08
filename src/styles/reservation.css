@@ -1050,6 +1050,20 @@
 .qty-btn:hover { background: var(--rose-gold); color: #fff; }
 .qty-val { font-family:'Raleway',sans-serif; font-weight:700; font-size:.82rem; min-width:16px; text-align:center; color:var(--dark); }
 
+/* /catalogue's "not yet selected" state — the wizard's own material step
+   uses a checkbox (dates are already known there, so selecting = renting),
+   but the catalogue is browsed before any date is picked, so an explicit
+   "Ajouter" reads clearer than a checkbox for "put this in my selection". */
+.mat-add-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1.5px solid var(--rose-gold); background: transparent; color: var(--rose-gold);
+  border-radius: var(--r-full, 999px); padding: 6px 14px;
+  font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: .68rem;
+  letter-spacing: .6px; text-transform: uppercase; cursor: pointer;
+  transition: background .18s, color .18s;
+}
+.mat-add-btn:hover { background: var(--rose-gold); color: #fff; }
+
 /* RÉCAPITULATIF */
 .recap-card {
   background: var(--cream);

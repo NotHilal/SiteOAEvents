@@ -106,6 +106,19 @@
   font-style: normal;
   font-weight: 400;
 }
+.header-logo-accent { color: var(--oa-accent-dark); }
+
+/* Soft gold halo behind the logo mark — the icon itself is a flat PNG (not
+   recolorable), so the color comes from a glow sitting behind it instead. */
+.header-logo-glow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(201,161,90,.16) 0%, rgba(201,161,90,0) 72%);
+  transition: background .3s ease, transform .3s ease;
+}
+.header-logo-link:hover .header-logo-glow { transform: scale(1.08); }
 
 /* ===== PRELOADER (Utilisé par Loader.jsx) ===== */
 #overlayer {
@@ -247,13 +260,16 @@
    outline variant reliably stays transparent. */
 .theme-button.theme-button-outline {
   background-color: transparent;
-  color: var(--dark);
-  border: 1px solid var(--oa-border, var(--dark));
+  color: var(--oa-text, var(--dark));
+  border: 1px solid rgba(201,161,90,.4);
+  transition: all .3s cubic-bezier(0.2, 1, 0.2, 1);
 }
 .theme-button.theme-button-outline:hover {
   background-color: var(--oa-accent, var(--dark));
   border-color: var(--oa-accent, var(--dark));
   color: #fff;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(201,161,90,.3);
 }
 
 
@@ -836,14 +852,72 @@ body {
   transition: box-shadow .35s ease, border-color .35s ease;
 }
 .oa-navbar .header-main-box { padding-top: 14px; padding-bottom: 14px; }
+/* Thin gold accent line across the very top — same idiom as the mobile
+   drawer's own top bar, so the two feel like one designed piece instead of
+   a plain white bar vs. a branded panel. */
+.oa-navbar::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--oa-accent), var(--oa-accent-dark));
+}
 .oa-navbar-scrolled {
   border-bottom-color: var(--oa-border);
-  box-shadow: 0 8px 24px rgba(22, 20, 15, .06);
+  box-shadow: 0 8px 24px rgba(201, 161, 90, .1);
 }
 .oa-navbar .header-menu-text {
   font-size: .82rem;
   letter-spacing: .3px;
+  transition: color .25s ease;
 }
+/* Text itself picks up the accent color on hover/current page, not just the
+   underline beneath it — reads as a warmer, more deliberate nav instead of
+   plain black links with a gold hairline. */
+.header-menu-link:hover .header-menu-text { color: var(--oa-accent-dark); }
+.header-menu-link.w--current .header-menu-text { color: var(--oa-accent-dark); font-weight: 600; }
+
+/* "Découvrir" dropdown — groups Catalogue/Galerie/Nos Expériences under one
+   top-level item instead of three separate links, so the bar reads as a
+   normal 6-7 item nav instead of a crowded 9-item row. Pure CSS hover (plus
+   :focus-within for keyboard use) rather than JS state — the panel is a DOM
+   child of the trigger, so :hover naturally holds while the pointer moves
+   from trigger down into the panel, no dead zone to manage. */
+.header-dropdown-wrap { position: relative; cursor: pointer; outline: none; }
+.header-dropdown-caret { font-size: .6rem; margin-left: 5px; transition: transform .25s ease; }
+.header-dropdown-wrap:hover .header-dropdown-caret,
+.header-dropdown-wrap:focus-within .header-dropdown-caret { transform: rotate(180deg); }
+.header-dropdown {
+  position: absolute;
+  top: 100%; left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  min-width: 190px;
+  background: #fff;
+  border: 1px solid var(--oa-border);
+  box-shadow: 0 20px 45px rgba(22,20,15,.14);
+  padding: 8px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .22s ease, transform .22s ease, visibility .22s;
+  z-index: 20;
+}
+.header-dropdown-wrap:hover .header-dropdown,
+.header-dropdown-wrap:focus-within .header-dropdown {
+  opacity: 1; visibility: visible; pointer-events: auto; transform: translateX(-50%) translateY(0);
+}
+.header-dropdown-link {
+  display: block;
+  padding: 11px 16px;
+  font-family: var(--oa-font-heading);
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--oa-text);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background .18s ease, color .18s ease;
+}
+.header-dropdown-link:hover { background: rgba(201,161,90,.1); color: var(--oa-accent-dark); }
+.header-dropdown-link-current { color: var(--oa-accent-dark); }
 
 /* furnish.css hides the nav links and shows the hamburger at <=991px, but
    only hides .header-btn (the Espace OA / Réserver buttons) at <=479px —
@@ -953,10 +1027,19 @@ body {
 /* Warmer off-white than the stark furnish.css default, with a thin gold
    top accent so it reads as this site's own panel, not a generic template
    drawer — plus a touch longer/softer transition for a less abrupt slide. */
+/* Flex column so the logo header and the two CTA buttons stay fixed while
+   only the link list in between scrolls — previously the whole panel had no
+   overflow rule at all, so on a short screen (or as more links get added)
+   the bottom of the list, and the Réserver button after it, could end up
+   past the visible height with no way to scroll to them (body scroll is
+   deliberately locked while the drawer is open). */
 .mobile-menu {
+  display: flex;
+  flex-direction: column;
   background-color: #fdfcfa !important;
   box-shadow: -18px 0 50px rgba(22, 20, 15, .18);
   transition: transform .48s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
 }
 .mobile-menu::before {
   content: '';
@@ -966,7 +1049,19 @@ body {
 }
 .mobile-menu.is-open { transform: translate(0); }
 
-.mobile-logo-box { border-bottom: 1px solid var(--oa-border); }
+.mobile-logo-box { border-bottom: 1px solid var(--oa-border); flex-shrink: 0; }
+.mobile-menu-box { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+/* Pinned CTA footer — always visible, never scrolls away with the list. */
+.mobile-menu-footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 24px calc(16px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--oa-border);
+  box-shadow: 0 -8px 20px rgba(22, 20, 15, .05);
+}
 
 .mobile-menu-close-btn {
   width: 36px; height: 36px;
@@ -1024,8 +1119,30 @@ body {
 .mobile-dropdown-link.w--current .mobile-dropdown-title { color: var(--oa-accent-dark); }
 
 .mobile-menu-box { grid-row-gap: 0 !important; }
-.mobile-menu-box > a.theme-button,
-.mobile-menu-box > a.theme-button-outline { margin-left: 24px; margin-right: 24px; width: calc(100% - 48px) !important; }
+.mobile-menu-footer > a.theme-button,
+.mobile-menu-footer > a.theme-button-outline { width: 100% !important; margin: 0 !important; }
+
+/* Compact mobile nav — the sticky bar and the drawer both inherited desktop
+   sizing (44px logo, 1.35rem/20px-padding link rows sized for a handful of
+   items) which read as oversized and generic once the drawer actually had 9
+   rows in it. Tightened top bar + drawer typography/spacing here rather
+   than touching the >991px desktop styles above, which are unaffected. */
+@media (max-width: 991px) {
+  .oa-navbar .header-main-box { padding-top: 10px; padding-bottom: 10px; }
+  .oa-navbar .header-logo { height: 34px !important; }
+  .oa-navbar .header-logo-text { font-size: .92rem; }
+  .mobile-menu { max-width: 300px; }
+  .mobile-logo-box { padding: 16px 18px; margin-bottom: 0; }
+  .mobile-logo-box .header-logo { height: 30px !important; }
+  .mobile-logo-box .header-logo-text { font-size: .92rem; }
+  .mobile-menu-close-btn { width: 32px; height: 32px; font-size: .82rem; }
+  .mobile-dropdown-link { padding: 13px 20px !important; }
+  .mobile-dropdown-link:hover { padding-left: 26px !important; }
+  .mobile-dropdown-title { font-size: 1rem; letter-spacing: 0; }
+  .mobile-menu-footer { padding: 14px 20px calc(14px + env(safe-area-inset-bottom, 0px)); gap: 8px; }
+  .mobile-menu-footer > a.theme-button,
+  .mobile-menu-footer > a.theme-button-outline { padding: 11px 20px; font-size: .7rem; }
+}
 
 /* ===== HOMEPAGE — EDITORIAL RECONSTRUCTION =====
    New sections added to pages/index.jsx (Nos Univers, Nos Prestations,
@@ -1106,6 +1223,102 @@ body {
   font-size: 1.1rem;
 }
 .oa-prestation-card h3 { margin-bottom: 8px; }
+
+/* Catalogue teaser (homepage) — quick "add to cart" preview of a few
+   materials, one per category; the real browsing/filtering happens on
+   /catalogue (reuses ReservationWizard's .mat-* styles, see reservation.css)
+   which the "Voir tout le catalogue" link points to. */
+.oa-catalogue-teaser-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+.oa-catalogue-teaser-card {
+  border: 1px solid var(--oa-border);
+  background: var(--oa-surface);
+  display: flex;
+  flex-direction: column;
+}
+.oa-catalogue-teaser-img {
+  height: 180px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(22,20,15,.04);
+  color: var(--oa-muted);
+  font-size: 1.6rem;
+  overflow: hidden;
+}
+.oa-catalogue-teaser-img img { width: 100%; height: 100%; object-fit: cover; }
+.oa-catalogue-teaser-body { padding: 18px 20px 22px; display: flex; flex-direction: column; gap: 8px; }
+.oa-catalogue-teaser-body h3 { margin: 0; }
+.oa-catalogue-teaser-price { color: var(--oa-accent-dark); font-family: var(--oa-font-heading); font-weight: 700; font-size: .85rem; }
+.oa-catalogue-teaser-add {
+  margin-top: 6px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: 1px solid var(--oa-accent); background: transparent; color: var(--oa-accent-dark);
+  padding: 9px 14px;
+  font-family: var(--oa-font-heading); font-weight: 700; font-size: .74rem; letter-spacing: .8px; text-transform: uppercase;
+  cursor: pointer; transition: background .2s ease, color .2s ease;
+}
+.oa-catalogue-teaser-add:hover { background: var(--oa-accent); color: #fff; }
+.oa-catalogue-teaser-add.is-added { border-color: #4caf50; color: #4caf50; cursor: default; }
+@media (max-width: 991px) { .oa-catalogue-teaser-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .oa-catalogue-teaser-grid { grid-template-columns: 1fr; } }
+
+/* /catalogue page — sticky summary bar, only rendered once something's
+   selected (see pages/catalogue.jsx). Fixed to the viewport bottom rather
+   than sticky-in-flow so it stays reachable while scrolling a long grid. */
+.oa-catalogue-cartbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+  background: #fff;
+  border-top: 1px solid var(--oa-border);
+  box-shadow: 0 -10px 30px rgba(22,20,15,.1);
+  padding: 16px 0;
+}
+.oa-catalogue-cartbar-inner {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+}
+.oa-catalogue-cartbar-info { display: flex; align-items: baseline; gap: 14px; }
+.oa-catalogue-cartbar-count { font-family: var(--oa-font-heading); font-weight: 700; color: var(--oa-text); }
+.oa-catalogue-cartbar-total { font-family: var(--oa-font-heading); font-weight: 700; color: var(--oa-accent-dark); font-size: 1.05rem; }
+.oa-catalogue-cartbar-actions { display: flex; align-items: center; gap: 14px; }
+.oa-catalogue-cartbar-clear {
+  background: none; border: none; color: var(--oa-muted);
+  font-family: var(--oa-font-heading); font-weight: 600; font-size: .78rem;
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+}
+.oa-catalogue-cartbar-clear:hover { color: var(--oa-text); }
+@media (max-width: 560px) {
+  .oa-catalogue-cartbar-inner { flex-direction: column; align-items: stretch; text-align: center; }
+  .oa-catalogue-cartbar-actions { justify-content: center; }
+}
+
+/* Navbar cart icon — desktop-only icon+badge next to the Espace OA/Réserver
+   buttons; on mobile the count shows inline next to the "Catalogue" link in
+   the drawer instead (see .header-cart-badge-inline), keeping the mobile
+   menu from gaining yet another standalone icon row. */
+.header-cart-link {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  color: var(--oa-text);
+  font-size: 1.05rem;
+  text-decoration: none;
+  transition: color .2s ease, background .2s ease;
+}
+.header-cart-link:hover { color: var(--oa-accent-dark); background: rgba(201,161,90,.12); }
+.header-cart-badge {
+  position: absolute; top: 2px; right: 0;
+  min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 999px;
+  background: var(--oa-accent);
+  color: #fff;
+  font-family: var(--oa-font-heading); font-weight: 700; font-size: .62rem;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+}
+.header-cart-badge-inline { position: static; margin-left: 8px; display: inline-flex; }
+@media (max-width: 991px) { .header-cart-link { display: none; } }
 
 /* Réalisations — arrows sit in reserved side padding on the carousel
    itself (not the outer .oa-container's gutter, which varies by viewport),

@@ -1,12 +1,25 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
+import { getCatalogueCartCount, CART_EVENT } from '../lib/cart.js'
 
 export default function Navbar() {
   const router = useRouter()
   const isHome = router.pathname === '/'
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [cartCount, setCartCount] = useState(0)
+
+  useEffect(() => {
+    const sync = () => setCartCount(getCatalogueCartCount())
+    sync()
+    window.addEventListener(CART_EVENT, sync)
+    window.addEventListener('storage', sync)
+    return () => {
+      window.removeEventListener(CART_EVENT, sync)
+      window.removeEventListener('storage', sync)
+    }
+  }, [])
 
   useEffect(() => {
     // Raw 'scroll' events can fire dozens of times per second (especially
@@ -48,33 +61,75 @@ export default function Navbar() {
     }
   }, [mobileOpen])
 
-  const NAV_LINKS = [
+  // The browsing-focused pages (Catalogue/Galerie/Nos Expériences) collapse
+  // into a "Découvrir" dropdown on desktop — 9 flat top-level links was too
+  // crowded and wrapped onto two lines. Nothing is removed: the mobile
+  // drawer still lists every page flat (see ALL_LINKS below), and the
+  // dropdown keeps all three one hover away on desktop.
+  const NAV_BEFORE = [
     { href: '/', label: 'Accueil' },
     { href: '/services', label: 'Prestations' },
+  ]
+  const DISCOVER_LINKS = [
+    { href: '/catalogue', label: 'Catalogue' },
     { href: '/galerie', label: 'Galerie' },
+    { href: '/nos-experiences', label: 'Nos Expériences' },
+  ]
+  const NAV_AFTER = [
     { href: '/devis', label: 'Simulation de Devis' },
     { href: '/suivi', label: 'Suivi de commande' },
     { href: '/a-propos', label: 'À Propos' },
     { href: '/contact', label: 'Contact' },
   ]
+  const ALL_LINKS = [...NAV_BEFORE, ...DISCOVER_LINKS, ...NAV_AFTER]
+  const discoverActive = DISCOVER_LINKS.some(l => l.href === router.pathname)
 
   return (
     <section className={`main-header oa-navbar${scrolled ? ' oa-navbar-scrolled' : ''}`}>
       <div className="w-layout-blockcontainer container w-container">
         <div className="header-main-box">
           <Link href="/" className={`header-logo-link w-inline-block ${isHome ? 'w--current' : ''}`}>
-            <img
-              loading="lazy"
-              src="/logo-icon.png"
-              alt=""
-              className="header-logo"
-              style={{ width: 'auto', height: '44px', objectFit: 'contain' }}
-            />
-            <span className="header-logo-text">OA <em>Événementiel</em></span>
+            <span className="header-logo-glow">
+              <img
+                loading="lazy"
+                src="/logo-icon.png"
+                alt=""
+                className="header-logo"
+                style={{ width: 'auto', height: '44px', objectFit: 'contain' }}
+              />
+            </span>
+            <span className="header-logo-text"><span className="header-logo-accent">OA</span> <em>Événementiel</em></span>
           </Link>
 
           <div className="header-menu-box">
-            {NAV_LINKS.map(link => (
+            {NAV_BEFORE.map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`header-menu-link w-inline-block ${router.pathname === link.href ? 'w--current' : ''}`}
+              >
+                <p className="header-menu-text">{link.label}</p>
+                <div className="header-menu-line"></div>
+              </Link>
+            ))}
+
+            <div className={`header-menu-link header-dropdown-wrap w-inline-block${discoverActive ? ' w--current' : ''}`} tabIndex={0}>
+              <p className="header-menu-text">Découvrir <i className="fas fa-chevron-down header-dropdown-caret" /></p>
+              <div className="header-menu-line"></div>
+              <div className="header-dropdown">
+                {DISCOVER_LINKS.map(link => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`header-dropdown-link${router.pathname === link.href ? ' header-dropdown-link-current' : ''}`}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {NAV_AFTER.map(link => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -87,6 +142,10 @@ export default function Navbar() {
           </div>
 
           <div className="header-btn-box">
+            <Link href="/catalogue" className="header-cart-link" aria-label="Voir mon panier">
+              <i className="fas fa-shopping-bag" />
+              {cartCount > 0 && <span className="header-cart-badge">{cartCount}</span>}
+            </Link>
             <div className="header-btn header-btn-secondary">
               <Link href="/espace-oa" className="theme-button theme-button-outline w-inline-block">
                 <div className="theme-button-content">
@@ -145,21 +204,33 @@ export default function Navbar() {
           </button>
         </div>
         <div className="mobile-menu-box">
-          {NAV_LINKS.map(link => (
+          {ALL_LINKS.map(link => (
             <Link
               key={link.href}
               href={link.href}
               className={`mobile-dropdown-link w-inline-block ${router.pathname === link.href ? 'w--current' : ''}`}
               onClick={() => setMobileOpen(false)}
             >
-              <div className="mobile-dropdown-title">{link.label}</div>
+              <div className="mobile-dropdown-title">
+                {link.label}
+                {link.href === '/catalogue' && cartCount > 0 && (
+                  <span className="header-cart-badge header-cart-badge-inline">{cartCount}</span>
+                )}
+              </div>
             </Link>
           ))}
+        </div>
 
+        {/* Pinned to the bottom of the drawer (not the end of the scrollable
+            link list) so both CTAs stay reachable without scrolling, no
+            matter how many nav links there are or how short the screen is —
+            .mobile-menu-box is the only part that scrolls (see .mobile-menu
+            flex layout in style.css). */}
+        <div className="mobile-menu-footer">
           <Link
             href="/espace-oa"
             className="theme-button theme-button-outline w-inline-block"
-            style={{ marginTop: '20px', width: '100%', textAlign: 'center' }}
+            style={{ width: '100%', textAlign: 'center' }}
             onClick={() => setMobileOpen(false)}
           >
             <div className="theme-button-content" style={{ justifyContent: 'center' }}>
@@ -169,7 +240,7 @@ export default function Navbar() {
           <Link
             href="/reservation"
             className="theme-button w-inline-block"
-            style={{ marginTop: '10px', width: '100%', textAlign: 'center' }}
+            style={{ width: '100%', textAlign: 'center' }}
             onClick={() => setMobileOpen(false)}
           >
             <div className="theme-button-content" style={{ justifyContent: 'center' }}>

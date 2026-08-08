@@ -4,6 +4,8 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import AOS from 'aos'
 import { supabase } from '../src/lib/supabase.js'
+import { getUnitPriceTtc, groupTiersByMaterial, getMinOrderQty } from '../src/lib/pricing.js'
+import { addToCatalogueCart } from '../src/lib/cart.js'
 
 const HERO_DEFAULTS = { hero_left: '/Minimalist_Living_Room.avif', hero_right: '/Modern_Minimalist_Living_Room.avif' }
 
@@ -96,6 +98,35 @@ export default function Home() {
       try { setImages(JSON.parse(row.value)) } catch {}
     })
   }, [])
+
+  // Homepage teaser for /catalogue — one item per category (up to 4) rather
+  // than just the first 4 rows, so the preview reads as "a bit of everything
+  // we rent" instead of whatever happens to sort first.
+  const [catalogueTeaser, setCatalogueTeaser] = useState([])
+  const [catalogueTiers, setCatalogueTiers] = useState({})
+  const [addedId, setAddedId] = useState(null)
+  useEffect(() => {
+    Promise.all([
+      supabase.from('materials').select('*').eq('available', true).order('category'),
+      supabase.from('material_price_tiers').select('*'),
+    ]).then(([matRes, tierRes]) => {
+      const tiers = groupTiersByMaterial(tierRes.data || [])
+      setCatalogueTiers(tiers)
+      const byCategory = {}
+      ;(matRes.data || []).forEach(m => {
+        const cat = m.category || 'Autre'
+        if (!byCategory[cat]) byCategory[cat] = m
+      })
+      setCatalogueTeaser(Object.values(byCategory).slice(0, 4))
+    })
+  }, [])
+
+  function handleQuickAdd(m) {
+    const minQty = getMinOrderQty(catalogueTiers[String(m.id)])
+    addToCatalogueCart(m.id, minQty)
+    setAddedId(m.id)
+    setTimeout(() => setAddedId(id => id === m.id ? null : id), 1600)
+  }
 
   // Réalisations carousel — a true infinite loop, not a scroll or a single
   // fixed track: REALISATIONS is rendered three times back to back, and
@@ -295,6 +326,48 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* CATALOGUE */}
+        {catalogueTeaser.length > 0 && (
+          <section className="oa-section oa-section-tight oa-catalogue-teaser">
+            <div className="oa-container">
+              <div className="oa-section-head oa-section-head-split" data-aos="fade-up">
+                <div>
+                  <span className="oa-eyebrow">Catalogue</span>
+                  <h2 className="oa-heading" style={{ fontSize: 'var(--oa-size-h1)' }}>Choisissez votre mobilier</h2>
+                </div>
+                <Link href="/catalogue" className="oa-univers-link">Voir tout le catalogue <i className="fas fa-arrow-right" /></Link>
+              </div>
+              <div className="oa-catalogue-teaser-grid" data-aos="fade-up">
+                {catalogueTeaser.map(m => {
+                  const tiers = catalogueTiers[String(m.id)]
+                  const minQty = getMinOrderQty(tiers)
+                  const price = getUnitPriceTtc(tiers, 'weekday', minQty)
+                  const added = addedId === m.id
+                  return (
+                    <div className="oa-catalogue-teaser-card" key={m.id}>
+                      <div className="oa-catalogue-teaser-img">
+                        {m.image_url ? <img src={m.image_url} alt={m.name} loading="lazy" /> : <i className="fas fa-image" />}
+                      </div>
+                      <div className="oa-catalogue-teaser-body">
+                        <h3 className="oa-heading" style={{ fontSize: '1.05rem' }}>{m.name}</h3>
+                        {price > 0 && <span className="oa-catalogue-teaser-price">dès {price.toFixed(2)} €</span>}
+                        <button
+                          type="button"
+                          className={`oa-catalogue-teaser-add${added ? ' is-added' : ''}`}
+                          onClick={() => handleQuickAdd(m)}
+                          disabled={added}
+                        >
+                          {added ? <><i className="fas fa-check" /> Ajouté</> : <><i className="fas fa-plus" /> Ajouter</>}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* POURQUOI OA */}
         <section className="feature-section">
