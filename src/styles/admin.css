@@ -150,6 +150,7 @@ a { color:var(--rose-gold); }
 .resa-card-email { font-weight:600; font-size:.88rem; color:var(--dark-mid); margin-right:14px; }
 .resa-card-email i, .resa-card-phone i { color:var(--rose-gold); margin-right:6px; }
 .resa-card-phone { font-size:.88rem; color:var(--gray); }
+.resa-card-date-compact { display:none; }
 
 /* Reference number + inline "view detail" link — same row so the order
    code always has its detail action right next to it. */
@@ -184,23 +185,75 @@ a { color:var(--rose-gold); }
 .resa-msg i   { color:var(--gray); margin-right:6px; }
 .resa-created { font-size:.75rem; color:var(--gray); margin:8px 0 0; letter-spacing:.2px; }
 
-/* Bottom action bar — three equal-width rectangles (Confirmer / Refuser /
-   Supprimer), each its own segment rather than loose pill buttons, so the
-   card reads as one solid footer instead of a scattered button row. */
-.resa-card-actions { display:flex; border-top:1px solid var(--border); }
-.resa-action-btn {
-  flex:1; display:flex; align-items:center; justify-content:center; gap:8px;
-  background:transparent; border:none; border-right:1px solid var(--border);
-  font-family:'Montserrat',sans-serif; font-weight:700; font-size:.72rem; letter-spacing:1.2px; text-transform:uppercase;
-  padding:14px 10px; cursor:pointer; transition:all .18s; color:var(--dark-mid);
+/* Bottom action bar — wraps the status-changer combobox + quiet delete
+   link, set off from the card body by a top border. */
+.resa-card-actions { border-top:1px solid var(--border); padding: 0 22px 18px; }
+
+/* Groups the status-changer combobox and the quiet delete link into one
+   evenly-spaced stack — used both in this card footer and in the ResaDetail
+   popup, so the same status control looks and behaves identically in both
+   places (see StatusChanger in espace-oa.jsx). */
+.detail-actions-block { margin-top: 20px; display: flex; flex-direction: column; gap: 12px; }
+
+/* "Changer de statut" — a combobox: trigger button that visually merges
+   with its option list when open (shared border, flat seam, matching
+   radius), like a native <select> rather than a floating disconnected
+   dropdown. */
+.status-changer-trigger {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  background: #fff; border: 1.5px solid var(--border); border-radius: var(--r-sm);
+  padding: 13px 16px; font-family: 'Montserrat', sans-serif; font-weight: 700;
+  font-size: .76rem; letter-spacing: .8px; text-transform: uppercase; color: var(--dark);
+  cursor: pointer; transition: border-color .15s ease, background .15s ease;
 }
-.resa-action-btn:last-child { border-right:none; }
-.action-confirm { color:var(--success); }
-.action-confirm:hover { background:rgba(76,175,80,.1); }
-.action-refuse { color:var(--danger); }
-.action-refuse:hover { background:rgba(229,62,62,.08); }
-.action-delete { color:var(--gray); }
-.action-delete:hover { background:rgba(229,62,62,.08); color:var(--danger); }
+.status-changer-trigger:hover { border-color: var(--rose-gold); background: var(--rg-tint); }
+.status-changer-trigger i { color: var(--rose-gold); transition: transform .25s ease; }
+.status-changer-trigger i.is-open { transform: rotate(180deg); }
+.status-changer.is-open .status-changer-trigger {
+  border-color: var(--rose-gold); background: var(--rg-tint);
+  border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+}
+.status-changer-list {
+  background: #fff; border: 1.5px solid var(--rose-gold); border-top: none;
+  border-bottom-left-radius: var(--r-sm); border-bottom-right-radius: var(--r-sm);
+  overflow: hidden; box-shadow: 0 14px 30px rgba(0,0,0,.1);
+}
+.status-changer-option {
+  display: flex; align-items: center; justify-content: space-between; width: 100%; text-align: left;
+  background: transparent; border: none; border-top: 1px dashed var(--border);
+  padding: 12px 16px; cursor: pointer; transition: background .15s ease;
+}
+.status-changer-option:hover { background: var(--cream); }
+.status-changer-option i {
+  color: var(--gray); font-size: .72rem; opacity: 0; transform: translateX(-4px);
+  transition: all .15s ease;
+}
+.status-changer-option:hover i { opacity: 1; transform: translateX(0); color: var(--rose-gold); }
+/* The current status stays in the list (rather than being filtered out) so
+   the whole picture is visible at once — shown disabled, tinted, and tagged
+   "Actuel" instead of the hover-reveal arrow the other rows use. */
+.status-changer-option.is-current {
+  background: var(--rg-tint); cursor: default;
+}
+.status-changer-option.is-current:hover { background: var(--rg-tint); }
+.status-changer-option:disabled { opacity: 1; }
+.status-changer-current-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: .64rem;
+  letter-spacing: 1px; text-transform: uppercase; color: var(--rose-gold);
+}
+
+/* Delete stays available but deliberately quiet — a dashed, low-contrast
+   button rather than a same-weight sibling of the primary status actions,
+   so a tap doesn't happen by momentum next to routine buttons. */
+.detail-delete-link {
+  display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%;
+  background: transparent; border: 1px dashed var(--border); border-radius: var(--r-sm);
+  padding: 11px; font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: .72rem;
+  letter-spacing: .8px; text-transform: uppercase; color: var(--gray); cursor: pointer;
+  transition: all .15s ease;
+}
+.detail-delete-link:hover { color: var(--danger); border-color: var(--danger); background: rgba(229,62,62,.06); }
 
 /* Status pill — small colored dot + uppercase label, same idiom used for
    the calendar legend and payment status so "what state is this in" reads
@@ -819,11 +872,20 @@ a { color:var(--rose-gold); }
 
 /* RESPONSIVE */
 @media(max-width:768px){
+  /* position:fixed rather than sticky — .admin-main is its own independent
+     scroll container (overflow-y:auto), and on real mobile browsers
+     (address-bar show/hide changing the effective viewport height, nested
+     scroll containers) a sticky bar tied to the wrong scroll ancestor can
+     end up scrolling out of view instead of staying pinned. Fixed to the
+     viewport itself has no such ambiguity — it just always stays put. */
   .admin-mobile-topbar {
     display: flex; align-items: center; justify-content: space-between;
     background: var(--sidebar-bg); padding: 14px 18px;
-    position: sticky; top: 0; z-index: 50;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 60;
   }
+  /* Push content down by the fixed topbar's own height so nothing loads
+     hidden underneath it. */
+  .dashboard-wrap { padding-top: 66px; }
   .admin-mobile-title { font-family:'Montserrat', sans-serif; font-size: 1rem; font-weight: 700; color: #fff; }
   .admin-mobile-title em { font-style: normal; color: var(--rose-gold); }
   .admin-hamburger-btn {
@@ -864,9 +926,62 @@ a { color:var(--rose-gold); }
      on a short phone screen, and "Administrateur" already conveys who's
      signed in without needing the email too. */
   .sidebar-user-name { display: none; }
-  .admin-main { padding: 20px 16px; }
+  /* Safety net: .admin-main's overflow-y:auto silently forces overflow-x to
+     compute as "auto" too (same CSS-spec quirk documented elsewhere in this
+     file), so ANY tab with even one element slightly too wide turns the
+     whole admin content area into a horizontal scroller — which is what
+     kept resurfacing tab by tab (calendar, block-tabs, the Matériel table)
+     even after each individual one got fixed. Forcing it to hidden here
+     kills that class of bug outright on mobile; every specific overflow
+     source found so far has also been fixed at the source (not just hidden)
+     so nothing needed should actually get clipped by this. */
+  .admin-main { padding: 20px 16px; overflow-x: hidden; }
   .adm-header { flex-direction:column; align-items:flex-start; }
   .detail-info-grid { grid-template-columns:1fr; }
+  /* Demandes: each .resa-card showed everything inline (contact info, full
+     date/materials/price breakdown, message, 4-5 action buttons) — fine on
+     desktop, way too tall to scan as a list on a phone. Collapses to a
+     compact tappable summary (ref, name, status, one-line date) instead;
+     tapping it opens the same detail popup "Voir le détail" already opened
+     on desktop (see the .resa-card onClick in espace-oa.jsx), which now
+     also carries the Accepter/Refuser/etc actions (previously read-only). */
+  .resa-card { cursor: pointer; }
+  .resa-card:active { background: rgba(255,255,255,.75); }
+  .resa-card-head { padding: 14px 16px; }
+  .resa-card-email, .resa-card-phone, .resa-icon-actions, .resa-detail-link,
+  .resa-card-body, .resa-card-actions, .resa-payment-block {
+    display: none;
+  }
+  .resa-card-date-compact { display: block; font-size: .82rem; color: var(--gray); margin-top: 4px; }
+  .resa-card-name { font-size: .92rem; }
+  .resa-card-ref { font-size: .78rem; }
+  /* Detail popup: squeeze every spacing/font down a notch so the whole card
+     (header, date grid, price breakdown, actions) fits on one phone screen
+     without the modal itself needing to scroll. */
+  .modal-card.detail-modal-card { padding: 18px 16px 16px; max-height: 90vh; }
+  .detail-back { padding-bottom: 10px; font-size: .74rem; }
+  .detail-head { margin-bottom: 10px; padding-bottom: 8px; gap: 8px; }
+  .detail-name { font-size: .96rem; margin-bottom: 4px; }
+  .detail-email, .detail-phone { font-size: .78rem; margin-bottom: 2px; }
+  .badge-lg { font-size: .68rem !important; padding: 4px 10px !important; }
+  .detail-info-grid { grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .detail-info-item { padding: 7px 9px; gap: 7px; }
+  .detail-info-item > i { font-size: .78rem; }
+  .detail-info-item small { font-size: .6rem; }
+  .detail-info-item strong { font-size: .76rem; }
+  .detail-block { padding: 11px 12px; margin-bottom: 8px; }
+  .detail-block-title { font-size: .64rem; margin-bottom: 8px; }
+  .price-detail-card { padding: 2px 12px; }
+  .price-detail-row { padding: 6px 0; gap: 12px; }
+  .price-detail-label { font-size: .78rem; }
+  .price-detail-sub { font-size: .68rem; }
+  .price-detail-amount { font-size: .82rem; }
+  .price-detail-total .price-detail-label { font-size: .88rem; }
+  .price-detail-total .price-detail-amount { font-size: 1rem; }
+  .detail-actions-block { margin-top: 14px; gap: 9px; }
+  .status-changer-trigger { padding: 11px 13px; font-size: .72rem; }
+  .status-changer-option { padding: 10px 13px; }
+  .detail-delete-link { padding: 9px; font-size: .68rem; }
   /* .adm-table (Matériel) has 8 columns (Photo/Nom/Catégorie/Description/
      Qté max/Prix/Dispo/Actions) — no amount of squeezing fits that on a
      phone, and .admin-main's overflow-x:auto (see its own comment) was

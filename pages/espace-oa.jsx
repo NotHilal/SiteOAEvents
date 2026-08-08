@@ -424,7 +424,7 @@ export default function AdminDashboard() {
   }
   async function notifyReservationStatus(reservationId) {
     try {
-      const sessionStr = localStorage.getItem('oa_session')
+      const sessionStr = sessionStorage.getItem('oa_session')
       const session = sessionStr ? JSON.parse(sessionStr) : null
       await fetch('/api/reservations/notify', {
         method: 'POST',
@@ -1232,6 +1232,8 @@ export default function AdminDashboard() {
                   resa={reservations.find(r => r.id === resaDetail.id)}
                   backDate={resaDetail.backDate}
                   onBack={resaDetail.backDate ? () => { setResaDetail(null); setDayModal({ dateStr: resaDetail.backDate, mode:'calendar', page:0 }) } : null}
+                  onStatus={updateResaStatus}
+                  onDelete={id => deleteResa(id, null)}
                 />
               )}
               {dayModal && !resaDetail && dayModal.mode === 'calendar' && (
@@ -1343,6 +1345,53 @@ const STRIPE_DASHBOARD_URL = (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 
   ? 'https://dashboard.stripe.com/payments'
   : 'https://dashboard.stripe.com/test/payments'
 
+// Single combobox for every status transition — replaces the old set of
+// status-specific buttons (Accepter/Marquer payé/Matériel rendu/Refuser) so
+// there's one consistent control everywhere a reservation's status can be
+// changed (list card footer on desktop, detail popup on both), instead of
+// only some transitions being one click away and others needing a delete +
+// recreate. Manages its own open/closed state — give it `key={resa.id}`
+// wherever the same slot can render different reservations (e.g. ResaDetail
+// swapping between cards) so that state resets on switch.
+function StatusChanger({ resa, onStatus }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className={`status-changer${open ? ' is-open' : ''}`} onClick={e => e.stopPropagation()}>
+      <button type="button" className="status-changer-trigger" onClick={() => setOpen(o => !o)}>
+        <span><i className="fas fa-arrows-rotate" style={{marginRight:8}} />Changer de statut</span>
+        <i className={`fas fa-chevron-down${open ? ' is-open' : ''}`} />
+      </button>
+      {open && (
+        <div className="status-changer-list">
+          {/* Every status is listed, including the current one — shown
+              disabled + checked instead of filtered out, so the list reads
+              as a full picture of "here's where this sits" rather than just
+              "here's where you can send it". */}
+          {Object.keys(STATUS_LABEL).map(s => {
+            const isCurrent = s === resa.status
+            return (
+              <button
+                key={s}
+                type="button"
+                className={`status-changer-option${isCurrent ? ' is-current' : ''}`}
+                disabled={isCurrent}
+                onClick={() => { onStatus(resa.id, s); setOpen(false) }}
+              >
+                <span className={`status-badge ${STATUS_CLASS[s]||''}`}>{STATUS_LABEL[s]}</span>
+                {isCurrent ? (
+                  <span className="status-changer-current-tag"><i className="fas fa-check" />Actuel</span>
+                ) : (
+                  <i className="fas fa-arrow-right" />
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ResaList({ reservations, paymentSummaries, filter, search, onStatus, onDelete, onContact, onViewPricing }) {
   const byStatus = filter === 'all' ? reservations : reservations.filter(r => r.status === filter)
   const q = (search || '').trim().toLowerCase()
@@ -1362,24 +1411,34 @@ function ResaList({ reservations, paymentSummaries, filter, search, onStatus, on
       {filtered.map(r => {
         const name = [r.prenom, r.nom].filter(Boolean).join(' ')
         return (
-          <div key={r.id} className="resa-card" data-status={r.status}>
+          <div
+            key={r.id}
+            className="resa-card"
+            data-status={r.status}
+            onClick={() => onViewPricing(r)}
+          >
             <div className="resa-card-head">
               <div className="resa-card-head-main">
                 {r.reference && (
                   <div className="resa-card-ref-line">
                     <span className="resa-card-ref"><i className="fas fa-hashtag" />{r.reference}</span>
-                    <button className="resa-detail-link" onClick={() => onViewPricing(r)}><i className="fas fa-receipt" />Voir le détail</button>
+                    <button className="resa-detail-link" onClick={e => { e.stopPropagation(); onViewPricing(r) }}><i className="fas fa-receipt" />Voir le détail</button>
                   </div>
                 )}
                 <div className="resa-name-row">
                   {name && <span className="resa-card-name"><i className="fas fa-user" style={{marginRight:6}} />{name}</span>}
                   <div className="resa-icon-actions">
-                    {r.phone && <a className="resa-icon-btn" href={`tel:${r.phone}`} title="Appeler"><i className="fas fa-phone" /></a>}
-                    <button className="resa-icon-btn" onClick={() => onContact(r)} title="Email"><i className="fas fa-envelope" /></button>
+                    {r.phone && <a className="resa-icon-btn" href={`tel:${r.phone}`} title="Appeler" onClick={e => e.stopPropagation()}><i className="fas fa-phone" /></a>}
+                    <button className="resa-icon-btn" onClick={e => { e.stopPropagation(); onContact(r) }} title="Email"><i className="fas fa-envelope" /></button>
                   </div>
                 </div>
                 <span className="resa-card-email"><i className="fas fa-envelope" style={{marginRight:6}} />{r.email}</span>
                 {r.phone && <span className="resa-card-phone"><i className="fas fa-phone" style={{marginRight:6}} />{r.phone}</span>}
+                {/* Mobile-only compact preview — the card collapses to just
+                    this + the ref/name/status above on small screens (see
+                    admin.css), tapping it opens the same detail popup that
+                    "Voir le détail" opens on desktop. */}
+                <span className="resa-card-date-compact"><i className="fas fa-calendar" style={{marginRight:6}} />{fmtResaDate(r)}</span>
               </div>
               <div className="resa-card-head-side">
                 <span className={`status-badge ${STATUS_CLASS[r.status]||''}`}>{STATUS_LABEL[r.status]||r.status}</span>
@@ -1392,7 +1451,7 @@ function ResaList({ reservations, paymentSummaries, filter, search, onStatus, on
                       </span>
                       <div className="resa-payment-verify">
                         <span>Cliquer ici pour vérifier :</span>
-                        <a href={STRIPE_DASHBOARD_URL} target="_blank" rel="noopener noreferrer" className="resa-verify-btn">
+                        <a href={STRIPE_DASHBOARD_URL} target="_blank" rel="noopener noreferrer" className="resa-verify-btn" onClick={e => e.stopPropagation()}>
                           Stripe <i className="fas fa-arrow-right" />
                         </a>
                       </div>
@@ -1413,12 +1472,11 @@ function ResaList({ reservations, paymentSummaries, filter, search, onStatus, on
               {r.message && <p className="resa-msg"><i className="fas fa-comment" style={{marginRight:6}} />{r.message}</p>}
               <p className="resa-created">Reçue le {new Date(r.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</p>
             </div>
-            <div className="resa-card-actions">
-              {r.status==='pending' && <button className="resa-action-btn action-confirm" onClick={() => onStatus(r.id,'awaiting_payment')}><i className="fas fa-check" />Accepter</button>}
-              {r.status==='awaiting_payment' && <button className="resa-action-btn action-confirm" onClick={() => onStatus(r.id,'confirmed')}><i className="fas fa-check-double" />Marquer payé / Confirmer</button>}
-              {r.status==='confirmed' && <button className="resa-action-btn action-confirm" onClick={() => onStatus(r.id,'terminee')}><i className="fas fa-box-open" />Matériel rendu</button>}
-              {(r.status==='pending' || r.status==='awaiting_payment') && <button className="resa-action-btn action-refuse" onClick={() => onStatus(r.id,'refused')}><i className="fas fa-times" />Refuser</button>}
-              {r.status!=='confirmed' && <button className="resa-action-btn action-delete" onClick={() => onDelete(r.id)}><i className="fas fa-trash" />Supprimer</button>}
+            <div className="resa-card-actions" onClick={e => e.stopPropagation()}>
+              <div className="detail-actions-block">
+                <StatusChanger resa={r} onStatus={onStatus} />
+                {r.status!=='confirmed' && <button className="detail-delete-link" onClick={() => onDelete(r.id)}><i className="fas fa-trash" />Supprimer la demande</button>}
+              </div>
             </div>
           </div>
         )
@@ -1721,7 +1779,7 @@ function PaymentsBlock({ reservationId }) {
   )
 }
 
-function ResaDetail({ resa, backDate, onBack }) {
+function ResaDetail({ resa, backDate, onBack, onStatus, onDelete }) {
   if (!resa) return null
   const rd = getRDates(resa)
   const dateDisplay = rd.length<=1
@@ -1811,6 +1869,19 @@ function ResaDetail({ resa, backDate, onBack }) {
       )}
       <PaymentsBlock reservationId={resa.id} />
       {resa.message&&<div className="detail-block"><h4 className="detail-block-title"><i className="fas fa-comment" style={{marginRight:8}} />Message / Créneau</h4><p className="detail-message">{resa.message}</p></div>}
+      {/* Same status-change/delete actions as the card footer — added so the
+          mobile compact-tile flow (tap tile -> this popup) can actually
+          act on a request, not just read it. `key={resa.id}` so the
+          combobox's open/closed state resets when this popup is reused for
+          a different reservation (e.g. calendar day-view navigation). */}
+      {onStatus && (
+        <div className="detail-actions-block">
+          <StatusChanger key={resa.id} resa={resa} onStatus={onStatus} />
+          {onDelete && resa.status!=='confirmed' && (
+            <button className="detail-delete-link" onClick={() => onDelete(resa.id)}><i className="fas fa-trash" />Supprimer la demande</button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
