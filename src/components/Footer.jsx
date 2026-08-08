@@ -76,7 +76,9 @@ export default function Footer() {
         <div className="w-layout-blockcontainer container w-container">
           <div className="footer-bottom-inner-box">
             <p className="footer-copyright-text">
-              © {new Date().getFullYear()} OA Événementiel — Tous droits réservés.
+              <Link href="/espace-oa" className="footer-copyright-link">
+                © {new Date().getFullYear()} OA Événementiel — Tous droits réservés.
+              </Link>
             </p>
           </div>
         </div>

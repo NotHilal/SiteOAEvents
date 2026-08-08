@@ -1,11 +1,47 @@
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Head from 'next/head'
+import { supabase } from '../src/lib/supabase.js'
 
-// Placeholder content — everything in brackets [...] and the stat numbers
-// below are mockups to be swapped for the real story, figures and photo.
-// See the "MOCKUP" comments for exactly what to replace.
+// Fixed icons for the "Nos valeurs" blocks — same 4 icons reused on the
+// homepage's "Pourquoi OA" section. Only the title/text come from the DB.
+const VALUE_ICONS = ['/return.avif', '/delivery-truck.avif', '/customer-service.avif', '/money-back.avif']
+
+// Matches the seed row in src/lib/sqlite-db.js — used as the initial state
+// so there's no flash of empty content before the fetch resolves.
+const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1920&q=80'
+
+const DEFAULT_CONTENT = {
+  founderName: "[Prénom Nom], fondateur d'OA Événementiel",
+  story: "[Votre histoire ici — pourquoi ce métier vous anime, depuis quand vous organisez des événements, ce qui rend votre approche différente. Deux ou trois phrases suffisent, je les mettrai en forme.]",
+  photoUrl: null,
+  headerImg: null,
+  counters: [
+    { count: '[X]+', label: "[Ex : Ans d'expérience]" },
+    { count: '[X]+', label: '[Ex : Événements réalisés]' },
+  ],
+  values: [
+    { title: '[Créativité sur-mesure]', text: '[Description à personnaliser.]' },
+    { title: '[Logistique maîtrisée]', text: '[Description à personnaliser.]' },
+    { title: '[Écoute & Accompagnement]', text: '[Description à personnaliser.]' },
+    { title: '[Confiance & Transparence]', text: '[Description à personnaliser.]' },
+  ],
+}
 
 export default function APropos() {
+  const [content, setContent] = useState(DEFAULT_CONTENT)
+
+  useEffect(() => {
+    supabase.from('site_content').select('*').eq('key', 'about_page').then(({ data }) => {
+      const row = data && data[0]
+      if (!row) return
+      try {
+        const parsed = JSON.parse(row.value)
+        setContent(c => ({ ...c, ...parsed }))
+      } catch {}
+    })
+  }, [])
+
   return (
     <>
       <Head>
@@ -16,7 +52,7 @@ export default function APropos() {
       <div className="site-wrap">
         <div
           className="page-header"
-          style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1920&q=80)' }}
+          style={{ backgroundImage: `url(${content.headerImg || PAGE_HEADER_DEFAULT})` }}
         >
           <div className="page-header-overlay" />
           <div className="container">
@@ -30,7 +66,7 @@ export default function APropos() {
           </div>
         </div>
 
-        {/* QUI SOMMES-NOUS — MOCKUP: remplacer le texte et la photo par les vrais */}
+        {/* QUI SOMMES-NOUS — texte et photo édités depuis Espace OA > À Propos */}
         <section className="why-choose-us pb-zero">
           <div className="why-us-outer">
             <div className="w-layout-blockcontainer container-small w-container">
@@ -42,35 +78,31 @@ export default function APropos() {
                       <div className="section-subtitle-icon"></div>
                       <p className="section-subtitle">Qui sommes-nous</p>
                     </div>
-                    <h2 className="section-title">[Prénom Nom], fondateur d'OA Événementiel</h2>
-                    <p className="section-text">
-                      [Votre histoire ici — pourquoi ce métier vous anime, depuis quand vous organisez des événements,
-                      ce qui rend votre approche différente. Deux ou trois phrases suffisent, je les mettrai en forme.]
-                    </p>
+                    <h2 className="section-title">{content.founderName}</h2>
+                    <p className="section-text">{content.story}</p>
                   </div>
                   <div className="why-us-counter-outer">
-                    <div className="counter-block">
-                      <h2 className="counter-count">[X]+</h2>
-                      <div className="counter-title-box">
-                        <div className="counter-dot"></div>
-                        <p className="counter-title">[Ex : Ans d'expérience]</p>
+                    {content.counters.map((c, i) => (
+                      <div className="counter-block" key={i}>
+                        <h2 className="counter-count">{c.count}</h2>
+                        <div className="counter-title-box">
+                          <div className="counter-dot"></div>
+                          <p className="counter-title">{c.label}</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="counter-block">
-                      <h2 className="counter-count">[X]+</h2>
-                      <div className="counter-title-box">
-                        <div className="counter-dot"></div>
-                        <p className="counter-title">[Ex : Événements réalisés]</p>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
 
                 <div className="why-us-image-box">
-                  <div className="apropos-photo-placeholder">
-                    <i className="fas fa-camera" />
-                    <p>Votre photo ici</p>
-                  </div>
+                  {content.photoUrl ? (
+                    <img src={content.photoUrl} alt={content.founderName} className="apropos-photo" />
+                  ) : (
+                    <div className="apropos-photo-placeholder">
+                      <i className="fas fa-camera" />
+                      <p>Votre photo ici</p>
+                    </div>
+                  )}
                 </div>
 
               </div>
@@ -78,7 +110,7 @@ export default function APropos() {
           </div>
         </section>
 
-        {/* NOS VALEURS — MOCKUP: à ajuster selon ce que vous voulez mettre en avant */}
+        {/* NOS VALEURS — texte édité depuis Espace OA > À Propos */}
         <section className="feature-section">
           <div className="w-layout-blockcontainer container w-container">
             <div className="section-title-box" style={{ textAlign: 'center', marginBottom: 40 }}>
@@ -89,31 +121,13 @@ export default function APropos() {
               <h2 className="section-title">Ce qui guide chaque projet</h2>
             </div>
             <div className="w-layout-grid feature-grid">
-
-              <div className="feature-block">
-                <img src="/return.avif" loading="lazy" alt="" className="feature-icon" />
-                <h4 style={{ color: 'rgb(0,0,0)' }} className="feature-title">[Créativité sur-mesure]</h4>
-                <p style={{ color: 'rgb(0,0,0)' }} className="feature-text">[Description à personnaliser.]</p>
-              </div>
-
-              <div className="feature-block">
-                <img src="/delivery-truck.avif" loading="lazy" alt="" className="feature-icon" />
-                <h4 style={{ color: 'rgb(0,0,0)' }} className="feature-title">[Logistique maîtrisée]</h4>
-                <p style={{ color: 'rgb(0,0,0)' }} className="feature-text">[Description à personnaliser.]</p>
-              </div>
-
-              <div className="feature-block">
-                <img src="/customer-service.avif" loading="lazy" alt="" className="feature-icon" />
-                <h4 style={{ color: 'rgb(0,0,0)' }} className="feature-title">[Écoute & Accompagnement]</h4>
-                <p style={{ color: 'rgb(0,0,0)' }} className="feature-text">[Description à personnaliser.]</p>
-              </div>
-
-              <div className="feature-block">
-                <img src="/money-back.avif" loading="lazy" alt="" className="feature-icon" />
-                <h4 style={{ color: 'rgb(0,0,0)' }} className="feature-title">[Confiance & Transparence]</h4>
-                <p style={{ color: 'rgb(0,0,0)' }} className="feature-text">[Description à personnaliser.]</p>
-              </div>
-
+              {content.values.map((v, i) => (
+                <div className="feature-block" key={i}>
+                  <img src={VALUE_ICONS[i]} loading="lazy" alt="" className="feature-icon" />
+                  <h4 style={{ color: 'rgb(0,0,0)' }} className="feature-title">{v.title}</h4>
+                  <p style={{ color: 'rgb(0,0,0)' }} className="feature-text">{v.text}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>

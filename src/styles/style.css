@@ -20,6 +20,72 @@
   --footer-bg  : #000000;
 }
 
+/* ===== DESIGN SYSTEM v2 =====
+   Additive token set for the editorial redesign (Options.fr-inspired
+   structure, OA's own marble + gold identity). The legacy tokens above
+   stay untouched — Footer and not-yet-redesigned pages still read them —
+   these new --oa-* tokens are what the Navbar and new homepage use. */
+:root {
+  --oa-background : #ffffff;
+  --oa-marble-tint: rgba(255, 255, 255, 0.42);
+  --oa-text       : #16140f;
+  --oa-muted      : #6b6558;
+  --oa-accent     : #c9a15a;
+  --oa-accent-dark: #b38d47;
+  --oa-border     : rgba(22, 20, 15, 0.1);
+  --oa-surface    : rgba(255, 255, 255, 0.55);
+
+  --oa-font-display: 'Playfair Display', serif;
+  --oa-font-heading: 'Montserrat', sans-serif;
+  --oa-font-body   : 'DM Sans', sans-serif;
+
+  --oa-size-display: clamp(2.6rem, 4.4vw, 4.4rem);
+  --oa-size-h1     : clamp(2.1rem, 3.2vw, 3rem);
+  --oa-size-h2     : clamp(1.7rem, 2.4vw, 2.3rem);
+  --oa-size-h3     : clamp(1.25rem, 1.6vw, 1.55rem);
+  --oa-size-body   : 1.02rem;
+  --oa-size-small  : .82rem;
+
+  --oa-container-max: 1360px;
+  --oa-container-pad: clamp(20px, 4vw, 60px);
+  --oa-section-pad   : clamp(72px, 11vw, 150px);
+}
+
+.oa-container {
+  width: 100%;
+  max-width: var(--oa-container-max);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--oa-container-pad);
+  padding-right: var(--oa-container-pad);
+}
+
+.oa-section { padding-top: var(--oa-section-pad); padding-bottom: var(--oa-section-pad); }
+.oa-section-tight { padding-top: calc(var(--oa-section-pad) * .5); padding-bottom: calc(var(--oa-section-pad) * .5); }
+
+.oa-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--oa-font-heading);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--oa-accent-dark);
+  margin-bottom: 14px;
+}
+.oa-eyebrow::before { content: ''; width: 30px; height: 1px; background: var(--oa-accent); }
+
+.oa-heading {
+  font-family: var(--oa-font-display);
+  font-weight: 600;
+  color: var(--oa-text);
+  letter-spacing: .2px;
+  line-height: 1.12;
+}
+.oa-text-muted { color: var(--oa-muted); }
+
 /* ===== HEADER LOGO ===== */
 /* Wordmark written as real text next to the icon instead of baked into the
    logo image — the image's own tagline text became illegible once the
@@ -174,6 +240,20 @@
 .theme-button-outline:hover {
   background-color: var(--dark);
   color: var(--light, #fff);
+}
+/* A later, higher-specificity ".theme-button" rule (below) also sets
+   background-color, and file order alone would let it win over this class
+   even when both are applied together — pin the combined selector so the
+   outline variant reliably stays transparent. */
+.theme-button.theme-button-outline {
+  background-color: transparent;
+  color: var(--dark);
+  border: 1px solid var(--oa-border, var(--dark));
+}
+.theme-button.theme-button-outline:hover {
+  background-color: var(--oa-accent, var(--dark));
+  border-color: var(--oa-accent, var(--dark));
+  color: #fff;
 }
 
 
@@ -417,12 +497,17 @@
 
 
 /* ===== MARBLE BACKGROUND ===== */
-/* overflow-x:hidden lives on html ONLY. Setting it on body too (as before)
-   stops the browser from propagating body's overflow to the viewport —
-   html and body then become two independent scrolling boxes, each able to
-   render its own scrollbar, which is what caused a double vertical
-   scrollbar. html alone is enough to clip .marble-layer's intentional
-   24px bleed (see its own comment) horizontally. */
+/* overflow-x:hidden lives on html ONLY — adding it to body too (tried
+   briefly to clip .marble-layer's horizontal bleed) turned out to break
+   mobile scrolling intermittently: per the CSS Overflow spec, setting
+   overflow-x on an element while overflow-y is left unset forces
+   overflow-y to compute as "auto" too, silently turning body into its OWN
+   independent vertical scroll container fighting html (and Lenis, which
+   drives scroll via window/html) for touch gestures — the exact
+   double-scroll-box problem this file already warns about below, just
+   reintroduced on an axis nobody was watching for it on. Fixed at the
+   actual source instead: .marble-layer no longer bleeds horizontally (see
+   its own comment), so there's nothing left to clip on body at all. */
 html {
   overflow-x: hidden;
 }
@@ -434,7 +519,11 @@ body {
 /* Absolutely positioned (not fixed) — it's part of the normal document
    flow, sized to the full page height by `body`'s own height, so it
    scrolls together with the content instead of staying pinned to the
-   viewport. Oversized by 24px on each side so no edge is ever visible.
+   viewport. Oversized by 24px top/bottom only (not left/right — that was
+   the source of a horizontal-overflow bug, see the block above) so no
+   edge is ever visible during vertical rubber-band overscroll on mobile;
+   horizontally the layer just matches the viewport exactly, which is fine
+   since there's no horizontal scroll for an edge to ever show during.
    Tiled (background-repeat) rather than cover — cover on a container this
    tall (full document height, easily 5000px+) forces the image to zoom in
    far enough to cover that height, cropping away almost all of the width
@@ -453,7 +542,7 @@ body {
    small opacity differences. One layer, one wash, no edges anywhere. */
 .marble-layer {
   position: absolute;
-  top: -24px; left: -24px; right: -24px; bottom: -24px;
+  top: -24px; left: 0; right: 0; bottom: -24px;
   z-index: -1;
   pointer-events: none;
   background-image: linear-gradient(rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.42)), url('/fondMarbre.jpg');
@@ -547,7 +636,10 @@ body {
 }
 @media (max-width: 767px) {
   .footer-cols { grid-template-columns: 1fr; }
-  .footer-nav-widget { transform: none; }
+  /* Navigation column dropped on mobile only — every one of its links is
+     already reachable from the mobile nav menu, so on a short mobile
+     screen it was just repeating the same links again right below it. */
+  .footer-nav-widget { display: none; }
 }
 
 .footer-brand-col .footer-logo-link { margin-bottom: 16px; display: inline-block; }
@@ -594,6 +686,10 @@ body {
   border-top: 1px solid rgba(0,0,0,.08);
 }
 .footer-copyright-text { font-size: 12.5px; color: var(--gray); letter-spacing: .2px; }
+/* Discreet access to Espace OA — looks like plain copyright text, no
+   underline/color change, so it isn't an obvious "admin login" call-out. */
+.footer-copyright-link { color: inherit; text-decoration: none; }
+.footer-copyright-link:hover { color: var(--gray); }
 .footer-shape { display: none; }
 
 /* ===== À PROPOS (mockup placeholders) ===== */
@@ -613,9 +709,106 @@ body {
 .apropos-photo-placeholder i { font-size: 2.2rem; opacity: .35; }
 .apropos-photo-placeholder p { font-size: .9rem; font-weight: 600; margin: 0; }
 
+.apropos-photo {
+  width: 100%;
+  min-height: 380px;
+  max-height: 520px;
+  object-fit: cover;
+  border-radius: 20px;
+}
+
 .apropos-cta-section { padding: 90px 20px 110px; text-align: center; }
 .apropos-cta-title { font-family: 'Montserrat', sans-serif; font-size: clamp(1.8rem, 3vw, 2.4rem); margin-bottom: 12px; color: #000; }
 .apropos-cta-text { color: var(--gray); margin-bottom: 28px; }
+
+/* ===== HOMEPAGE UNIFICATION =====
+   pages/index.jsx is a mostly-untouched Webflow "Furnish" template export —
+   it never went through the redesign pass the rest of the site got (sharp
+   corners, gold accent, transparent marble-friendly cards). Overriding the
+   relevant furnish.css classes here rather than editing index.jsx, since
+   its markup carries data-w-id hooks for Webflow's IX2 scroll animations
+   (loaded only on "/", see _app.jsx) that a JSX rewrite would risk breaking
+   for no visual benefit. */
+
+/* Card fills → transparent + border, so the marble shows through here too
+   (same treatment .feature-block already got above). .product-three-bg is
+   deliberately excluded — it's an animated reveal panel (scaleY(0) at
+   rest), not a static card fill. */
+.category-box,
+.product-block,
+.product-block-three,
+.product-three-image-box,
+.testimonial-block,
+.news-block,
+.sale-block,
+.counter-block {
+  background-color: transparent !important;
+  border: 1px solid var(--border);
+  border-radius: 0 !important;
+}
+
+/* Primary CTA + accent touches: homepage shipped with a black button, a
+   black subtitle dot, and a black nav underline instead of the gold used
+   everywhere else on the site (.btn-rose-gold). */
+.theme-button {
+  background-color: #c9a15a;
+  color: #ffffff;
+  border-radius: 0;
+  transition: all .35s cubic-bezier(0.2, 1, 0.2, 1);
+}
+.theme-button:hover {
+  background-color: #b38d47;
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(201,161,90,.35);
+}
+.section-subtitle-icon {
+  background-color: #c9a15a !important;
+  filter: none !important;
+}
+.header-menu-line {
+  background-color: #c9a15a !important;
+  border-color: #c9a15a !important;
+}
+/* Underline only, not a filled background — .header-menu-link.w--current
+   previously also got background-color here, which painted the whole nav
+   link as a solid gold pill instead of just tinting its border-bottom. */
+.header-menu-link.w--current {
+  border-color: #c9a15a !important;
+}
+
+/* Bold uppercase headings, matching .page-header h1 / .service-block h2
+   already established elsewhere on the site. */
+.section-title,
+.category-title,
+.product-title,
+.product-three-title,
+.news-title,
+.feature-title,
+.sale-title,
+.sale-title-two {
+  text-transform: uppercase !important;
+  font-weight: 800 !important;
+  letter-spacing: .5px;
+}
+
+/* "Découvrir" links on category tiles / testimonials in gold, matching the
+   rest of the site's accent language. */
+.readmore-btn,
+.readmore-btn-text {
+  color: #c9a15a !important;
+  font-weight: 700;
+}
+
+/* Feature row reads as one clean trust-badge strip — the direct model is
+   Options.fr's "4 000 références / Livraison Europe / ..." row, applied to
+   OA's existing "Créativité unique / Installation & Logistique / ..." block. */
+.feature-icon {
+  background: rgba(201,161,90,.12);
+  border: 1px solid rgba(201,161,90,.3);
+  border-radius: 50%;
+  padding: 14px;
+  box-sizing: border-box;
+}
 
 /* ===== UTILITIES ===== */
 .text-rose-gold { color: #000000; }
@@ -625,4 +818,417 @@ body {
   width: 50px; height: 1px;
   background: #000000;
   margin: 14px auto;
+}
+
+/* ===== NAVBAR — ELEGANT REDESIGN =====
+   Thin sticky nav that gains a touch of definition once the page is
+   scrolled, plus a real slide-in mobile panel (previously the button/panel
+   here had zero React state and were entirely inert without Webflow's
+   runtime JS, which only ever loaded on "/" — see Navbar.jsx). */
+.oa-navbar {
+  /* No backdrop-filter here on purpose: it (like `filter`) makes this
+     element a containing block for fixed-position descendants, which broke
+     .mobile-menu's position:fixed — the slide-in panel sized itself to the
+     navbar's own ~70px height instead of the full viewport. */
+  background-color: rgba(255, 255, 255, .96) !important;
+  border-bottom: 1px solid transparent;
+  box-shadow: none;
+  transition: box-shadow .35s ease, border-color .35s ease;
+}
+.oa-navbar .header-main-box { padding-top: 14px; padding-bottom: 14px; }
+.oa-navbar-scrolled {
+  border-bottom-color: var(--oa-border);
+  box-shadow: 0 8px 24px rgba(22, 20, 15, .06);
+}
+.oa-navbar .header-menu-text {
+  font-size: .82rem;
+  letter-spacing: .3px;
+}
+
+/* furnish.css hides the nav links and shows the hamburger at <=991px, but
+   only hides .header-btn (the Espace OA / Réserver buttons) at <=479px —
+   leaving the entire 480-991px range (most tablets and large phones)
+   showing the hamburger AND both header buttons at once, which crowds and
+   wraps ("Espace OA" onto two lines). Hide the secondary one at the same
+   991px breakpoint the hamburger appears at; "Réserver" (the primary CTA)
+   stays visible next to it. */
+@media (max-width: 991px) {
+  .header-btn-secondary { display: none; }
+}
+
+/* The underline-on-hover was previously driven by a Webflow IX2 interaction
+   (data-w-id), not CSS — furnish.css only sets the line's resting state
+   (transform: scaleX(0)). Now that IX2 is gone, hover has to animate it. */
+.header-menu-line {
+  transform-origin: left;
+  transition: transform .35s cubic-bezier(0.2, 1, 0.2, 1);
+}
+.header-menu-link:hover .header-menu-line {
+  transform: scaleX(1);
+}
+
+/* Page-level transition — the wrapper in _app.jsx is remounted (key=asPath)
+   on every route change, which restarts this animation automatically. */
+@keyframes oaPageFadeIn {
+  from { opacity: 0; transform: translateY(28px) scale(.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.oa-page-transition {
+  animation: oaPageFadeIn .65s cubic-bezier(.16,.84,.44,1) both;
+}
+
+/* Top progress bar — driven by navState in _app.jsx (idle/loading/done). */
+.oa-progress-bar {
+  position: fixed;
+  top: 0; left: 0;
+  height: 3px;
+  width: 0%;
+  background: linear-gradient(90deg, var(--oa-accent), var(--oa-accent-dark));
+  z-index: 2000;
+  opacity: 0;
+  box-shadow: 0 0 10px rgba(201,161,90,.6);
+}
+.oa-progress-loading {
+  width: 78%;
+  opacity: 1;
+  transition: width 2.6s cubic-bezier(.1,.6,.3,1), opacity .2s ease;
+}
+.oa-progress-done {
+  width: 100%;
+  opacity: 1;
+  transition: width .25s ease-out, opacity .25s ease .15s;
+}
+.oa-progress-idle {
+  width: 0%;
+  opacity: 0;
+  transition: opacity .2s ease, width 0s .2s;
+}
+
+/* Animated hamburger-to-X (3 lines morphing into a cross) instead of a
+   static FontAwesome bars icon that just got swapped for a different
+   static icon inside the panel — a smoother, more considered open/close
+   moment on mobile. Circular button, gold on hover/open instead of
+   furnish.css's plain dark square. */
+.mobile-menu-btn {
+  border: none;
+  padding: 0;
+  border-radius: 50%;
+  position: relative;
+  transition: background-color .3s ease, box-shadow .3s ease, transform .2s ease;
+}
+.mobile-menu-btn:hover { background-color: var(--oa-accent-dark); }
+.mobile-menu-btn:active { transform: scale(.93); }
+.mobile-menu-btn.is-open {
+  background-color: var(--oa-accent);
+  box-shadow: 0 6px 18px rgba(201,161,90,.35);
+}
+
+.hamburger-line {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 18px; height: 2px;
+  margin-left: -9px;
+  border-radius: 2px;
+  background-color: #fff;
+  transition: transform .4s cubic-bezier(0.16, 1, 0.3, 1), opacity .25s ease;
+}
+.hamburger-line:nth-child(1) { transform: translateY(-6px); }
+.hamburger-line:nth-child(2) { transform: translateY(0); }
+.hamburger-line:nth-child(3) { transform: translateY(6px); }
+.mobile-menu-btn.is-open .hamburger-line:nth-child(1) { transform: translateY(0) rotate(45deg); }
+.mobile-menu-btn.is-open .hamburger-line:nth-child(2) { opacity: 0; transform: translateY(0) scaleX(0); }
+.mobile-menu-btn.is-open .hamburger-line:nth-child(3) { transform: translateY(0) rotate(-45deg); }
+
+.mobile-menu-overlay {
+  position: fixed; inset: 0;
+  z-index: 998;
+  background: rgba(22, 20, 15, .5);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .4s ease;
+}
+.mobile-menu-overlay.is-open { opacity: 1; pointer-events: auto; }
+
+/* Warmer off-white than the stark furnish.css default, with a thin gold
+   top accent so it reads as this site's own panel, not a generic template
+   drawer — plus a touch longer/softer transition for a less abrupt slide. */
+.mobile-menu {
+  background-color: #fdfcfa !important;
+  box-shadow: -18px 0 50px rgba(22, 20, 15, .18);
+  transition: transform .48s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.mobile-menu::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--oa-accent), var(--oa-accent-dark));
+}
+.mobile-menu.is-open { transform: translate(0); }
+
+.mobile-logo-box { border-bottom: 1px solid var(--oa-border); }
+
+.mobile-menu-close-btn {
+  width: 36px; height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--oa-border);
+  background: transparent;
+  color: var(--dark);
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: .95rem;
+  transition: border-color .25s ease, color .25s ease, transform .25s ease;
+}
+.mobile-menu-close-btn:hover { border-color: var(--oa-accent); color: var(--oa-accent); transform: rotate(90deg); }
+
+/* Refined link rows: smaller/elegant type than furnish.css's oversized
+   default, a gold left-bar that grows in on hover/active instead of a bare
+   color swap, and a soft stagger so the list reads as arriving one row at
+   a time rather than popping in as a block. */
+.mobile-dropdown-link {
+  position: relative;
+  display: block;
+  padding: 20px 24px !important;
+  border-bottom: 1px solid var(--oa-border);
+  transition: background-color .25s ease, padding-left .25s ease, opacity .45s ease, transform .45s ease;
+  opacity: 0;
+  transform: translateX(14px);
+}
+.mobile-menu.is-open .mobile-dropdown-link { opacity: 1; transform: translateX(0); }
+.mobile-menu-box .mobile-dropdown-link:nth-child(1) { transition-delay: .06s; }
+.mobile-menu-box .mobile-dropdown-link:nth-child(2) { transition-delay: .10s; }
+.mobile-menu-box .mobile-dropdown-link:nth-child(3) { transition-delay: .14s; }
+.mobile-menu-box .mobile-dropdown-link:nth-child(4) { transition-delay: .18s; }
+.mobile-menu-box .mobile-dropdown-link:nth-child(5) { transition-delay: .22s; }
+.mobile-menu-box .mobile-dropdown-link:nth-child(6) { transition-delay: .26s; }
+.mobile-menu-box .mobile-dropdown-link:nth-child(7) { transition-delay: .30s; }
+.mobile-dropdown-link::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--oa-accent);
+  transform: scaleY(0);
+  transition: transform .25s ease;
+}
+.mobile-dropdown-link:hover { background-color: rgba(201,161,90,.06); padding-left: 30px !important; }
+.mobile-dropdown-link:hover::before,
+.mobile-dropdown-link.w--current::before { transform: scaleY(1); }
+.mobile-dropdown-title {
+  font-family: var(--oa-font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: .2px;
+}
+.mobile-dropdown-link.w--current .mobile-dropdown-title { color: var(--oa-accent-dark); }
+
+.mobile-menu-box { grid-row-gap: 0 !important; }
+.mobile-menu-box > a.theme-button,
+.mobile-menu-box > a.theme-button-outline { margin-left: 24px; margin-right: 24px; width: calc(100% - 48px) !important; }
+
+/* ===== HOMEPAGE — EDITORIAL RECONSTRUCTION =====
+   New sections added to pages/index.jsx (Nos Univers, Nos Prestations,
+   Réalisations, Chiffres clés, Témoignages, CTA finale), replacing the raw
+   Webflow fake-CMS sections (countdown, fabricated blog). Built on the
+   .oa-container / .oa-section / .oa-eyebrow / .oa-heading tokens defined
+   near the top of this file. */
+
+.oa-section-head { max-width: 640px; margin: 0 auto 56px; text-align: center; }
+.oa-section-head-split {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  max-width: none;
+  text-align: left;
+  margin-bottom: 40px;
+}
+.oa-section-head-split .oa-eyebrow, .oa-section-head-split .oa-heading { margin-bottom: 0; }
+
+.oa-center-cta { text-align: center; margin-top: 44px; }
+
+/* Nos Univers */
+.oa-univers-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+.oa-univers-card {
+  display: block;
+  text-decoration: none;
+  border: 1px solid var(--oa-border);
+  background: var(--oa-surface);
+  transition: transform .35s ease, box-shadow .35s ease;
+}
+.oa-univers-card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(22,20,15,.1); }
+.oa-univers-image {
+  height: 260px;
+  background-size: cover;
+  background-position: center;
+}
+.oa-univers-body { padding: 28px 26px 32px; }
+.oa-univers-body h3 { margin-bottom: 10px; }
+.oa-univers-body p { margin-bottom: 18px; }
+.oa-univers-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--oa-accent-dark);
+  font-family: var(--oa-font-heading);
+  font-weight: 700;
+  font-size: .82rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+/* Nos Prestations */
+.oa-prestations-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+.oa-prestation-card {
+  border: 1px solid var(--oa-border);
+  padding: 32px 24px;
+  text-align: center;
+  background: var(--oa-surface);
+}
+.oa-prestation-icon {
+  width: 56px; height: 56px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(201,161,90,.12);
+  border: 1px solid rgba(201,161,90,.3);
+  color: var(--oa-accent-dark);
+  font-size: 1.1rem;
+}
+.oa-prestation-card h3 { margin-bottom: 8px; }
+
+/* Réalisations — arrows sit in reserved side padding on the carousel
+   itself (not the outer .oa-container's gutter, which varies by viewport),
+   so they never overlap the photos regardless of screen width. */
+.oa-realisations-carousel { position: relative; padding: 0 60px; }
+.oa-carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--oa-border);
+  background: rgba(255,255,255,.92);
+  color: var(--oa-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(22,20,15,.14);
+  transition: background .25s ease, color .25s ease, border-color .25s ease;
+}
+.oa-carousel-arrow:hover { background: var(--oa-accent); border-color: var(--oa-accent); color: #fff; }
+.oa-carousel-arrow-left { left: 0; }
+.oa-carousel-arrow-right { right: 0; }
+@media (max-width: 640px) {
+  .oa-realisations-carousel { padding: 0 28px; }
+  .oa-carousel-arrow { width: 30px; height: 30px; font-size: .75rem; }
+}
+
+/* True infinite-loop carousel (see index.jsx): .oa-realisations-strip only
+   clips, .oa-realisations-track's transform/transition are set inline from
+   JS (three copies of the photo list slid across, snapped back invisibly
+   once a slide finishes) — no CSS transition/transform declared here so
+   there's only one source of truth for it. */
+.oa-realisations-strip {
+  overflow: hidden;
+}
+.oa-realisations-track {
+  display: flex;
+  gap: 18px;
+}
+.oa-realisation-item {
+  position: relative;
+  display: block;
+  flex: 0 0 260px;
+  height: 300px;
+  overflow: hidden;
+}
+@media (max-width: 640px) {
+  /* Sized (with the carousel's own reduced side padding + track gap above)
+     so at least 2 photos are visible on a ~360-414px phone at once, with a
+     peek of a 3rd as a hint there's more to swipe/click through. */
+  .oa-realisations-track { gap: 10px; }
+  .oa-realisation-item { flex-basis: 125px; height: 150px; }
+  .oa-realisation-item span { padding: 8px 10px; font-size: .68rem; letter-spacing: .5px; }
+}
+.oa-realisation-item img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform .5s ease;
+}
+.oa-realisation-item:hover img { transform: scale(1.06); }
+.oa-realisation-item span {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 14px 16px;
+  background: linear-gradient(0deg, rgba(0,0,0,.55), transparent);
+  color: #fff;
+  font-family: var(--oa-font-heading);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Chiffres clés */
+.oa-stats-band { background: var(--oa-text); }
+.oa-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  text-align: center;
+}
+.oa-stat-count {
+  display: block;
+  font-family: var(--oa-font-display);
+  font-size: clamp(2rem, 3vw, 2.6rem);
+  color: #fff;
+  margin-bottom: 6px;
+}
+.oa-stat-label {
+  display: block;
+  font-family: var(--oa-font-heading);
+  font-size: .78rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.65);
+}
+
+/* Témoignages */
+.oa-temoignages-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.oa-temoignage-card {
+  border: 1px solid var(--oa-border);
+  background: var(--oa-surface);
+  padding: 36px 30px;
+}
+.oa-quote-icon { color: var(--oa-accent); font-size: 1.3rem; margin-bottom: 16px; display: block; }
+.oa-temoignage-quote { font-size: 1rem; line-height: 1.6; color: var(--oa-text); margin-bottom: 20px; }
+.oa-temoignage-name { font-family: var(--oa-font-heading); font-weight: 700; font-size: .92rem; }
+.oa-temoignage-tag { font-size: .82rem; margin-top: 2px; }
+
+@media (max-width: 991px) {
+  .oa-univers-grid, .oa-prestations-grid { grid-template-columns: repeat(2, 1fr); }
+  .oa-temoignages-grid { grid-template-columns: 1fr; }
+  .oa-stats-grid { grid-template-columns: repeat(2, 1fr); row-gap: 32px; }
+}
+@media (max-width: 640px) {
+  .oa-univers-grid, .oa-prestations-grid { grid-template-columns: 1fr; }
+  .oa-section-head-split { flex-direction: column; align-items: flex-start; }
+  .oa-prestation-card { padding: 24px 20px; }
+  .oa-prestation-icon { width: 46px; height: 46px; font-size: .95rem; margin-bottom: 14px; }
 }

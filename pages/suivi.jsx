@@ -30,7 +30,14 @@ export default function Suivi() {
   useEffect(() => {
     document.documentElement.style.overflowY = showPriceDetail ? 'hidden' : ''
     document.body.style.overflow = showPriceDetail ? 'hidden' : ''
-    return () => { document.documentElement.style.overflowY = ''; document.body.style.overflow = '' }
+    // Lenis (see _app.jsx) scrolls via wheel/touch interception, not just
+    // native overflow — needs pausing/resuming explicitly too.
+    if (showPriceDetail) window.__lenis?.stop()
+    else window.__lenis?.start()
+    return () => {
+      document.documentElement.style.overflowY = ''; document.body.style.overflow = ''
+      window.__lenis?.start()
+    }
   }, [showPriceDetail])
 
   async function runSearch(emailVal, referenceVal) {

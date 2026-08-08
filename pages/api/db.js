@@ -71,7 +71,7 @@ function serializeRow(table, data) {
   return res;
 }
 
-const ALLOWED_TABLES = ['materials', 'reservations', 'blocked_dates', 'blocked_hours', 'contacts', 'categories', 'settings', 'payments'];
+const ALLOWED_TABLES = ['materials', 'reservations', 'blocked_dates', 'blocked_hours', 'contacts', 'categories', 'settings', 'payments', 'material_price_tiers', 'site_content'];
 const isValidColumn = (col) => /^[a-zA-Z0-9_]+$/.test(col);
 
 export default async function handler(req, res) {
@@ -88,15 +88,20 @@ export default async function handler(req, res) {
   // Define table access controls
   const requiresAuth = {
     materials: ['POST', 'PUT', 'DELETE'],
+    material_price_tiers: ['POST', 'PUT', 'DELETE'], // GET public — booking wizard reads prices while logged out
     categories: ['POST', 'PUT', 'DELETE'],
     blocked_dates: ['POST', 'PUT', 'DELETE'],
     blocked_hours: ['POST', 'PUT', 'DELETE'],
     reservations: ['GET', 'PUT', 'DELETE'], // GET is protected, POST (insert) is public
     contacts: ['GET', 'PUT', 'DELETE'],     // GET is protected, POST (insert) is public
     settings: ['GET', 'POST', 'PUT', 'DELETE'], // business config, admin-only end to end
-    payments: ['GET', 'POST', 'PUT', 'DELETE']  // financial data, admin-only; rows are actually
+    payments: ['GET', 'POST', 'PUT', 'DELETE'], // financial data, admin-only; rows are actually
                                                   // written by /api/payments/* server-side, not
                                                   // inserted through this generic endpoint
+    site_content: ['POST', 'PUT', 'DELETE'],    // GET public — public pages (e.g. À Propos) read
+                                                  // this while logged out; kept separate from
+                                                  // settings so bank_iban/bank_bic never have to
+                                                  // be exposed to make this readable
   };
 
   const method = req.method;

@@ -1,79 +1,89 @@
 import '../src/index.css'
-import { useEffect, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/router'
+import Lenis from 'lenis'
 import Loader from '../src/components/Loader.jsx'
 import Navbar from '../src/components/Navbar.jsx'
 import Footer from '../src/components/Footer.jsx'
 
 export default function App({ Component, pageProps }) {
   const router = useRouter()
-  const webflowLoadedRef = useRef(false)
   // Espace OA is a standalone admin dashboard with its own layout/login gate —
   // it doesn't use the public site's Navbar/Footer.
   const isAdmin = router.pathname === '/espace-oa'
 
+  // 'idle' | 'loading' | 'done' — drives the top progress bar. 'loading'
+  // creeps the bar toward 80% (client navigations are near-instant, so this
+  // rarely finishes), 'done' snaps it to 100% then fades it out.
+  const [navState, setNavState] = useState('idle')
+  const doneTimer = useRef(null)
+  const lenisRef = useRef(null)
+
+  // Smooth, eased scrolling on the public site — plain mouse-wheel input has
+  // no momentum by default (each tick moves a fixed amount and stops dead),
+  // which read as abrupt. Skipped on /espace-oa: the admin dashboard has
+  // several of its own internal scroll containers (tables, modals, the
+  // calendar grid) that a global wheel-hijacking library would fight with.
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    // Only the homepage uses Webflow's data-w-id interactions — loading
-    // jQuery + 6 Webflow script chunks on every route (contact, réservation,
-    // galerie, admin...) was pure dead weight and part of the site-wide lag.
-    if (router.pathname !== '/') return
-    if (webflowLoadedRef.current) return
-    webflowLoadedRef.current = true
-
-    const loadScript = (src) => {
-      return new Promise((resolve, reject) => {
-        // Avoid duplicate script insertion
-        if (document.querySelector(`script[src="${src}"]`)) {
-          resolve()
-          return
-        }
-        const script = document.createElement('script')
-        script.src = src
-        script.async = false // maintains execution order
-        script.onload = () => resolve()
-        script.onerror = () => reject(new Error(`Failed to load: ${src}`))
-        document.body.appendChild(script)
-      })
+    if (isAdmin) return
+    const lenis = new Lenis({ duration: 1.1, smoothWheel: true })
+    lenisRef.current = lenis
+    window.__lenis = lenis
+    let rafId
+    function raf(time) {
+      lenis.raf(time)
+      rafId = requestAnimationFrame(raf)
     }
-
-    const loadWebflowEngine = async () => {
-      try {
-        // Load jQuery first
-        await loadScript('https://d3e54v103j8qbb.cloudfront.net/js/jquery-3.5.1.min.dc5e7f18c8.js?site=686b79afb668ce59a9047b8f')
-        
-        // Load Webflow dependencies in sequence
-        await loadScript('https://cdn.prod.website-files.com/686b79afb668ce59a9047b8f/js/webflow.schunk.b2397b2502f6f17b.js')
-        await loadScript('https://cdn.prod.website-files.com/686b79afb668ce59a9047b8f/js/webflow.schunk.8ec9fd06545d0b40.js')
-        await loadScript('https://cdn.prod.website-files.com/686b79afb668ce59a9047b8f/js/webflow.schunk.d659be6dcd9af708.js')
-        await loadScript('https://cdn.prod.website-files.com/686b79afb668ce59a9047b8f/js/webflow.schunk.8d3482e319db3f9d.js')
-        await loadScript('https://cdn.prod.website-files.com/686b79afb668ce59a9047b8f/js/webflow.schunk.3646b0bdbfc7a235.js')
-        await loadScript('https://cdn.prod.website-files.com/686b79afb668ce59a9047b8f/js/webflow.7f7d7f6e.bd44278dc0d2c015.js')
-
-        // Initialize Webflow after scripts are fully parsed
-        if (window.Webflow) {
-          window.Webflow.destroy()
-          window.Webflow.ready()
-          if (window.Webflow.require('ix2')) {
-            window.Webflow.require('ix2').init()
-          }
-        }
-      } catch (err) {
-        console.error('Error loading Webflow assets:', err)
-      }
+    rafId = requestAnimationFrame(raf)
+    return () => {
+      cancelAnimationFrame(rafId)
+      lenis.destroy()
+      lenisRef.current = null
+      window.__lenis = null
     }
+  }, [isAdmin])
 
-    loadWebflowEngine()
-  }, [router.pathname])
+  useEffect(() => {
+    const start = () => {
+      clearTimeout(doneTimer.current)
+      setNavState('loading')
+    }
+    const finish = () => {
+      // Reset scroll here (not on start) so it happens right as the new
+      // page's content mounts, in step with the progress bar completing.
+      // Goes through Lenis (when active) rather than window.scrollTo
+      // directly, so Lenis's internal position stays in sync — otherwise
+      // the next smooth-scrolled wheel tick would jump back to wherever
+      // Lenis still thought the page was.
+      if (lenisRef.current) lenisRef.current.scrollTo(0, { immediate: true })
+      else window.scrollTo(0, 0)
+      setNavState('done')
+      doneTimer.current = setTimeout(() => setNavState('idle'), 260)
+    }
+    router.events.on('routeChangeStart', start)
+    router.events.on('routeChangeComplete', finish)
+    router.events.on('routeChangeError', finish)
+    return () => {
+      router.events.off('routeChangeStart', start)
+      router.events.off('routeChangeComplete', finish)
+      router.events.off('routeChangeError', finish)
+      clearTimeout(doneTimer.current)
+    }
+  }, [router.events])
 
   return (
     <>
+      <div className={`oa-progress-bar oa-progress-${navState}`} aria-hidden="true" />
       <div className="marble-layer" aria-hidden="true" />
       {/* Mounted once here (not per-page) so its intro animation plays only
           on true first load, not on every client-side route change. */}
       {!isAdmin && <Loader />}
       {!isAdmin && <Navbar />}
-      <Component {...pageProps} />
+      {/* key={asPath} forces a remount on navigation, which restarts the
+          .oa-page-transition CSS animation for every new page. */}
+      <div key={router.asPath} className="oa-page-transition">
+        <Component {...pageProps} />
+      </div>
       {!isAdmin && <Footer />}
     </>
   )

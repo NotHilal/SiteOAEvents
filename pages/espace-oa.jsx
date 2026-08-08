@@ -2,12 +2,70 @@ import { useEffect, useState, useRef } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { supabase } from '../src/lib/supabase.js'
+import { ttcFromHt, groupTiersByMaterial } from '../src/lib/pricing.js'
+
+const EMPTY_TIER = { minQty:1, maxQty:'', weekday:'', weekend:'' }
 
 const HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
 const TYPE_LABELS = { mariage:'Mariage', anniversaire:'Anniversaire', 'evenement-pro':'Événement professionnel', 'location-deco':'Location de décoration', autre:'Autre' }
 const STATUS_LABEL = { pending:'En attente', awaiting_payment:'En attente de paiement', confirmed:'Confirmée', terminee:'Terminée', refused:'Refusée' }
 const STATUS_CLASS = { pending:'badge-pending', awaiting_payment:'badge-awaiting', confirmed:'badge-confirmed', terminee:'badge-terminee', refused:'badge-refused' }
+// Fixed icons for the "Nos valeurs" blocks on /a-propos — kept in sync with
+// the same 4 icons already reused on the homepage's "Pourquoi OA" section;
+// only the title/text are admin-editable, not the icon itself.
+const ABOUT_VALUE_ICONS = ['/return.avif', '/delivery-truck.avif', '/customer-service.avif', '/money-back.avif']
+
+// Slot lists for Espace OA > Visuel Site (ImageSlotGrid) — one entry per
+// swappable photo on the corresponding public page. Keys must match what
+// each page's DEFAULT_IMAGES/useEffect fallback logic reads.
+const HOME_SLOTS = [
+  { key:'hero_left', label:'Hero — photo gauche' },
+  { key:'hero_right', label:'Hero — photo droite' },
+  { key:'univers_1', label:'Mariages & Réceptions' },
+  { key:'univers_2', label:'Anniversaires & Fêtes' },
+  { key:'univers_3', label:'Location de Décoration' },
+  { key:'realisation_1', label:'Réalisation 1' },
+  { key:'realisation_2', label:'Réalisation 2' },
+  { key:'realisation_3', label:'Réalisation 3' },
+  { key:'realisation_4', label:'Réalisation 4' },
+  { key:'realisation_5', label:'Réalisation 5' },
+  { key:'realisation_6', label:'Réalisation 6' },
+]
+const SERVICES_SLOTS = [
+  { key:'page_header', label:'Bannière de page' },
+  { key:'service_1', label:'Organisation de Mariage' },
+  { key:'service_2', label:"Organisation d'Anniversaire" },
+  { key:'service_3', label:'Événements Professionnels' },
+  { key:'service_4', label:'Location de Décoration' },
+]
+// Galerie is a dynamic add/remove list (GalerieManager below), not fixed
+// slots like the other Visuel Site tabs — this just drives its category
+// dropdown, kept in sync with the filter labels on pages/galerie.jsx.
+const GALERIE_CATEGORIES = [
+  { key:'mariage', label:'Mariages' },
+  { key:'anniversaire', label:'Anniversaires' },
+  { key:'pro', label:'Événements Pro' },
+  { key:'deco', label:'Location Déco' },
+]
+const CONTACT_SLOTS = [
+  { key:'page_header', label:'Bannière de page' },
+]
+// Drives the mobile "tap to expand" tab menus (see .block-tabs-mobile) —
+// same tab set/order as the desktop pill row, just labelled once here so
+// both places can't drift out of sync.
+const VISUEL_TABS = [
+  { key:'accueil', label:'Accueil' },
+  { key:'prestations', label:'Prestations' },
+  { key:'galerie', label:'Galerie' },
+  { key:'apropos', label:'À Propos' },
+  { key:'contact', label:'Contact' },
+]
+const REGLAGES_TABS = [
+  { key:'adresse', label:'Adresse & livraison' },
+  { key:'virement', label:'Virement' },
+  { key:'installments', label:'Paiement en plusieurs fois' },
+]
 const MAT_PAGE_SIZE = 8
 const CAT_PAGE_SIZE = 10
 const DAY_PAGE_SIZE = 4
@@ -30,10 +88,12 @@ export default function AdminDashboard() {
   const [loginError, setLoginError] = useState('')
   const [loginLoading, setLoginLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('demandes')
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [reservations, setReservations] = useState([])
   const [paymentSummaries, setPaymentSummaries] = useState({})
   const [messages, setMessages] = useState([])
   const [materials, setMaterials] = useState([])
+  const [materialTiers, setMaterialTiers] = useState([])
   const [categories, setCategories] = useState([])
   const [blockedDatesMap, setBlockedDatesMap] = useState({})
   const [blockedHoursMap, setBlockedHoursMap] = useState({})
@@ -49,7 +109,8 @@ export default function AdminDashboard() {
   const [matPage, setMatPage] = useState(0)
   const [matFormVisible, setMatFormVisible] = useState(false)
   const [editingMat, setEditingMat] = useState(null)
-  const [matForm, setMatForm] = useState({ name:'', category:'', description:'', qty:1, price:'' })
+  const [matForm, setMatForm] = useState({ name:'', category:'', description:'', qty:1, tieredPricing:false, weekendDiffers:true, tiers:[{...EMPTY_TIER}] })
+  const [matTiersError, setMatTiersError] = useState('')
   const [matImageUrl, setMatImageUrl] = useState('')
   const [matImageFile, setMatImageFile] = useState(null)
   const [matImagePreview, setMatImagePreview] = useState(null)
@@ -78,13 +139,32 @@ export default function AdminDashboard() {
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [settingsError, setSettingsError] = useState('')
   const [reglagesTab, setReglagesTab] = useState('adresse')
+  const [reglagesMenuOpen, setReglagesMenuOpen] = useState(false)
+  const [visuelTab, setVisuelTab] = useState('accueil')
+  const [visuelMenuOpen, setVisuelMenuOpen] = useState(false)
+  const [aboutForm, setAboutForm] = useState({
+    founderName: '', story: '',
+    counters: [{ count:'', label:'' }, { count:'', label:'' }],
+    values: [{ title:'', text:'' }, { title:'', text:'' }, { title:'', text:'' }, { title:'', text:'' }],
+  })
+  const [aboutImageUrl, setAboutImageUrl] = useState('')
+  const [aboutImageFile, setAboutImageFile] = useState(null)
+  const [aboutImagePreview, setAboutImagePreview] = useState(null)
+  const aboutFileInputRef = useRef(null)
+  const [aboutHeaderUrl, setAboutHeaderUrl] = useState('')
+  const [aboutHeaderFile, setAboutHeaderFile] = useState(null)
+  const [aboutHeaderPreview, setAboutHeaderPreview] = useState(null)
+  const aboutHeaderInputRef = useRef(null)
+  const [aboutSaving, setAboutSaving] = useState(false)
+  const [aboutSaved, setAboutSaved] = useState(false)
+  const [aboutError, setAboutError] = useState('')
 
   // Lock page scroll while any modal is open — without this, a fixed,
   // screen-centered modal reads as "detached" from a background that keeps
   // scrolling underneath it. Freezing the page instead makes the modal feel
   // like the thing you're actually looking at, not a floating overlay.
   useEffect(() => {
-    const anyModalOpen = !!(dayModal || resaDetail || deleteModal || catModalOpen || contactModal || msgDetail)
+    const anyModalOpen = !!(dayModal || resaDetail || deleteModal || catModalOpen || contactModal || msgDetail || mobileNavOpen)
     // html has an explicit overflow-x set (see style.css, for the horizontal-
     // scrollbar fix) which stops the browser from propagating body's overflow
     // to the viewport — so html itself must be locked too, or this silently
@@ -92,7 +172,7 @@ export default function AdminDashboard() {
     document.documentElement.style.overflowY = anyModalOpen ? 'hidden' : ''
     document.body.style.overflow = anyModalOpen ? 'hidden' : ''
     return () => { document.documentElement.style.overflowY = ''; document.body.style.overflow = '' }
-  }, [dayModal, resaDetail, deleteModal, catModalOpen, contactModal, msgDetail])
+  }, [dayModal, resaDetail, deleteModal, catModalOpen, contactModal, msgDetail, mobileNavOpen])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -124,7 +204,7 @@ export default function AdminDashboard() {
   }, [user])
 
   async function loadAll() {
-    await Promise.all([loadReservations(), loadPaymentSummaries(), loadMessages(), loadBlockedData(), loadMaterials(), loadCategories(), loadSettings()])
+    await Promise.all([loadReservations(), loadPaymentSummaries(), loadMessages(), loadBlockedData(), loadMaterials(), loadCategories(), loadSettings(), loadAboutContent()])
   }
   async function loadReservations() {
     const { data } = await supabase.from('reservations').select('*').order('created_at', { ascending: false })
@@ -157,8 +237,12 @@ export default function AdminDashboard() {
     const hm = {}; (bh.data||[]).forEach(r => { if(!hm[r.date])hm[r.date]=[]; hm[r.date].push(r.hour) }); setBlockedHoursMap(hm)
   }
   async function loadMaterials() {
-    const { data } = await supabase.from('materials').select('*').order('category').order('name')
-    setMaterials(data || [])
+    const [matRes, tierRes] = await Promise.all([
+      supabase.from('materials').select('*').order('category').order('name'),
+      supabase.from('material_price_tiers').select('*'),
+    ])
+    setMaterials(matRes.data || [])
+    setMaterialTiers(tierRes.data || [])
   }
   async function loadSettings() {
     const { data } = await supabase.from('settings').select('*')
@@ -215,6 +299,100 @@ export default function AdminDashboard() {
       setSettingsError('Erreur lors de l\'enregistrement.')
     } finally {
       setSettingsSaving(false)
+    }
+  }
+  async function loadAboutContent() {
+    const { data } = await supabase.from('site_content').select('*').eq('key', 'about_page')
+    const row = data && data[0]
+    if (!row) return
+    try {
+      const parsed = JSON.parse(row.value)
+      setAboutForm({
+        founderName: parsed.founderName || '',
+        story: parsed.story || '',
+        counters: parsed.counters?.length === 2 ? parsed.counters : [{ count:'', label:'' }, { count:'', label:'' }],
+        values: parsed.values?.length === 4 ? parsed.values : [{ title:'', text:'' }, { title:'', text:'' }, { title:'', text:'' }, { title:'', text:'' }],
+      })
+      setAboutImageUrl(parsed.photoUrl || '')
+      setAboutImagePreview(parsed.photoUrl || null)
+      setAboutHeaderUrl(parsed.headerImg || '')
+      setAboutHeaderPreview(parsed.headerImg || null)
+    } catch {}
+  }
+  function handleAboutImageFile(file) {
+    if (!file) return
+    if (file.size > 5*1024*1024) { alert('Image trop lourde (max 5 Mo).'); return }
+    setAboutImageFile(file)
+    const reader = new FileReader()
+    reader.onload = () => setAboutImagePreview(reader.result)
+    reader.readAsDataURL(file)
+  }
+  function removeAboutImage() {
+    setAboutImageFile(null)
+    setAboutImageUrl('')
+    setAboutImagePreview(null)
+  }
+  function handleAboutHeaderFile(file) {
+    if (!file) return
+    if (file.size > 5*1024*1024) { alert('Image trop lourde (max 5 Mo).'); return }
+    setAboutHeaderFile(file)
+    const reader = new FileReader()
+    reader.onload = () => setAboutHeaderPreview(reader.result)
+    reader.readAsDataURL(file)
+  }
+  function removeAboutHeader() {
+    setAboutHeaderFile(null)
+    setAboutHeaderUrl('')
+    setAboutHeaderPreview(null)
+  }
+  async function saveAboutContent() {
+    setAboutError('')
+    if (!aboutForm.founderName.trim()) { setAboutError('Le nom du fondateur est requis.'); return }
+    if (!aboutForm.story.trim()) { setAboutError('Le texte de présentation est requis.'); return }
+    setAboutSaving(true)
+    try {
+      let photoUrl = aboutImageUrl || null
+      if (aboutImageFile) {
+        const oldUrl = aboutImageUrl
+        if (oldUrl && oldUrl.startsWith('/uploads/')) {
+          try { await supabase.storage.from('about').remove([oldUrl.slice('/uploads/'.length)]) } catch {}
+        }
+        const ext = aboutImageFile.name.split('.').pop().toLowerCase()
+        const path = Date.now()+'-'+Math.random().toString(36).slice(2)+'.'+ext
+        const { error: upErr } = await supabase.storage.from('about').upload(path, aboutImageFile, { upsert: false })
+        if (upErr) throw upErr
+        photoUrl = supabase.storage.from('about').getPublicUrl(path).data.publicUrl
+      }
+      let headerImg = aboutHeaderUrl || null
+      if (aboutHeaderFile) {
+        const oldHeaderUrl = aboutHeaderUrl
+        if (oldHeaderUrl && oldHeaderUrl.startsWith('/uploads/')) {
+          try { await supabase.storage.from('about').remove([oldHeaderUrl.slice('/uploads/'.length)]) } catch {}
+        }
+        const ext = aboutHeaderFile.name.split('.').pop().toLowerCase()
+        const path = Date.now()+'-'+Math.random().toString(36).slice(2)+'.'+ext
+        const { error: upErr2 } = await supabase.storage.from('about').upload(path, aboutHeaderFile, { upsert: false })
+        if (upErr2) throw upErr2
+        headerImg = supabase.storage.from('about').getPublicUrl(path).data.publicUrl
+      }
+      const value = JSON.stringify({
+        founderName: aboutForm.founderName.trim(),
+        story: aboutForm.story.trim(),
+        photoUrl,
+        headerImg,
+        counters: aboutForm.counters.map(c => ({ count: c.count.trim(), label: c.label.trim() })),
+        values: aboutForm.values.map(v => ({ title: v.title.trim(), text: v.text.trim() })),
+      })
+      await supabase.from('site_content').update({ value }).eq('key', 'about_page')
+      setAboutImageFile(null)
+      setAboutHeaderFile(null)
+      await loadAboutContent()
+      setAboutSaved(true)
+      setTimeout(() => setAboutSaved(false), 3000)
+    } catch (err) {
+      setAboutError('Erreur lors de l\'enregistrement : ' + (err.message || err))
+    } finally {
+      setAboutSaving(false)
     }
   }
   async function loadCategories() {
@@ -314,22 +492,54 @@ export default function AdminDashboard() {
   }
 
   function openAddMat() {
-    setEditingMat(null); setMatForm({ name:'', category:'', description:'', qty:1, price:'' })
-    setMatImageUrl(''); setMatImageFile(null); setMatImagePreview(null); setMatQtyError(false); setMatPriceError(false); setMatFormVisible(true)
+    setEditingMat(null); setMatForm({ name:'', category:'', description:'', qty:1, tieredPricing:false, weekendDiffers:true, tiers:[{...EMPTY_TIER}] })
+    setMatImageUrl(''); setMatImageFile(null); setMatImagePreview(null); setMatQtyError(false); setMatPriceError(false); setMatTiersError(''); setMatFormVisible(true)
   }
   async function openEditMat(id) {
-    const { data: m } = await supabase.from('materials').select('*').eq('id', id).single()
+    const [{ data: m }, { data: tiers }] = await Promise.all([
+      supabase.from('materials').select('*').eq('id', id).single(),
+      supabase.from('material_price_tiers').select('*').eq('material_id', id).order('min_qty'),
+    ])
     if (!m) return
-    setEditingMat(m); setMatForm({ name: m.name, category: m.category||'', description: m.description||'', qty: m.max_quantity, price: m.price||0 })
-    setMatImageUrl(m.image_url||''); setMatImageFile(null); setMatImagePreview(m.image_url||null); setMatQtyError(false); setMatPriceError(false); setMatFormVisible(true)
+    const loadedTiers = (tiers && tiers.length)
+      ? tiers.map(t => ({ minQty: t.min_qty, maxQty: t.max_qty ?? '', weekday: t.price_weekday_ht, weekend: t.price_weekend_ht }))
+      : [{...EMPTY_TIER}]
+    setEditingMat(m)
+    setMatForm({
+      name: m.name, category: m.category||'', description: m.description||'', qty: m.max_quantity,
+      tieredPricing: loadedTiers.length > 1,
+      weekendDiffers: loadedTiers.some(t => parseFloat(t.weekday) !== parseFloat(t.weekend)),
+      tiers: loadedTiers,
+    })
+    setMatImageUrl(m.image_url||''); setMatImageFile(null); setMatImagePreview(m.image_url||null); setMatQtyError(false); setMatPriceError(false); setMatTiersError(''); setMatFormVisible(true)
   }
   async function saveMaterial() {
     const qtyNum = parseInt(String(matForm.qty))
-    const priceNum = parseFloat(String(matForm.price).replace(',', '.'))
     let valid = true
     if (!matForm.name.trim()) valid = false
     if (!qtyNum || qtyNum < 1 || !/^\d+$/.test(String(matForm.qty))) { setMatQtyError(true); valid = false }
-    if (isNaN(priceNum) || priceNum < 0) { setMatPriceError(true); valid = false }
+
+    // Tiers are forced back to a single 1..∞ band when "paliers dégressifs"
+    // is off, and the weekend price is mirrored from the weekday one when
+    // "tarif différent le week-end" is off — regardless of whatever stale
+    // values are sitting in state, so the two toggles are the only source
+    // of truth for what actually gets saved.
+    const parsedTiers = matForm.tiers.map(t => {
+      const weekday = parseFloat(String(t.weekday).replace(',', '.'))
+      const weekend = matForm.weekendDiffers ? parseFloat(String(t.weekend).replace(',', '.')) : weekday
+      return {
+        minQty: matForm.tieredPricing ? parseInt(String(t.minQty)) : 1,
+        maxQty: matForm.tieredPricing ? (t.maxQty === '' ? null : parseInt(String(t.maxQty))) : null,
+        weekday, weekend,
+      }
+    })
+    setMatTiersError('')
+    if (!parsedTiers.length) { setMatTiersError('Au moins un palier de prix est requis.'); valid = false }
+    for (const t of parsedTiers) {
+      if (!t.minQty || t.minQty < 1) { setMatTiersError('Quantité minimale invalide sur un palier.'); valid = false; break }
+      if (t.maxQty != null && t.maxQty < t.minQty) { setMatTiersError('Quantité maximale doit être supérieure ou égale au minimum.'); valid = false; break }
+      if (isNaN(t.weekday) || t.weekday < 0 || isNaN(t.weekend) || t.weekend < 0) { setMatPriceError(true); valid = false; break }
+    }
     if (!valid) return
     setMatSaving(true)
     try {
@@ -344,12 +554,39 @@ export default function AdminDashboard() {
       } else if (!matImageUrl && editingMat?.image_url) {
         await removeStorageImg(editingMat.image_url); imageUrl = null
       }
-      const payload = { name: matForm.name.trim(), category: matForm.category||null, description: matForm.description.trim()||null, max_quantity: qtyNum, price: priceNum, image_url: imageUrl, available: true }
+      const payload = { name: matForm.name.trim(), category: matForm.category||null, description: matForm.description.trim()||null, max_quantity: qtyNum, image_url: imageUrl, available: true }
+      let materialId = editingMat?.id
       if (editingMat) await supabase.from('materials').update(payload).eq('id', editingMat.id)
-      else await supabase.from('materials').insert(payload)
+      else { const { data } = await supabase.from('materials').insert(payload); materialId = data.id }
+
+      // Tiers are replaced wholesale on every save rather than diffed —
+      // simplest correct approach for a small per-material row set.
+      await supabase.from('material_price_tiers').delete().eq('material_id', materialId)
+      await supabase.from('material_price_tiers').insert(parsedTiers.map(t => ({
+        material_id: materialId, min_qty: t.minQty, max_qty: t.maxQty, price_weekday_ht: t.weekday, price_weekend_ht: t.weekend,
+      })))
+
       setMatFormVisible(false); await loadMaterials()
     } catch (err) { alert('Erreur : '+(err.message||err)) } finally { setMatSaving(false) }
   }
+  function toggleTieredPricing() {
+    setMatForm(f => {
+      const next = !f.tieredPricing
+      // Turning it off collapses back to one band covering everything,
+      // keeping whatever prices were on the first row.
+      if (!next) {
+        const first = f.tiers[0] || EMPTY_TIER
+        return { ...f, tieredPricing: next, tiers: [{ ...first, minQty:1, maxQty:'' }] }
+      }
+      return { ...f, tieredPricing: next }
+    })
+  }
+  function toggleWeekendDiffers() {
+    setMatForm(f => ({ ...f, weekendDiffers: !f.weekendDiffers }))
+  }
+  function addTierRow() { setMatForm(f => ({...f, tiers: [...f.tiers, {...EMPTY_TIER, minQty:''}]})) }
+  function removeTierRow(i) { setMatForm(f => ({...f, tiers: f.tiers.filter((_,idx) => idx!==i)})) }
+  function updateTierRow(i, field, value) { setMatForm(f => ({...f, tiers: f.tiers.map((t,idx) => idx===i ? {...t,[field]:value} : t)})) }
   async function removeStorageImg(url) {
     try { const m='/object/public/materials/'; const i=url.indexOf(m); if(i===-1)return; await supabase.storage.from('materials').remove([url.slice(i+m.length)]) } catch {}
   }
@@ -358,6 +595,7 @@ export default function AdminDashboard() {
     confirmDelete('Cet article et son image seront définitivement supprimés.', async () => {
       const { data: m } = await supabase.from('materials').select('image_url').eq('id', id).single()
       if (m?.image_url) await removeStorageImg(m.image_url)
+      await supabase.from('material_price_tiers').delete().eq('material_id', id)
       await supabase.from('materials').delete().eq('id', id); await loadMaterials()
     })
   }
@@ -419,28 +657,58 @@ export default function AdminDashboard() {
     </>
   )
 
+  const NAV_ITEMS = [
+    { key:'demandes',   icon:'fas fa-inbox',        label:'Demandes',   badge:pendingCount,  blink:false },
+    { key:'calendrier', icon:'fas fa-calendar-alt', label:'Calendrier', badge:0,             blink:false },
+    { key:'blocages',   icon:'fas fa-ban',          label:'Blocages',   badge:0,             blink:false },
+    { key:'messagerie', icon:'fas fa-envelope',     label:'Messagerie', badge:unreadCount,   blink:unreadCount>0 },
+    { key:'materiaux',  icon:'fas fa-boxes',        label:'Matériel',   badge:0,             blink:false },
+    { key:'visuel',     icon:'fas fa-images',       label:'Visuel Site', badge:0,            blink:false },
+    { key:'reglages',   icon:'fas fa-cog',          label:'Réglages',   badge:0,             blink:false },
+  ]
+
   return (
     <>
       <Head>
         <title>Espace OA — Gestion</title>
       </Head>
+      {/* Mobile-only top bar: the sidebar itself becomes an off-canvas
+          drawer below 768px (see admin.css) instead of the permanent
+          64px icon rail it was before — this hamburger is what opens it. */}
+      <div className="admin-mobile-topbar">
+        <span className="admin-mobile-title">OA <em>Événementiel</em></span>
+        <button
+          type="button"
+          className={`admin-hamburger-btn${mobileNavOpen ? ' is-open' : ''}`}
+          aria-label={mobileNavOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+          aria-expanded={mobileNavOpen}
+          onClick={() => setMobileNavOpen(o => !o)}
+        >
+          <span className="hamburger-line" aria-hidden="true" />
+          <span className="hamburger-line" aria-hidden="true" />
+          <span className="hamburger-line" aria-hidden="true" />
+        </button>
+      </div>
+      <div
+        className={`admin-sidebar-overlay${mobileNavOpen ? ' is-open' : ''}`}
+        onClick={() => setMobileNavOpen(false)}
+        aria-hidden="true"
+      />
       <div className="dashboard-wrap">
-        <aside className="sidebar">
+        <aside className={`sidebar${mobileNavOpen ? ' is-open' : ''}`}>
           <div className="sidebar-brand">
             <Link href="/" className="sidebar-logo">OA <span>Événementiel</span></Link>
             <p className="sidebar-tag">Espace de gestion</p>
           </div>
           <nav className="sidebar-nav">
-            {[
-              { key:'demandes',   icon:'fas fa-inbox',        label:'Demandes',   badge:pendingCount,  blink:false },
-              { key:'calendrier', icon:'fas fa-calendar-alt', label:'Calendrier', badge:0,             blink:false },
-              { key:'blocages',   icon:'fas fa-ban',          label:'Blocages',   badge:0,             blink:false },
-              { key:'messagerie', icon:'fas fa-envelope',     label:'Messagerie', badge:unreadCount,   blink:unreadCount>0 },
-              { key:'materiaux',  icon:'fas fa-boxes',        label:'Matériel',   badge:0,             blink:false },
-              { key:'reglages',   icon:'fas fa-cog',          label:'Réglages',   badge:0,             blink:false },
-            ].map(item => (
-              <button key={item.key} className={`sidebar-btn${activeTab===item.key?' active':''}`} onClick={() => setActiveTab(item.key)}>
-                <i className={item.icon} /> {item.label}
+            {NAV_ITEMS.map(item => (
+              <button
+                key={item.key}
+                className={`sidebar-btn${activeTab===item.key?' active':''}`}
+                onClick={() => { setActiveTab(item.key); setMobileNavOpen(false) }}
+                title={item.label}
+              >
+                <i className={item.icon} /> <span className="sidebar-label">{item.label}</span>
                 {item.badge > 0 && <span className={`badge-count${item.blink?' badge-blink':''}`}>{item.badge}</span>}
               </button>
             ))}
@@ -449,6 +717,10 @@ export default function AdminDashboard() {
             <div className="sidebar-user">
               <div className="sidebar-user-avatar"><i className="fas fa-user" /></div>
               <div className="sidebar-user-info">
+                {/* Email hidden on mobile only (see admin.css) — the drawer
+                    is already full of nav items on a short phone screen,
+                    and the email isn't needed to identify "you're the
+                    admin" the way "Administrateur" already does. */}
                 <p className="sidebar-user-name">{user?.email || 'Admin'}</p>
                 <p className="sidebar-user-role">Administrateur</p>
               </div>
@@ -596,11 +868,56 @@ export default function AdminDashboard() {
                     <input type="number" min={1} className="adm-input" value={matForm.qty} onChange={e => { setMatForm(f=>({...f,qty:e.target.value})); setMatQtyError(false) }} style={matQtyError?{borderColor:'var(--danger)'}:{}} />
                     {matQtyError && <div style={{marginTop:6,color:'var(--danger)',fontSize:'.8rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />Veuillez entrer un nombre entier valide (≥ 1).</div>}
                   </div>
-                  <div className="adm-form-group">
-                    <label>Prix unitaire (€) <span className="req">*</span></label>
-                    <input type="number" min={0} step="0.01" className="adm-input" placeholder="Ex : 3.50" value={matForm.price} onChange={e => { setMatForm(f=>({...f,price:e.target.value})); setMatPriceError(false) }} style={matPriceError?{borderColor:'var(--danger)'}:{}} />
-                    {matPriceError && <div style={{marginTop:6,color:'var(--danger)',fontSize:'.8rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />Veuillez entrer un prix valide (≥ 0).</div>}
-                  </div>
+                </div>
+
+                <div className="adm-form-group" style={{marginTop:8}}>
+                  <label>Tarification</label>
+                  <p style={{fontSize:'.8rem',color:'var(--gray)',margin:'0 0 10px'}}>Répondez à ces deux questions pour n'afficher que les champs dont vous avez besoin. Les prix se saisissent HT — le TTC (20% TVA) affiché à côté se calcule tout seul.</p>
+
+                  <label style={{display:'flex',alignItems:'center',gap:8,fontWeight:400,fontSize:'.9rem',marginBottom:8,cursor:'pointer'}}>
+                    <input type="checkbox" checked={matForm.tieredPricing} onChange={toggleTieredPricing} />
+                    Le tarif change selon la quantité louée (ex : moins cher à partir de 10 tables)
+                  </label>
+                  <label style={{display:'flex',alignItems:'center',gap:8,fontWeight:400,fontSize:'.9rem',marginBottom:14,cursor:'pointer'}}>
+                    <input type="checkbox" checked={matForm.weekendDiffers} onChange={toggleWeekendDiffers} />
+                    Le tarif est différent le week-end / jours fériés
+                  </label>
+
+                  {matForm.tieredPricing && (
+                    <p style={{fontSize:'.8rem',color:'var(--gray)',margin:'0 0 8px'}}>
+                      Une ligne par palier de quantité. Le "Qté min" du 1er palier est aussi la quantité minimale de location (ex : 20 pour Chaise Napoléon — un palier qui commence à 20 empêche d'en louer moins).
+                    </p>
+                  )}
+
+                  {matForm.tiers.map((t, i) => (
+                    <div key={i} style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:10,flexWrap:'wrap'}}>
+                      {matForm.tieredPricing && (
+                        <>
+                          <input type="number" min={1} className="adm-input" style={{width:80}} placeholder="Qté min" value={t.minQty} onChange={e => updateTierRow(i,'minQty',e.target.value)} />
+                          <span style={{color:'var(--gray)',lineHeight:'38px'}}>à</span>
+                          <input type="number" min={1} className="adm-input" style={{width:80}} placeholder="∞" value={t.maxQty} onChange={e => updateTierRow(i,'maxQty',e.target.value)} />
+                        </>
+                      )}
+                      <div>
+                        <input type="number" min={0} step="0.01" className="adm-input" style={{width:130}} placeholder={matForm.weekendDiffers ? 'Prix semaine HT' : 'Prix HT'} value={t.weekday} onChange={e => updateTierRow(i,'weekday',e.target.value)} />
+                        {t.weekday !== '' && !isNaN(parseFloat(t.weekday)) && <div style={{fontSize:'.72rem',color:'var(--gray)',marginTop:2}}>= {(parseFloat(t.weekday)*1.2).toFixed(2)} € TTC</div>}
+                      </div>
+                      {matForm.weekendDiffers && (
+                        <div>
+                          <input type="number" min={0} step="0.01" className="adm-input" style={{width:130}} placeholder="Prix week-end HT" value={t.weekend} onChange={e => updateTierRow(i,'weekend',e.target.value)} />
+                          {t.weekend !== '' && !isNaN(parseFloat(t.weekend)) && <div style={{fontSize:'.72rem',color:'var(--gray)',marginTop:2}}>= {(parseFloat(t.weekend)*1.2).toFixed(2)} € TTC</div>}
+                        </div>
+                      )}
+                      {matForm.tieredPricing && matForm.tiers.length > 1 && (
+                        <button className="adm-btn-delete btn-sm" onClick={() => removeTierRow(i)}><i className="fas fa-trash" /></button>
+                      )}
+                    </div>
+                  ))}
+                  {matForm.tieredPricing && (
+                    <button className="adm-btn-ghost btn-sm" onClick={addTierRow}><i className="fas fa-plus" style={{marginRight:4}} />Ajouter un palier</button>
+                  )}
+                  {matTiersError && <div style={{marginTop:6,color:'var(--danger)',fontSize:'.8rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />{matTiersError}</div>}
+                  {matPriceError && <div style={{marginTop:6,color:'var(--danger)',fontSize:'.8rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />Veuillez entrer des prix valides (≥ 0).</div>}
                 </div>
                 <div className="adm-form-group" style={{marginTop:8}}>
                   <label>Image <span className="adm-label-opt">(optionnel)</span></label>
@@ -624,7 +941,138 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
-            <MatTable materials={materials} page={matPage} onPageChange={setMatPage} onEdit={openEditMat} onDelete={deleteMat} onToggle={toggleAvail} />
+            <MatTable materials={materials} tiersByMaterial={groupTiersByMaterial(materialTiers)} page={matPage} onPageChange={setMatPage} onEdit={openEditMat} onDelete={deleteMat} onToggle={toggleAvail} />
+          </div>
+
+          {/* VISUEL SITE */}
+          <div className={`tab-content${activeTab==='visuel'?' active':''}`} id="tab-visuel">
+            <div className="adm-header">
+              <div>
+                <p className="adm-eyebrow">Contenu du site</p>
+                <h1 className="adm-title">Visuel Site</h1>
+              </div>
+            </div>
+
+            <div className="block-tabs">
+              <button className={`block-tab${visuelTab==='accueil'?' active':''}`} onClick={() => setVisuelTab('accueil')}>Accueil</button>
+              <button className={`block-tab${visuelTab==='prestations'?' active':''}`} onClick={() => setVisuelTab('prestations')}>Prestations</button>
+              <button className={`block-tab${visuelTab==='galerie'?' active':''}`} onClick={() => setVisuelTab('galerie')}>Galerie</button>
+              <button className={`block-tab${visuelTab==='apropos'?' active':''}`} onClick={() => setVisuelTab('apropos')}>À Propos</button>
+              <button className={`block-tab${visuelTab==='contact'?' active':''}`} onClick={() => setVisuelTab('contact')}>Contact</button>
+            </div>
+            {/* Mobile-only: the 5-item pill row above doesn't fit a phone
+                width without either scrolling or squashing to illegible
+                widths — a tap-to-expand menu instead. */}
+            <div className="block-tabs-mobile">
+              <button type="button" className="block-tabs-mobile-trigger" onClick={() => setVisuelMenuOpen(o => !o)}>
+                <span>{VISUEL_TABS.find(t => t.key === visuelTab)?.label}</span>
+                <i className={`fas fa-chevron-down${visuelMenuOpen ? ' is-open' : ''}`} />
+              </button>
+              {visuelMenuOpen && (
+                <div className="block-tabs-mobile-list">
+                  {VISUEL_TABS.map(t => (
+                    <button
+                      key={t.key}
+                      className={`block-tabs-mobile-option${visuelTab===t.key?' active':''}`}
+                      onClick={() => { setVisuelTab(t.key); setVisuelMenuOpen(false) }}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {visuelTab==='accueil' && <ImageSlotGrid contentKey="images_home" slots={HOME_SLOTS} bucket="home" />}
+            {visuelTab==='prestations' && <ImageSlotGrid contentKey="images_services" slots={SERVICES_SLOTS} bucket="services" />}
+            {visuelTab==='galerie' && <GalerieManager />}
+            {visuelTab==='contact' && <ImageSlotGrid contentKey="images_contact" slots={CONTACT_SLOTS} bucket="contact" />}
+
+            {visuelTab==='apropos' && (
+            <div className="mat-form-card">
+              <div className="adm-form-group">
+                <label>Nom du fondateur <span className="req">*</span></label>
+                <input className="adm-input" value={aboutForm.founderName} onChange={e => setAboutForm(f => ({...f, founderName: e.target.value}))} placeholder="Ex : Emir Dupont, fondateur d'OA Événementiel" />
+              </div>
+              <div className="adm-form-group">
+                <label>Votre histoire <span className="req">*</span></label>
+                <textarea className="adm-input" rows={4} value={aboutForm.story} onChange={e => setAboutForm(f => ({...f, story: e.target.value}))} placeholder="Pourquoi ce métier vous anime, depuis quand vous organisez des événements…" />
+              </div>
+
+              <div className="adm-form-group">
+                <label>Photo du fondateur <span className="adm-label-opt">(optionnel)</span></label>
+                <div className="img-upload-area" onClick={() => aboutFileInputRef.current?.click()}>
+                  {aboutImagePreview
+                    ? <img src={aboutImagePreview} alt="" className="img-preview-thumb" />
+                    : <div className="img-upload-placeholder"><i className="fas fa-image" /><p>Aucune photo sélectionnée</p><span>JPG, PNG, WEBP — max 5 Mo</span></div>
+                  }
+                </div>
+                <input ref={aboutFileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{display:'none'}} onChange={e => handleAboutImageFile(e.target.files[0])} />
+                <div className="img-upload-btns">
+                  <button className="adm-btn-ghost btn-sm" onClick={() => aboutFileInputRef.current?.click()}><i className="fas fa-upload" style={{marginRight:4}} />Choisir une photo</button>
+                  {aboutImagePreview && <button className="adm-btn-delete btn-sm" onClick={removeAboutImage}><i className="fas fa-times" style={{marginRight:4}} />Retirer</button>}
+                </div>
+              </div>
+
+              <div className="adm-form-group">
+                <label>Bannière de page <span className="adm-label-opt">(optionnel)</span></label>
+                <div className="img-upload-area" onClick={() => aboutHeaderInputRef.current?.click()}>
+                  {aboutHeaderPreview
+                    ? <img src={aboutHeaderPreview} alt="" className="img-preview-thumb" />
+                    : <div className="img-upload-placeholder"><i className="fas fa-image" /><p>Image par défaut</p><span>JPG, PNG, WEBP — max 5 Mo</span></div>
+                  }
+                </div>
+                <input ref={aboutHeaderInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{display:'none'}} onChange={e => handleAboutHeaderFile(e.target.files[0])} />
+                <div className="img-upload-btns">
+                  <button className="adm-btn-ghost btn-sm" onClick={() => aboutHeaderInputRef.current?.click()}><i className="fas fa-upload" style={{marginRight:4}} />Choisir une image</button>
+                  {aboutHeaderPreview && <button className="adm-btn-delete btn-sm" onClick={removeAboutHeader}><i className="fas fa-times" style={{marginRight:4}} />Réinitialiser</button>}
+                </div>
+              </div>
+
+              <p style={{fontWeight:700, fontSize:'.85rem', margin:'20px 0 10px'}}>Chiffres clés</p>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:16}}>
+                {aboutForm.counters.map((c, i) => (
+                  <div key={i} style={{display:'flex', gap:8}}>
+                    <div className="adm-form-group" style={{flex:'0 0 90px'}}>
+                      <label>Chiffre {i+1}</label>
+                      <input className="adm-input" value={c.count} onChange={e => setAboutForm(f => ({...f, counters: f.counters.map((cc,idx) => idx===i ? {...cc, count:e.target.value} : cc)}))} placeholder="Ex : 5+" />
+                    </div>
+                    <div className="adm-form-group" style={{flex:1}}>
+                      <label>Légende</label>
+                      <input className="adm-input" value={c.label} onChange={e => setAboutForm(f => ({...f, counters: f.counters.map((cc,idx) => idx===i ? {...cc, label:e.target.value} : cc)}))} placeholder="Ex : Ans d'expérience" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <p style={{fontWeight:700, fontSize:'.85rem', margin:'24px 0 10px'}}>Nos valeurs</p>
+              {aboutForm.values.map((v, i) => (
+                <div key={i} style={{display:'flex', gap:12, alignItems:'flex-start', marginBottom:12, paddingBottom:12, borderBottom: i<3 ? '1px solid var(--border)' : 'none'}}>
+                  <img src={ABOUT_VALUE_ICONS[i]} alt="" style={{width:36, height:36, opacity:.7, marginTop:22}} />
+                  <div className="adm-form-group" style={{flex:1, marginBottom:0}}>
+                    <label>Titre {i+1}</label>
+                    <input className="adm-input" value={v.title} onChange={e => setAboutForm(f => ({...f, values: f.values.map((vv,idx) => idx===i ? {...vv, title:e.target.value} : vv)}))} />
+                  </div>
+                  <div className="adm-form-group" style={{flex:2, marginBottom:0}}>
+                    <label>Description</label>
+                    <input className="adm-input" value={v.text} onChange={e => setAboutForm(f => ({...f, values: f.values.map((vv,idx) => idx===i ? {...vv, text:e.target.value} : vv)}))} />
+                  </div>
+                </div>
+              ))}
+
+              {aboutError && (
+                <div style={{marginTop:8,background:'#fff5f5',border:'1.5px solid #fca5a5',borderRadius:8,padding:'9px 13px',color:'var(--danger)',fontSize:'.83rem',fontWeight:600}}>
+                  <i className="fas fa-exclamation-circle" style={{marginRight:4}} />{aboutError}
+                </div>
+              )}
+              <div className="mat-form-actions">
+                <button className="adm-btn-primary" onClick={saveAboutContent} disabled={aboutSaving}>
+                  {aboutSaving ? <><i className="fas fa-circle-notch fa-spin" style={{marginRight:8}} />Enregistrement…</> : <><i className="fas fa-save" style={{marginRight:8}} />Enregistrer</>}
+                </button>
+                {aboutSaved && <span style={{marginLeft:12,color:'#2e7d32',fontWeight:700,fontSize:'.85rem'}}><i className="fas fa-check" style={{marginRight:4}} />Enregistré</span>}
+              </div>
+            </div>
+            )}
           </div>
 
           {/* RÉGLAGES */}
@@ -641,6 +1089,25 @@ export default function AdminDashboard() {
                 <button className={`block-tab${reglagesTab==='adresse'?' active':''}`} onClick={() => setReglagesTab('adresse')}>Adresse &amp; livraison</button>
                 <button className={`block-tab${reglagesTab==='virement'?' active':''}`} onClick={() => setReglagesTab('virement')}>Virement</button>
                 <button className={`block-tab${reglagesTab==='installments'?' active':''}`} onClick={() => setReglagesTab('installments')}>Paiement en plusieurs fois</button>
+              </div>
+              <div className="block-tabs-mobile">
+                <button type="button" className="block-tabs-mobile-trigger" onClick={() => setReglagesMenuOpen(o => !o)}>
+                  <span>{REGLAGES_TABS.find(t => t.key === reglagesTab)?.label}</span>
+                  <i className={`fas fa-chevron-down${reglagesMenuOpen ? ' is-open' : ''}`} />
+                </button>
+                {reglagesMenuOpen && (
+                  <div className="block-tabs-mobile-list">
+                    {REGLAGES_TABS.map(t => (
+                      <button
+                        key={t.key}
+                        className={`block-tabs-mobile-option${reglagesTab===t.key?' active':''}`}
+                        onClick={() => { setReglagesTab(t.key); setReglagesMenuOpen(false) }}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {reglagesTab==='adresse' && (
@@ -721,7 +1188,7 @@ export default function AdminDashboard() {
               {reglagesTab==='installments' && (
                 <div>
                   <p style={{color:'var(--gray)',fontSize:'.82rem',marginTop:0,marginBottom:14}}>
-                    Les dates de chaque versement se calculent automatiquement : le premier est dû immédiatement, le dernier 3 jours avant l'événement, et les versements intermédiaires sont répartis régulièrement entre les deux. Réglez uniquement le montant minimum de commande requis pour chaque plan — un plan reste proposé au client seulement s'il reste assez de jours avant l'événement pour espacer ses versements.
+                    Les dates de chaque versement se calculent automatiquement : le premier est prélevé immédiatement, puis chaque versement suivant tombe le même jour du mois (ex : réservé le 8 → prélèvements les 8 de chaque mois). Réglez uniquement le montant minimum de commande requis pour chaque plan — un plan reste proposé au client seulement si tous ses versements, y compris le dernier, tombent au moins 3 jours avant l'événement.
                   </p>
 
                   <InstallmentTierFields
@@ -1418,7 +1885,288 @@ function MsgDetail({ msg, onDelete }) {
   )
 }
 
-function MatTable({ materials, page, onPageChange, onEdit, onDelete, onToggle }) {
+// Generic per-page image editor for Espace OA > Visuel Site. `contentKey` is
+// a site_content row key (e.g. "images_home"), `slots` is an ordered list of
+// { key, label, group? } describing every swappable photo on that page —
+// missing/null slots just mean "public page falls back to its own default
+// image", so nothing needs filling in here for the site to look normal.
+function ImageSlotGrid({ contentKey, slots, bucket }) {
+  const [urls, setUrls] = useState({})
+  const [files, setFiles] = useState({})
+  const [previews, setPreviews] = useState({})
+  const [loaded, setLoaded] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const inputRefs = useRef({})
+
+  useEffect(() => {
+    let cancelled = false
+    setLoaded(false)
+    supabase.from('site_content').select('*').eq('key', contentKey).then(({ data }) => {
+      if (cancelled) return
+      const row = data && data[0]
+      let parsed = {}
+      try { parsed = row ? JSON.parse(row.value) : {} } catch {}
+      setUrls(parsed)
+      setPreviews(parsed)
+      setFiles({})
+      setLoaded(true)
+    })
+    return () => { cancelled = true }
+  }, [contentKey])
+
+  function handleFile(slotKey, file) {
+    if (!file) return
+    if (file.size > 5*1024*1024) { alert('Image trop lourde (max 5 Mo).'); return }
+    setFiles(f => ({ ...f, [slotKey]: file }))
+    const reader = new FileReader()
+    reader.onload = () => setPreviews(p => ({ ...p, [slotKey]: reader.result }))
+    reader.readAsDataURL(file)
+  }
+  function removeSlot(slotKey) {
+    setFiles(f => { const n = {...f}; delete n[slotKey]; return n })
+    setUrls(u => ({ ...u, [slotKey]: null }))
+    setPreviews(p => ({ ...p, [slotKey]: null }))
+  }
+
+  async function save() {
+    setSaving(true)
+    try {
+      const nextUrls = { ...urls }
+      for (const slot of slots) {
+        const file = files[slot.key]
+        if (!file) continue
+        const oldUrl = urls[slot.key]
+        if (oldUrl && oldUrl.startsWith('/uploads/')) {
+          try { await supabase.storage.from(bucket).remove([oldUrl.slice('/uploads/'.length)]) } catch {}
+        }
+        const ext = file.name.split('.').pop().toLowerCase()
+        const path = Date.now()+'-'+Math.random().toString(36).slice(2)+'.'+ext
+        const { error: upErr } = await supabase.storage.from(bucket).upload(path, file, { upsert: false })
+        if (upErr) throw upErr
+        nextUrls[slot.key] = supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl
+      }
+      await supabase.from('site_content').update({ value: JSON.stringify(nextUrls) }).eq('key', contentKey)
+      setUrls(nextUrls)
+      setPreviews(nextUrls)
+      setFiles({})
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) {
+      alert('Erreur : ' + (err.message || err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!loaded) return <div className="adm-empty"><i className="fas fa-circle-notch fa-spin" /><p>Chargement…</p></div>
+
+  let lastGroup = null
+  return (
+    <div className="mat-form-card">
+      <div className="img-slot-grid">
+        {slots.map(slot => {
+          const showGroup = slot.group && slot.group !== lastGroup
+          lastGroup = slot.group || lastGroup
+          return (
+            <div key={slot.key} style={showGroup ? { gridColumnStart: 1 } : undefined}>
+              {showGroup && <h4 className="img-slot-group-title">{slot.group}</h4>}
+              <div className="adm-form-group">
+                <label>{slot.label}</label>
+                <div className="img-upload-area" onClick={() => inputRefs.current[slot.key]?.click()}>
+                  {previews[slot.key]
+                    ? <img src={previews[slot.key]} alt="" className="img-preview-thumb" />
+                    : <div className="img-upload-placeholder"><i className="fas fa-image" /><p>Image par défaut</p><span>JPG, PNG, WEBP — max 5 Mo</span></div>
+                  }
+                </div>
+                <input ref={el => inputRefs.current[slot.key] = el} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{display:'none'}} onChange={e => handleFile(slot.key, e.target.files[0])} />
+                <div className="img-upload-btns">
+                  <button className="adm-btn-ghost btn-sm" onClick={() => inputRefs.current[slot.key]?.click()}><i className="fas fa-upload" style={{marginRight:4}} />Choisir</button>
+                  {previews[slot.key] && <button className="adm-btn-delete btn-sm" onClick={() => removeSlot(slot.key)}><i className="fas fa-times" style={{marginRight:4}} />Réinitialiser</button>}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div className="mat-form-actions">
+        <button className="adm-btn-primary" onClick={save} disabled={saving}>
+          {saving ? <><i className="fas fa-circle-notch fa-spin" style={{marginRight:8}} />Enregistrement…</> : <><i className="fas fa-save" style={{marginRight:8}} />Enregistrer</>}
+        </button>
+        {saved && <span style={{marginLeft:12,color:'#2e7d32',fontWeight:700,fontSize:'.85rem'}}><i className="fas fa-check" style={{marginRight:4}} />Enregistré</span>}
+      </div>
+    </div>
+  )
+}
+
+// Galerie tab of Visuel Site — unlike the other pages' fixed image slots,
+// the gallery is a real add/remove list: admin picks a photo + a category,
+// it's appended to the site_content "images_galerie" row's `photos` array,
+// and pages/galerie.jsx renders whatever's in that array (with its own
+// hardcoded DEFAULT_PHOTOS only as a fallback for a never-touched row).
+function GalerieManager() {
+  const [pageHeaderUrl, setPageHeaderUrl] = useState('')
+  const [pageHeaderPreview, setPageHeaderPreview] = useState(null)
+  const headerInputRef = useRef(null)
+  const [photos, setPhotos] = useState([])
+  const [loaded, setLoaded] = useState(false)
+  const [newFile, setNewFile] = useState(null)
+  const [newPreview, setNewPreview] = useState(null)
+  const [newCat, setNewCat] = useState(GALERIE_CATEGORIES[0].key)
+  const newFileInputRef = useRef(null)
+  const [adding, setAdding] = useState(false)
+  const [busyId, setBusyId] = useState(null)
+
+  async function load() {
+    setLoaded(false)
+    const { data } = await supabase.from('site_content').select('*').eq('key', 'images_galerie')
+    const row = data && data[0]
+    let parsed = { page_header: null, photos: [] }
+    try { parsed = row ? JSON.parse(row.value) : parsed } catch {}
+    setPageHeaderUrl(parsed.page_header || '')
+    setPageHeaderPreview(parsed.page_header || null)
+    setPhotos(Array.isArray(parsed.photos) ? parsed.photos : [])
+    setLoaded(true)
+  }
+  useEffect(() => { load() }, [])
+
+  async function persist(nextPageHeader, nextPhotos) {
+    const value = JSON.stringify({ page_header: nextPageHeader || null, photos: nextPhotos })
+    await supabase.from('site_content').update({ value }).eq('key', 'images_galerie')
+  }
+
+  async function uploadFile(file) {
+    const ext = file.name.split('.').pop().toLowerCase()
+    const path = Date.now()+'-'+Math.random().toString(36).slice(2)+'.'+ext
+    const { error } = await supabase.storage.from('galerie').upload(path, file, { upsert: false })
+    if (error) throw error
+    return supabase.storage.from('galerie').getPublicUrl(path).data.publicUrl
+  }
+
+  function handleHeaderFile(file) {
+    if (!file) return
+    if (file.size > 5*1024*1024) { alert('Image trop lourde (max 5 Mo).'); return }
+    const reader = new FileReader()
+    reader.onload = async () => {
+      setPageHeaderPreview(reader.result)
+      try {
+        const url = await uploadFile(file)
+        setPageHeaderUrl(url)
+        setPageHeaderPreview(url)
+        await persist(url, photos)
+      } catch (err) { alert('Erreur : ' + (err.message || err)) }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function handleNewFile(file) {
+    if (!file) return
+    if (file.size > 5*1024*1024) { alert('Image trop lourde (max 5 Mo).'); return }
+    setNewFile(file)
+    const reader = new FileReader()
+    reader.onload = () => setNewPreview(reader.result)
+    reader.readAsDataURL(file)
+  }
+
+  async function addPhoto() {
+    if (!newFile) return
+    setAdding(true)
+    try {
+      const url = await uploadFile(newFile)
+      const catInfo = GALERIE_CATEGORIES.find(c => c.key === newCat)
+      const nextPhotos = [...photos, { id: 'g-'+Date.now(), src: url, cat: newCat, label: catInfo?.label || newCat }]
+      await persist(pageHeaderUrl, nextPhotos)
+      setPhotos(nextPhotos)
+      setNewFile(null)
+      setNewPreview(null)
+      if (newFileInputRef.current) newFileInputRef.current.value = ''
+    } catch (err) {
+      alert('Erreur : ' + (err.message || err))
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  async function deletePhoto(id) {
+    setBusyId(id)
+    try {
+      const photo = photos.find(p => p.id === id)
+      if (photo?.src?.startsWith('/uploads/')) {
+        try { await supabase.storage.from('galerie').remove([photo.src.slice('/uploads/'.length)]) } catch {}
+      }
+      const nextPhotos = photos.filter(p => p.id !== id)
+      await persist(pageHeaderUrl, nextPhotos)
+      setPhotos(nextPhotos)
+    } catch (err) {
+      alert('Erreur : ' + (err.message || err))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  if (!loaded) return <div className="adm-empty"><i className="fas fa-circle-notch fa-spin" /><p>Chargement…</p></div>
+
+  return (
+    <div className="mat-form-card">
+      <div className="adm-form-group">
+        <label>Bannière de page <span className="adm-label-opt">(optionnel)</span></label>
+        <div className="img-upload-area" onClick={() => headerInputRef.current?.click()}>
+          {pageHeaderPreview
+            ? <img src={pageHeaderPreview} alt="" className="img-preview-thumb" />
+            : <div className="img-upload-placeholder"><i className="fas fa-image" /><p>Image par défaut</p><span>JPG, PNG, WEBP — max 5 Mo</span></div>
+          }
+        </div>
+        <input ref={headerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{display:'none'}} onChange={e => handleHeaderFile(e.target.files[0])} />
+        <div className="img-upload-btns">
+          <button className="adm-btn-ghost btn-sm" onClick={() => headerInputRef.current?.click()}><i className="fas fa-upload" style={{marginRight:4}} />Choisir</button>
+        </div>
+      </div>
+
+      <p style={{fontWeight:700, fontSize:'.85rem', margin:'24px 0 10px'}}>Ajouter une photo</p>
+      <div className="galerie-add-row">
+        <div className="img-upload-area galerie-add-preview" onClick={() => newFileInputRef.current?.click()}>
+          {newPreview
+            ? <img src={newPreview} alt="" className="img-preview-thumb" />
+            : <div className="img-upload-placeholder"><i className="fas fa-plus" /><p>Choisir une photo</p></div>
+          }
+        </div>
+        <input ref={newFileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{display:'none'}} onChange={e => handleNewFile(e.target.files[0])} />
+        <div className="galerie-add-controls">
+          <select className="adm-input" value={newCat} onChange={e => setNewCat(e.target.value)}>
+            {GALERIE_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+          </select>
+          <button className="adm-btn-primary" onClick={addPhoto} disabled={!newFile || adding}>
+            {adding ? <><i className="fas fa-circle-notch fa-spin" style={{marginRight:8}} />Ajout…</> : <><i className="fas fa-plus" style={{marginRight:8}} />Ajouter à la galerie</>}
+          </button>
+        </div>
+      </div>
+
+      <p style={{fontWeight:700, fontSize:'.85rem', margin:'28px 0 10px'}}>Photos actuelles ({photos.length})</p>
+      {!photos.length && <p style={{color:'var(--gray)', fontSize:'.85rem'}}>Aucune photo pour l'instant.</p>}
+      {GALERIE_CATEGORIES.map(cat => {
+        const catPhotos = photos.filter(p => p.cat === cat.key)
+        if (!catPhotos.length) return null
+        return (
+          <div key={cat.key} className="galerie-cat-group">
+            <h4 className="img-slot-group-title" style={{marginTop:0}}>{cat.label} ({catPhotos.length})</h4>
+            <div className="galerie-photo-row">
+              {catPhotos.map(p => (
+                <div key={p.id} className="galerie-photo-card">
+                  <img src={p.src} alt={p.label} />
+                  <button className="galerie-photo-delete" onClick={() => deletePhoto(p.id)} disabled={busyId===p.id} aria-label="Supprimer">
+                    {busyId===p.id ? <i className="fas fa-circle-notch fa-spin" /> : <i className="fas fa-trash" />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function MatTable({ materials, tiersByMaterial, page, onPageChange, onEdit, onDelete, onToggle }) {
   if (!materials.length) return (
     <div className="adm-empty"><i className="fas fa-boxes" /><p>Aucun article. Cliquez sur "Ajouter un article".</p></div>
   )
@@ -1439,25 +2187,39 @@ function MatTable({ materials, page, onPageChange, onEdit, onDelete, onToggle })
           <th style={{textAlign:'center'}}>Actions</th>
         </tr></thead>
         <tbody>
-          {slice.map(m => (
+          {slice.map(m => {
+            const tiers = tiersByMaterial[String(m.id)] || []
+            const baseTier = tiers[0]
+            return (
             <tr key={m.id}>
-              <td>{m.image_url?<img src={m.image_url} alt="" className="mat-thumb" />:<div className="mat-thumb-empty"><i className="fas fa-image" /></div>}</td>
-              <td style={{textAlign:'center'}}><strong>{m.name}</strong></td>
-              <td style={{textAlign:'center'}}>{m.category||'—'}</td>
-              <td style={{textAlign:'center'}}>{m.description||'—'}</td>
-              <td style={{textAlign:'center'}}>{m.max_quantity}</td>
-              <td style={{textAlign:'center'}}>{(parseFloat(m.price)||0).toFixed(2)} €</td>
-              <td style={{textAlign:'center'}}>
+              <td data-label="Photo">{m.image_url?<img src={m.image_url} alt="" className="mat-thumb" />:<div className="mat-thumb-empty"><i className="fas fa-image" /></div>}</td>
+              <td data-label="Nom" style={{textAlign:'center'}}><strong>{m.name}</strong></td>
+              <td data-label="Catégorie" style={{textAlign:'center'}}>{m.category||'—'}</td>
+              <td data-label="Description" style={{textAlign:'center'}}>{m.description||'—'}</td>
+              <td data-label="Qté max" style={{textAlign:'center'}}>{m.max_quantity}</td>
+              <td data-label="Prix" style={{textAlign:'center'}}>
+                {baseTier ? (
+                  <>
+                    {tiers.length > 1
+                      ? <>à partir de {ttcFromHt(baseTier.price_weekend_ht).toFixed(2)} € TTC<div style={{fontSize:'.75rem',color:'var(--gray)'}}>{tiers.length} paliers</div></>
+                      : baseTier.price_weekday_ht === baseTier.price_weekend_ht
+                        ? <>{ttcFromHt(baseTier.price_weekend_ht).toFixed(2)} € TTC</>
+                        : <>{ttcFromHt(baseTier.price_weekday_ht).toFixed(2)} € / {ttcFromHt(baseTier.price_weekend_ht).toFixed(2)} € TTC<div style={{fontSize:'.75rem',color:'var(--gray)'}}>semaine / week-end</div></>}
+                    {baseTier.min_qty > 1 && <div style={{fontSize:'.75rem',color:'var(--gray)'}}>min. {baseTier.min_qty} unités</div>}
+                  </>
+                ) : '—'}
+              </td>
+              <td data-label="Dispo" style={{textAlign:'center'}}>
                 <button className={`toggle-avail ${m.available?'avail-on':'avail-off'}`} onClick={() => onToggle(m.id, m.available)}>{m.available?'Oui':'Non'}</button>
               </td>
-              <td style={{textAlign:'center'}}>
+              <td data-label="Actions" style={{textAlign:'center'}}>
                 <div className="adm-table-actions">
                   <button className="adm-btn-ghost btn-sm" onClick={() => onEdit(m.id)}><i className="fas fa-pen" /></button>
                   <button className="adm-btn-delete btn-sm" onClick={() => onDelete(m.id)}><i className="fas fa-trash" /></button>
                 </div>
               </td>
             </tr>
-          ))}
+          )})}
         </tbody>
       </table>
       {totalPages>1&&(

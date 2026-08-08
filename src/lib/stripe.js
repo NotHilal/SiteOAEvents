@@ -21,8 +21,6 @@ export function isStripeConfigured() {
   return !!process.env.STRIPE_SECRET_KEY;
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 async function getSetting(key, fallback) {
   const row = await db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
   return row && row.value != null && row.value !== '' ? row.value : fallback;
@@ -53,19 +51,20 @@ export async function getTierConfig(tier) {
 // create-intent.js) to decide whether a given 2x/3x/4x plan should be
 // offered for a specific reservation, and if not, why — rather than
 // showing a choice that create-intent would then reject. A tier is eligible
-// only if there's enough room between now and (event - 3 days) to space out
-// its installments at least a day apart.
+// only if every installment's monthly due date (see computeInstallmentSchedule)
+// — including the last one — still falls on or before (event - 3 days). The
+// plan simply isn't offered otherwise, rather than compressing the schedule
+// to force it to fit.
 export async function getInstallmentTierEligibility(tier, grandTotal, eventDateStr, now = new Date()) {
   if (tier === 1) return { eligible: true, reason: null };
   const cfg = await getTierConfig(tier);
   if (!cfg) return { eligible: false, reason: 'Option indisponible.' };
   const n = tier;
   const eventDate = new Date(eventDateStr + 'T00:00:00');
-  const lastDueDate = addDays(eventDate, -LAST_INSTALLMENT_DAYS_BEFORE_EVENT);
-  const daysWindow = Math.floor((lastDueDate.getTime() - now.getTime()) / DAY_MS);
-  if (daysWindow < n - 1) {
-    const minDaysNeeded = LAST_INSTALLMENT_DAYS_BEFORE_EVENT + (n - 1);
-    return { eligible: false, reason: `Disponible uniquement si l'événement a lieu dans plus de ${minDaysNeeded} jours.` };
+  const lastAllowedDate = addDays(eventDate, -LAST_INSTALLMENT_DAYS_BEFORE_EVENT);
+  const lastInstallmentDate = addMonthsClamped(now, n - 1);
+  if (lastInstallmentDate.getTime() > lastAllowedDate.getTime()) {
+    return { eligible: false, reason: `Disponible uniquement si l'événement a lieu dans plus de ${n - 1} mois.` };
   }
   const total = parseFloat(grandTotal) || 0;
   if (cfg.minAmount > 0 && total < cfg.minAmount) {
@@ -85,15 +84,15 @@ export async function getAllInstallmentTiers(grandTotal, eventDateStr, now = new
 
 /**
  * Builds the installment schedule for an explicitly-chosen plan: `tier` is
- * 1 (full payment) or 2/3/4 (that many equal installments). The dates are
- * computed automatically rather than read from fixed offsets: the first
- * installment is always due today, the last is always due
- * LAST_INSTALLMENT_DAYS_BEFORE_EVENT days before the event, and any
- * installments in between are spread evenly across that window — so the
- * schedule adapts on its own to however much time is actually left, instead
- * of assuming a lead time long enough for admin-set fixed offsets to fit.
- * The last installment absorbs any rounding remainder so the sum always
- * equals grandTotal exactly.
+ * 1 (full payment) or 2/3/4 (that many equal installments). Each installment
+ * is due on the same day-of-month as the first one (today), one calendar
+ * month apart — simple and predictable ("prélevé le même jour chaque mois")
+ * instead of the previous evenly-interpolated-days scheme. Eligibility
+ * (getInstallmentTierEligibility) already guarantees the last installment's
+ * monthly date falls on or before (event - 3 days), so this function doesn't
+ * need to special-case or compress the last installment. The last
+ * installment absorbs any rounding remainder so the sum always equals
+ * grandTotal exactly.
  */
 export function computeInstallmentSchedule(grandTotal, eventDateStr, tier = 1, now = new Date()) {
   const total = Math.round((parseFloat(grandTotal) || 0) * 100) / 100;
@@ -104,12 +103,9 @@ export function computeInstallmentSchedule(grandTotal, eventDateStr, tier = 1, n
   if (n === 1) {
     parts = [{ label: 'Paiement intégral', dueDate: today }];
   } else {
-    const eventDate = new Date(eventDateStr + 'T00:00:00');
-    const lastDueDate = addDays(eventDate, -LAST_INSTALLMENT_DAYS_BEFORE_EVENT);
-    const daysWindow = Math.max(0, Math.floor((lastDueDate.getTime() - now.getTime()) / DAY_MS));
     parts = Array.from({ length: n }, (_, i) => ({
       label: i === 0 ? `Acompte (1/${n})` : i === n - 1 ? `Solde (1/${n})` : `${i + 1}ème versement (1/${n})`,
-      dueDate: fmtDate(addDays(now, Math.round((i * daysWindow) / (n - 1)))),
+      dueDate: fmtDate(addMonthsClamped(now, i)),
     }));
   }
 
@@ -127,6 +123,16 @@ function addDays(date, n) {
   const d = new Date(date);
   d.setDate(d.getDate() + n);
   return d;
+}
+// Adds `months` calendar months to `date`, keeping the same day-of-month
+// when possible; clamps to the last day of the target month when it doesn't
+// exist there (e.g. Jan 31 + 1 month -> Feb 28, not Mar 3) so "same day
+// every month" degrades sensibly instead of drifting across month bounds.
+function addMonthsClamped(date, months) {
+  const target = new Date(date.getFullYear(), date.getMonth() + months, 1);
+  const lastDayOfTargetMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(date.getDate(), lastDayOfTargetMonth));
+  return target;
 }
 function fmtDate(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');

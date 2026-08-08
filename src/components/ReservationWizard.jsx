@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { supabase } from '../lib/supabase.js'
+import { getDayType, getUnitPriceTtc, groupTiersByMaterial, getMinOrderQty } from '../lib/pricing.js'
 
 const HOURS =['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
@@ -45,6 +46,7 @@ export default function ReservationWizard({ simulation = false }) {
   const [calError, setCalError] = useState('')
   const [currentStep, setCurrentStep] = useState(1)
   const [materialsData, setMaterialsData] = useState([])
+  const [tiersByMaterial, setTiersByMaterial] = useState({})
   const [stockUsed, setStockUsed] = useState({})
   const [cart, setCart] = useState({}) // { [id]: qty }
   const [matFilter, setMatFilter] = useState('all')
@@ -163,12 +165,24 @@ export default function ReservationWizard({ simulation = false }) {
   }
 
   async function loadMaterials() {
-    const res = await supabase.from('materials').select('*').eq('available', true).order('category')
-    setMaterialsData(res.data || [])
+    const [matRes, tierRes] = await Promise.all([
+      supabase.from('materials').select('*').eq('available', true).order('category'),
+      supabase.from('material_price_tiers').select('*'),
+    ])
+    setMaterialsData(matRes.data || [])
+    setTiersByMaterial(groupTiersByMaterial(tierRes.data || []))
   }
 
   function getAvail(m) {
     return Math.max(0, m.max_quantity - (stockUsed[String(m.id)]||0))
+  }
+
+  // Resolved TTC unit price for a material at the event's day type (weekday
+  // vs weekend/holiday) and the given quantity — crosses tier boundaries as
+  // qty changes (see src/lib/pricing.js).
+  function getUnitPrice(m, qty) {
+    if (!m) return 0
+    return getUnitPriceTtc(tiersByMaterial[String(m.id)], dayType, qty)
   }
 
   function showCalError(msg) {
@@ -240,7 +254,9 @@ export default function ReservationWizard({ simulation = false }) {
       if (timeType === 'hours' && !selectedHours.length) return false
       return true
     }
-    if (n === 2) {
+    // Infos moved to step 3 (was step 2) — validation stays tied to the
+    // Infos fields themselves, not the step number, so it moves with it.
+    if (n === 3) {
       const { prenom, nom, email, address, type, nb } = form
       if (!prenom||!nom||!email.includes('@')||!address.trim()||!type||!nb||parseInt(nb)<1) {
         setStep2Error(true)
@@ -361,9 +377,10 @@ export default function ReservationWizard({ simulation = false }) {
       .filter(([,q]) => q > 0)
       .map(([id, qty]) => {
         const m = materialsData.find(x => String(x.id) === id)
-        // Price snapshotted at booking time — if it's edited in Matériel
-        // later, past reservations still show what the client actually saw.
-        return { id, name: m?.name || '?', quantity: qty, price: parseFloat(m?.price) || 0 }
+        // Resolved (day-type + quantity tier) unit price snapshotted at
+        // booking time — if tiers are edited in Matériel later, past
+        // reservations still show what the client actually saw/paid.
+        return { id, name: m?.name || '?', quantity: qty, price: getUnitPrice(m, qty) }
       })
     try {
       const { data, error } = await supabase.from('reservations').insert({
@@ -424,6 +441,9 @@ export default function ReservationWizard({ simulation = false }) {
   }
 
   const isMulti = selectedDates.length > 1
+  // Whole-event rate from the first selected day (not per-day proration) —
+  // matches how the price sheet reads (per event, not per day of possession).
+  const dayType = selectedDates.length ? getDayType(selectedDates[0]) : 'weekday'
 
   /* Build calendar cells */
   const today = new Date(); today.setHours(0,0,0,0)
@@ -479,7 +499,7 @@ export default function ReservationWizard({ simulation = false }) {
 
   const materialsTotal = Object.entries(cart).filter(([,q]) => q > 0).reduce((sum, [id, qty]) => {
     const m = materialsData.find(x => String(x.id) === id)
-    return sum + (parseFloat(m?.price) || 0) * qty
+    return sum + getUnitPrice(m, qty) * qty
   }, 0)
   const grandTotal = materialsTotal + (quote?.fee || 0)
 
@@ -594,7 +614,7 @@ export default function ReservationWizard({ simulation = false }) {
             <div id="resa-wizard" ref={wizardRef}>
               {/* Stepper */}
               <div className="resa-stepper">
-                {['Date', 'Infos', 'Matériaux', 'Récap'].map((label, i) => {
+                {['Date', 'Matériel', 'Infos', 'Récap'].map((label, i) => {
                   const n = i + 1
                   const isDone = currentStep > n
                   const isActive = currentStep === n
@@ -615,7 +635,7 @@ export default function ReservationWizard({ simulation = false }) {
               {/* STEP 1 — Date */}
               {currentStep === 1 && (
                 <div className="step-panel">
-                  <span className="step-tag">Étape 1 / 4</span>
+                  <span className="step-tag">Étape {currentStep} / 4</span>
                   <h2 className="step-title">Choisissez vos dates</h2>
                   <p className="step-desc">Sélectionnez 1 à 3 jours consécutifs pour votre événement.</p>
 
@@ -778,10 +798,12 @@ export default function ReservationWizard({ simulation = false }) {
                 </div>
               )}
 
-              {/* STEP 2 — Infos */}
-              {currentStep === 2 && (
+              {/* Infos — now step 3 (was step 2); condition swapped with
+                  Matériaux below so the order shown is Date, Matériaux,
+                  Infos, Récap. Content/logic below is unchanged. */}
+              {currentStep === 3 && (
                 <div className="step-panel">
-                  <span className="step-tag">Étape 2 / 4</span>
+                  <span className="step-tag">Étape {currentStep} / 4</span>
                   <h2 className="step-title">Vos informations</h2>
                   <p className="step-desc">Renseignez vos coordonnées et les détails de votre événement.</p>
 
@@ -864,10 +886,10 @@ export default function ReservationWizard({ simulation = false }) {
                 </div>
               )}
 
-              {/* STEP 3 — Matériaux */}
-              {currentStep === 3 && (
+              {/* Matériaux — now step 2 (was step 3), see note above. */}
+              {currentStep === 2 && (
                 <div className="step-panel">
-                  <span className="step-tag">Étape 3 / 4</span>
+                  <span className="step-tag">Étape {currentStep} / 4</span>
                   <h2 className="step-title">Matériaux & Décoration</h2>
                   <p className="step-desc">Sélectionnez les articles que vous souhaitez louer pour votre événement.</p>
 
@@ -910,9 +932,12 @@ export default function ReservationWizard({ simulation = false }) {
                         <div className="mat-grid">
                           {pagedMats.map(m => {
                             const avail = getAvail(m)
-                            const unavail = avail <= 0
+                            const minQty = getMinOrderQty(tiersByMaterial[String(m.id)])
+                            const insufficientForMin = avail > 0 && avail < minQty
+                            const unavail = avail <= 0 || insufficientForMin
                             const qty = cart[String(m.id)] || 0
                             const selected = qty > 0
+                            const unitPrice = getUnitPrice(m, qty || minQty)
                             return (
                               <div key={m.id} className={`mat-card${selected?' mat-card-checked':''}${unavail?' mat-card-unavail':''}`}>
                                 <div className={`mat-card-img${!m.image_url?' mat-card-img-empty':''}`}>
@@ -931,26 +956,29 @@ export default function ReservationWizard({ simulation = false }) {
                                       checked={selected}
                                       disabled={unavail}
                                       onChange={e => {
-                                        if (e.target.checked) setCart(c => ({...c, [String(m.id)]: 1}))
+                                        if (e.target.checked) setCart(c => ({...c, [String(m.id)]: minQty}))
                                         else setCart(c => { const n={...c}; delete n[String(m.id)]; return n })
                                       }}
                                     />
                                     <div>
                                       <div className="mat-name-row">
                                         <span className="mat-name">{m.name}</span>
-                                        <span className="mat-price">{(parseFloat(m.price)||0).toFixed(2)} €</span>
+                                        <span className="mat-price">{unitPrice.toFixed(2)} €</span>
                                       </div>
                                       {m.description && <span className="mat-desc">{m.description}</span>}
+                                      {minQty > 1 && <span className="mat-desc" style={{fontSize:'.75rem',color:'var(--gray)'}}>Minimum {minQty} unités</span>}
                                     </div>
                                   </label>
                                   <div className="mat-card-footer">
-                                    {unavail
+                                    {avail <= 0
                                       ? <span className="mat-stock-badge mat-stock-out"><i className="fas fa-times-circle" /> Épuisé</span>
-                                      : <span className="mat-stock-badge mat-stock-ok"><i className="fas fa-check-circle" /> {avail} dispo.</span>
+                                      : insufficientForMin
+                                        ? <span className="mat-stock-badge mat-stock-out"><i className="fas fa-times-circle" /> Stock insuffisant (min. {minQty})</span>
+                                        : <span className="mat-stock-badge mat-stock-ok"><i className="fas fa-check-circle" /> {avail} dispo.</span>
                                     }
                                     {selected && (
                                       <div className="mat-qty-wrap">
-                                        <button className="qty-btn" onClick={() => setCart(c => ({...c,[String(m.id)]: Math.max(1,qty-1)}))}>−</button>
+                                        <button className="qty-btn" onClick={() => setCart(c => ({...c,[String(m.id)]: Math.max(minQty,qty-1)}))}>−</button>
                                         <span className="qty-val">{qty}</span>
                                         <button className="qty-btn" onClick={() => setCart(c => ({...c,[String(m.id)]: Math.min(avail,qty+1)}))}>+</button>
                                       </div>
@@ -996,7 +1024,7 @@ export default function ReservationWizard({ simulation = false }) {
               {/* STEP 4 — Récap */}
               {currentStep === 4 && (
                 <div className="step-panel">
-                  <span className="step-tag">Étape 4 / 4</span>
+                  <span className="step-tag">Étape {currentStep} / 4</span>
                   <h2 className="step-title">Récapitulatif</h2>
 
                   <>
@@ -1026,7 +1054,7 @@ export default function ReservationWizard({ simulation = false }) {
                           <h4 className="res-quote-title"><i className="fas fa-boxes" style={{marginRight:8}} />Détail des articles</h4>
                           {Object.entries(cart).filter(([,q]) => q > 0).map(([id, qty]) => {
                             const m = materialsData.find(x => String(x.id) === id)
-                            const unitPrice = parseFloat(m?.price) || 0
+                            const unitPrice = getUnitPrice(m, qty)
                             return (
                               <div key={id} className="res-total-row">
                                 <span>{m?.name || '?'} <small style={{color:'var(--gray)'}}>({unitPrice.toFixed(2)} €/u × {qty})</small></span>

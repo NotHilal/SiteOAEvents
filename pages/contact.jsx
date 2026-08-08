@@ -5,14 +5,24 @@ import AOS from 'aos'
 import { supabase } from '../src/lib/supabase.js'
 
 const WEB3FORMS_KEY = '380ad0e4-4abc-4a00-81d1-d81067d54129'
+const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1920&q=80'
 
 export default function Contact() {
   const [form, setForm] = useState({ prenom: '', nom: '', email: '', telephone: '', typeEvenement: '', message: '' })
   const [status, setStatus] = useState('idle') // idle | loading | success | error
+  const [images, setImages] = useState({})
 
   useEffect(() => {
     AOS.init({ duration: 820, easing: 'ease-in-out', once: true, offset: 55 })
     AOS.refresh()
+  }, [])
+
+  useEffect(() => {
+    supabase.from('site_content').select('*').eq('key', 'images_contact').then(({ data }) => {
+      const row = data && data[0]
+      if (!row) return
+      try { setImages(JSON.parse(row.value)) } catch {}
+    })
   }, [])
 
   const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
@@ -68,7 +78,7 @@ export default function Contact() {
       <div className="site-wrap">
         <div
           className="page-header"
-          style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1920&q=80)' }}
+          style={{ backgroundImage: `url(${images.page_header || PAGE_HEADER_DEFAULT})` }}
         >
           <div className="page-header-overlay" />
           <div className="container">

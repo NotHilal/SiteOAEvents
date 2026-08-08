@@ -445,6 +445,38 @@ a { color:var(--rose-gold); }
 .block-tab.active { background:var(--rose-gold); color:#fff; }
 .block-tab:hover:not(.active) { background:var(--cream); }
 
+/* Mobile-only "tap to expand" alternative to the pill row above (hidden on
+   mobile, see the 768px block below) — a 3-5 item row of full labels never
+   fits a phone width without either scrolling sideways or squashing labels
+   illegible, so it collapses into a single current-tab button that expands
+   a dropdown list on tap instead. */
+.block-tabs-mobile { display: none; }
+.block-tabs-mobile-trigger {
+  width: 100%;
+  display: flex; align-items: center; justify-content: space-between;
+  background: #fff; border: 1.5px solid var(--border); border-radius: var(--r-sm);
+  padding: 13px 16px; margin-bottom: 18px;
+  font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: .82rem;
+  letter-spacing: .5px; text-transform: uppercase; color: var(--dark);
+  cursor: pointer;
+}
+.block-tabs-mobile-trigger i { color: var(--rose-gold); transition: transform .25s ease; }
+.block-tabs-mobile-trigger i.is-open { transform: rotate(180deg); }
+.block-tabs-mobile-list {
+  margin: -12px 0 18px;
+  background: #fff; border: 1.5px solid var(--border); border-radius: var(--r-sm);
+  box-shadow: 0 10px 30px rgba(0,0,0,.12);
+  overflow: hidden;
+}
+.block-tabs-mobile-option {
+  display: block; width: 100%; text-align: left;
+  background: transparent; border: none; border-bottom: 1px solid var(--border);
+  padding: 13px 16px; font-family: 'Montserrat', sans-serif; font-weight: 600;
+  font-size: .82rem; color: var(--dark-mid); cursor: pointer;
+}
+.block-tabs-mobile-option:last-child { border-bottom: none; }
+.block-tabs-mobile-option.active { background: var(--rg-tint); color: var(--rose-gold); }
+
 .block-panel { animation:fadeIn .2s ease; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
 
@@ -500,6 +532,31 @@ a { color:var(--rose-gold); }
 .img-upload-placeholder span { font-size: .75rem; opacity: .7; }
 
 .img-upload-btns { display: flex; gap: 8px; margin-top: 8px; }
+
+.img-slot-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:20px; }
+.img-slot-group-title { grid-column:1/-1; font-size:.8rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--rose-gold); margin:18px 0 2px; }
+.img-slot-grid > div:first-child .img-slot-group-title { margin-top:0; }
+
+.galerie-add-row { display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; }
+.galerie-add-preview { width:160px; min-height:100px; flex:none; }
+.galerie-add-controls { display:flex; flex-direction:column; gap:10px; min-width:220px; }
+.galerie-cat-group { margin-top:18px; }
+.galerie-photo-row { display:flex; flex-wrap:wrap; gap:12px; }
+.galerie-photo-card { position:relative; width:120px; height:120px; border-radius:var(--r-sm); overflow:hidden; border:1px solid var(--border); }
+.galerie-photo-card img { width:100%; height:100%; object-fit:cover; display:block; }
+.galerie-photo-delete {
+  position:absolute; top:6px; right:6px;
+  width:26px; height:26px;
+  border-radius:50%;
+  border:none;
+  background:rgba(20,16,10,.65);
+  color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+  font-size:.72rem;
+  transition:background .2s;
+}
+.galerie-photo-delete:hover { background:var(--danger); }
 
 .mat-thumb {
   width: 44px;
@@ -754,13 +811,119 @@ a { color:var(--rose-gold); }
 .bloc-item-date { display:block; font-weight:700; font-size:.87rem; color:var(--dark); font-family:'Lato',sans-serif; }
 .bloc-item-reason { display:block; font-size:.76rem; color:var(--gray); margin-top:2px; }
 
+/* Mobile-only top bar + hamburger that opens the sidebar as an off-canvas
+   drawer (see the .sidebar rules inside the media query below) — hidden on
+   desktop, where the sidebar is always visible in its normal 250px column. */
+.admin-mobile-topbar { display: none; }
+.admin-sidebar-overlay { display: none; }
+
 /* RESPONSIVE */
 @media(max-width:768px){
-  .sidebar { width:64px; }
-  .sidebar-brand, .sidebar-user-info, .sidebar-logout span { display:none; }
-  .sidebar-btn { justify-content:center; padding:14px; }
-  .sidebar-user { justify-content:center; padding:6px 0 10px; }
-  .admin-main { padding:20px 16px; }
+  .admin-mobile-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--sidebar-bg); padding: 14px 18px;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .admin-mobile-title { font-family:'Montserrat', sans-serif; font-size: 1rem; font-weight: 700; color: #fff; }
+  .admin-mobile-title em { font-style: normal; color: var(--rose-gold); }
+  .admin-hamburger-btn {
+    width: 38px; height: 38px; border: none; border-radius: 50%;
+    background: rgba(255,255,255,.08); position: relative; cursor: pointer;
+    transition: background-color .3s ease;
+  }
+  .admin-hamburger-btn:hover { background: rgba(255,255,255,.16); }
+  .admin-hamburger-btn.is-open { background: var(--rose-gold); }
+  .admin-hamburger-btn .hamburger-line { background-color: #fff; }
+  /* The 3-line -> X morph transforms live on .mobile-menu-btn.is-open in
+     style.css (the public nav's hamburger) — this button uses a different
+     class, so it needs its own copy of the same transforms. */
+  .admin-hamburger-btn.is-open .hamburger-line:nth-child(1) { transform: translateY(0) rotate(45deg); }
+  .admin-hamburger-btn.is-open .hamburger-line:nth-child(2) { opacity: 0; transform: translateY(0) scaleX(0); }
+  .admin-hamburger-btn.is-open .hamburger-line:nth-child(3) { transform: translateY(0) rotate(-45deg); }
+
+  .admin-sidebar-overlay {
+    display: block; position: fixed; inset: 0; z-index: 98;
+    background: rgba(20,16,10,.5); backdrop-filter: blur(2px);
+    opacity: 0; pointer-events: none; transition: opacity .35s ease;
+  }
+  .admin-sidebar-overlay.is-open { opacity: 1; pointer-events: auto; }
+
+  /* Off-canvas drawer instead of the old permanent 64px icon-only rail —
+     full labels (not icon-only) since there's a full drawer width to use
+     once it's open, and it's only on screen when the admin actually asked
+     for it via the hamburger. */
+  .sidebar {
+    position: fixed; top: 0; left: 0; z-index: 99;
+    width: 260px; max-width: 82vw; height: 100vh;
+    transform: translateX(-100%);
+    transition: transform .45s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 18px 0 50px rgba(0,0,0,.25);
+  }
+  .sidebar.is-open { transform: translateX(0); }
+  /* Email dropped on mobile only — the drawer's already full of nav items
+     on a short phone screen, and "Administrateur" already conveys who's
+     signed in without needing the email too. */
+  .sidebar-user-name { display: none; }
+  .admin-main { padding: 20px 16px; }
   .adm-header { flex-direction:column; align-items:flex-start; }
   .detail-info-grid { grid-template-columns:1fr; }
+  /* .adm-table (Matériel) has 8 columns (Photo/Nom/Catégorie/Description/
+     Qté max/Prix/Dispo/Actions) — no amount of squeezing fits that on a
+     phone, and .admin-main's overflow-x:auto (see its own comment) was
+     just quietly turning it into another horizontal scroller. Converts to
+     stacked label:value cards instead, driven by each <td>'s data-label
+     attribute (see espace-oa.jsx) — same data, no sideways scrolling. */
+  .adm-table, .adm-table tbody, .adm-table tr, .adm-table td { display: block; width: 100%; }
+  .adm-table thead { display: none; }
+  .adm-table tr {
+    margin-bottom: 12px; border: 1.5px solid var(--border); border-radius: var(--r-md);
+    padding: 4px 14px; background: #fff;
+  }
+  .adm-table td {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+    text-align: right !important;
+  }
+  .adm-table td:last-child { border-bottom: none; }
+  .adm-table td::before {
+    content: attr(data-label);
+    font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: .68rem;
+    letter-spacing: .6px; text-transform: uppercase; color: var(--gray);
+    text-align: left; flex-shrink: 0;
+  }
+  .adm-table td[data-label="Photo"] { justify-content: flex-start; }
+  .adm-table td[data-label="Actions"] .adm-table-actions { display: flex; gap: 8px; }
+  /* .block-tab's flex:1 doesn't actually shrink below its text's natural
+     width (flex items default to min-width:auto), so a 5-tab row (Visuel
+     Site: Accueil/Prestations/Galerie/À Propos/Contact) silently overflowed
+     with the last tab(s) completely unreachable — no scrollbar, nothing
+     visibly wrong, just missing. Swap the pill row for the tap-to-expand
+     .block-tabs-mobile version (see espace-oa.jsx) instead of a horizontal
+     scroller. */
+  .block-tabs { display: none; }
+  .block-tabs-mobile { display: block; position: relative; }
+  /* .cal-nav's arrows + month label + "Aujourd'hui" + Mois/Année toggle
+     never wrapped, so on mobile they ran past .admin-main's right edge —
+     which (since .admin-main has overflow-y:auto, and per the CSS spec an
+     element with one overflow axis set non-visible has its other axis
+     silently promoted to "auto" too) surfaced as an actual horizontal
+     scrollbar around the whole admin content area, not just a clipped
+     row. Wrapping the controls onto a second line removes the overflow
+     at its source instead of leaving something for that auto-scroll to
+     still have to accommodate. */
+  .cal-nav { flex-wrap: wrap; row-gap: 10px; }
+  .cal-month-label { min-width: 0; font-size: 1.1rem; }
+  .cal-view-toggle { margin-left: auto; }
+  /* .cal-grid's min-width:560px forced .cal-grid-wrap's own overflow-x:auto
+     to kick in below ~600px — a second, smaller horizontal scroller nested
+     inside the one .admin-main was already showing. Letting the 7 columns
+     actually shrink (repeat(7,1fr) already wanted to) removes that one too;
+     cells get compact rather than scroll-hidden. */
+  .cal-grid-wrap { padding: 10px; }
+  .cal-grid { min-width: 0; gap: 3px; }
+  .cal-day, .cal-day-empty { min-height: 56px; padding: 4px 3px 3px; }
+  .cal-day-header { font-size: .55rem; letter-spacing: 1px; padding: 6px 0 4px; }
+  .cal-day-num { font-size: .82rem; }
+  .cal-hour-tag { font-size: .5rem; padding: 1px 3px; }
+  .cal-block-full, .cal-hour-more { font-size: .55rem; }
 }

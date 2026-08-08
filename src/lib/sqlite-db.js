@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { createClient } from '@libsql/client';
 
 // Uses a local file by default (same file as before, now read/written over
@@ -152,6 +153,17 @@ async function init() {
       updated_at TEXT
     );
 
+    -- Same key/value shape as settings, but public-GET (see requiresAuth in
+    -- pages/api/db.js) — settings stays admin-only end-to-end because it
+    -- also holds bank_iban/bank_bic, so page copy that the public site needs
+    -- to read while logged out (e.g. the À Propos text/photo) lives here
+    -- instead, to avoid ever having to make bank details publicly readable.
+    CREATE TABLE IF NOT EXISTS site_content (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      updated_at TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS payments (
       id TEXT PRIMARY KEY,
       reservation_id TEXT NOT NULL,
@@ -164,6 +176,17 @@ async function init() {
       status TEXT DEFAULT 'pending',
       failure_message TEXT,
       paid_at TEXT,
+      created_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS material_price_tiers (
+      id TEXT PRIMARY KEY,
+      material_id TEXT NOT NULL,
+      min_qty INTEGER NOT NULL DEFAULT 1,
+      max_qty INTEGER,
+      price_weekday_ht REAL NOT NULL DEFAULT 0,
+      price_weekend_ht REAL NOT NULL DEFAULT 0,
+      sort_order INTEGER DEFAULT 0,
       created_at TEXT
     );
   `);
@@ -193,11 +216,15 @@ async function init() {
   // src/lib/stripe.js createInstallmentAutoCharge). This column correlates an
   // incoming invoice.paid/invoice.payment_failed webhook back to its row.
   await ensureColumn('payments', 'stripe_subscription_id', 'TEXT');
+  // Minimum rentable quantity for this item (e.g. Chaise Napoléon = 20) —
+  // NULL means no minimum. Enforced client-side in the booking wizard.
+  await ensureColumn('materials', 'min_order_qty', 'INTEGER');
 
   await client.executeMultiple(`
     CREATE INDEX IF NOT EXISTS idx_payments_reservation ON payments(reservation_id);
     CREATE INDEX IF NOT EXISTS idx_payments_due_status ON payments(due_date, status);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_reservations_reference ON reservations(reference);
+    CREATE INDEX IF NOT EXISTS idx_material_price_tiers_material ON material_price_tiers(material_id);
   `);
 
   // Seed default categories if empty
@@ -267,6 +294,193 @@ async function init() {
       sql: 'INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES (?, ?, ?)',
       args: [key, value, settingsNow],
     });
+  }
+
+  // À Propos page content, editable from Espace OA > À Propos — seeded with
+  // the exact same placeholder copy pages/a-propos.jsx used to hardcode, so
+  // nothing visually changes until it's actually edited in the admin.
+  const aboutPageDefault = JSON.stringify({
+    founderName: "[Prénom Nom], fondateur d'OA Événementiel",
+    story: "[Votre histoire ici — pourquoi ce métier vous anime, depuis quand vous organisez des événements, ce qui rend votre approche différente. Deux ou trois phrases suffisent, je les mettrai en forme.]",
+    photoUrl: null,
+    counters: [
+      { count: '[X]+', label: '[Ex : Ans d\'expérience]' },
+      { count: '[X]+', label: '[Ex : Événements réalisés]' },
+    ],
+    values: [
+      { title: '[Créativité sur-mesure]', text: '[Description à personnaliser.]' },
+      { title: '[Logistique maîtrisée]', text: '[Description à personnaliser.]' },
+      { title: '[Écoute & Accompagnement]', text: '[Description à personnaliser.]' },
+      { title: '[Confiance & Transparence]', text: '[Description à personnaliser.]' },
+    ],
+  });
+  await client.execute({
+    sql: 'INSERT OR IGNORE INTO site_content (key, value, updated_at) VALUES (?, ?, ?)',
+    args: ['about_page', aboutPageDefault, settingsNow],
+  });
+
+  // Per-page image overrides, editable from Espace OA > Visuel Site. Each
+  // starts empty ({}) — public pages fall back to their own hardcoded
+  // default image per slot when a key is missing, so an empty row changes
+  // nothing visually until an admin actually replaces a photo.
+  for (const key of ['images_home', 'images_services', 'images_contact']) {
+    await client.execute({
+      sql: 'INSERT OR IGNORE INTO site_content (key, value, updated_at) VALUES (?, ?, ?)',
+      args: [key, '{}', settingsNow],
+    });
+  }
+  // Galerie is a dynamic list (add/remove from Espace OA > Visuel Site >
+  // Galerie), not fixed slots — seeded with the same 12 default photos
+  // pages/galerie.jsx falls back to, so a fresh DB's admin list and public
+  // page start in sync instead of the admin seeing an empty list.
+  const galerieDefault = JSON.stringify({
+    page_header: null,
+    photos: [
+      { id: 'photo_1', src: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=800&q=80', cat: 'mariage', label: 'Mariage' },
+      { id: 'photo_2', src: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=800&q=80', cat: 'mariage', label: 'Mariage' },
+      { id: 'photo_3', src: 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=800&q=80', cat: 'mariage', label: 'Mariage' },
+      { id: 'photo_4', src: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=800&q=80', cat: 'anniversaire', label: 'Anniversaire' },
+      { id: 'photo_5', src: 'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=800&q=80', cat: 'anniversaire', label: 'Anniversaire' },
+      { id: 'photo_6', src: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80', cat: 'anniversaire', label: 'Anniversaire' },
+      { id: 'photo_7', src: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&q=80', cat: 'pro', label: 'Événement Pro' },
+      { id: 'photo_8', src: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80', cat: 'pro', label: 'Événement Pro' },
+      { id: 'photo_9', src: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800&q=80', cat: 'pro', label: 'Événement Pro' },
+      { id: 'photo_10', src: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=800&q=80', cat: 'deco', label: 'Location Déco' },
+      { id: 'photo_11', src: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80', cat: 'deco', label: 'Location Déco' },
+      { id: 'photo_12', src: 'https://images.unsplash.com/photo-1478146059778-26028b07395a?w=800&q=80', cat: 'deco', label: 'Location Déco' },
+    ],
+  });
+  await client.execute({
+    sql: 'INSERT OR IGNORE INTO site_content (key, value, updated_at) VALUES (?, ?, ?)',
+    args: ['images_galerie', galerieDefault, settingsNow],
+  });
+
+  // One-time migration: replace the placeholder demo catalog seeded above
+  // (only ever ran on a brand-new DB) with the real price list from the
+  // business owners. Guarded by a flag rather than an empty-table check,
+  // since an already-seeded dev DB isn't empty — runs exactly once per DB.
+  const catalogFlag = await client.execute("SELECT value FROM settings WHERE key = 'catalog_v2_seeded'");
+  if (!catalogFlag.rows.length || catalogFlag.rows[0].value !== '1') {
+    await seedRealCatalog();
+    await client.execute({
+      sql: "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('catalog_v2_seeded', '1', ?)",
+      args: [new Date().toISOString()],
+    });
+  }
+}
+
+const DEMO_CATEGORY_IDS = ['c1', 'c2', 'c3', 'c4'];
+const DEMO_MATERIAL_IDS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+
+const REAL_CATEGORIES = [
+  { id: 'cat-banquettes', name: 'BANQUETTES' },
+  { id: 'cat-decorations', name: 'DÉCORATIONS' },
+  { id: 'cat-tables', name: 'TABLES' },
+  { id: 'cat-chaises', name: 'CHAISES' },
+  { id: 'cat-tentes', name: 'TENTES' },
+  { id: 'cat-options', name: 'OPTIONS & ACCESSOIRES' },
+];
+
+// Real price sheet from the business owners (2026-08-06). Each tier is
+// [minQty, maxQty|null, weekdayHt, weekendHt] — TTC is always derived at
+// 20% VAT (see src/lib/pricing.js), never stored. Stock (max_quantity) is
+// only accurate for the 3 table types below (given by the owners) —
+// everything else is a placeholder the owners need to correct via
+// Espace OA > Matériel.
+const REAL_MATERIALS = [
+  // Banquettes
+  { id: 'mat-banq-2-beige', name: 'Banquette 2 places – Beige', category: 'BANQUETTES', max_quantity: 10,
+    tiers: [[1, null, 70.00, 80.00]] },
+  { id: 'mat-banq-2-taupe', name: 'Banquette 2 places – Taupe', category: 'BANQUETTES', max_quantity: 10,
+    tiers: [[1, null, 70.00, 80.00]] },
+  { id: 'mat-banq-3-beige', name: 'Banquette 3 places – Beige', category: 'BANQUETTES', max_quantity: 10,
+    tiers: [[1, null, 130.00, 150.00]] },
+
+  // Décorations
+  { id: 'mat-deco-rideau-classique', name: 'Rideau classique 3 × 3 m', description: 'Structure incluse', category: 'DÉCORATIONS', max_quantity: 4,
+    tiers: [[1, null, 45.00, 50.00]] },
+  { id: 'mat-deco-rideau-tresse', name: 'Rideau tressé 3 × 4 m', description: 'Structure incluse', category: 'DÉCORATIONS', max_quantity: 4,
+    tiers: [[1, null, 90.00, 100.00]] },
+  { id: 'mat-deco-arche-ronde', name: 'Arche de fleurs ronde', description: 'Structure + fleurs incluses', category: 'DÉCORATIONS', max_quantity: 4,
+    tiers: [[1, null, 35.00, 40.00]] },
+  { id: 'mat-deco-arche-carree', name: 'Arche de fleurs carrée', description: 'Structure + fleurs incluses', category: 'DÉCORATIONS', max_quantity: 4,
+    tiers: [[1, null, 35.00, 40.00]] },
+  { id: 'mat-deco-tables-basses', name: 'Lot de 2 tables basses effet marbre', category: 'DÉCORATIONS', max_quantity: 6,
+    tiers: [[1, null, 35.00, 40.00]] },
+
+  // Tables — real stock counts from the owners
+  { id: 'mat-table-rect', name: 'Table rectangulaire', category: 'TABLES', max_quantity: 80,
+    tiers: [[1, 9, 10.20, 12.00], [10, 19, 9.18, 10.80], [20, null, 8.67, 10.20]] },
+  { id: 'mat-table-ronde-152', name: 'Table ronde Ø152 cm', category: 'TABLES', max_quantity: 30,
+    tiers: [[1, 9, 11.90, 14.00], [10, 19, 10.71, 12.60], [20, null, 10.12, 11.90]] },
+  { id: 'mat-table-ronde-180', name: 'Table ronde Ø180 cm', category: 'TABLES', max_quantity: 15,
+    tiers: [[1, 9, 15.30, 18.00], [10, 19, 13.77, 16.20], [20, null, 13.01, 15.30]] },
+
+  // Chaises
+  { id: 'mat-chaise-napoleon', name: 'Chaise Napoléon', category: 'CHAISES', max_quantity: 500, min_order_qty: 20,
+    tiers: [[20, 79, 2.76, 3.33], [80, 150, 2.66, 3.20], [151, 250, 2.49, 3.00], [251, 500, 2.08, 2.50]] },
+
+  // Tentes / Barnum
+  { id: 'mat-tente-32', name: 'Tente de réception 32 m² (4 × 8 m)', description: 'Installation, désinstallation et lestage (150 kg) inclus. Hors frais kilométriques.', category: 'TENTES', max_quantity: 6,
+    tiers: [[1, 2, 199.50, 210.00], [3, null, 179.55, 189.00]] },
+  { id: 'mat-tente-50', name: 'Tente de réception 50 m² (5 × 10 m)', description: 'Installation, désinstallation et lestage (200 kg) inclus. Hors frais kilométriques.', category: 'TENTES', max_quantity: 6,
+    tiers: [[1, 2, 247.00, 260.00], [3, null, 222.30, 234.00]] },
+  { id: 'mat-tente-72', name: 'Tente de réception 72 m² (6 × 12 m)', description: 'Installation, désinstallation et lestage (250 kg) inclus. Hors frais kilométriques.', category: 'TENTES', max_quantity: 2,
+    tiers: [[1, null, 332.50, 350.00]] },
+  { id: 'mat-tente-100', name: 'Tente de réception 100 m² (5 × 20 m)', description: 'Installation, désinstallation et lestage (300 kg) inclus. Hors frais kilométriques.', category: 'TENTES', max_quantity: 2,
+    tiers: [[1, null, 551.00, 580.00]] },
+
+  // Options & Accessoires — no weekday/weekend split given, so weekday and
+  // weekend HT are identical.
+  { id: 'mat-opt-kit-led', name: 'Kit Lumière LED', description: '2 barres LED 6000 W', category: 'OPTIONS & ACCESSOIRES', max_quantity: 10,
+    tiers: [[1, null, 40.00, 40.00]] },
+  { id: 'mat-opt-parasol', name: 'Parasol chauffant électrique', category: 'OPTIONS & ACCESSOIRES', max_quantity: 6,
+    tiers: [[1, 3, 50.00, 50.00], [4, 6, 40.00, 40.00]] },
+  { id: 'mat-opt-rallonge-5', name: 'Rallonge électrique 5 mètres', category: 'OPTIONS & ACCESSOIRES', max_quantity: 20,
+    tiers: [[1, null, 3.00, 3.00]] },
+  { id: 'mat-opt-rallonge-10', name: 'Rallonge électrique 10 mètres', category: 'OPTIONS & ACCESSOIRES', max_quantity: 20,
+    tiers: [[1, null, 5.00, 5.00]] },
+  { id: 'mat-opt-poids-15', name: 'Poids de lestage 15 kg', category: 'OPTIONS & ACCESSOIRES', max_quantity: 30,
+    tiers: [[1, null, 5.00, 5.00]] },
+  { id: 'mat-opt-poids-30', name: 'Poids de lestage 30 kg', category: 'OPTIONS & ACCESSOIRES', max_quantity: 30,
+    tiers: [[1, null, 10.00, 10.00]] },
+  { id: 'mat-opt-galette', name: 'Option galette de chaise', description: 'Option pour Chaise Napoléon', category: 'OPTIONS & ACCESSOIRES', max_quantity: 500,
+    tiers: [[1, null, 0.50, 0.50]] },
+];
+
+async function seedRealCatalog() {
+  const now = new Date().toISOString();
+
+  // Remove the placeholder demo catalog if present (ids from the original
+  // seed above) — a no-op on a DB where it was never seeded.
+  for (const id of DEMO_MATERIAL_IDS) {
+    await client.execute({ sql: 'DELETE FROM material_price_tiers WHERE material_id = ?', args: [id] });
+    await client.execute({ sql: 'DELETE FROM materials WHERE id = ?', args: [id] });
+  }
+  for (const id of DEMO_CATEGORY_IDS) {
+    await client.execute({ sql: 'DELETE FROM categories WHERE id = ?', args: [id] });
+  }
+
+  for (const cat of REAL_CATEGORIES) {
+    await client.execute({
+      sql: 'INSERT OR IGNORE INTO categories (id, name, created_at) VALUES (?, ?, ?)',
+      args: [cat.id, cat.name, now],
+    });
+  }
+
+  for (const mat of REAL_MATERIALS) {
+    await client.execute({
+      sql: `INSERT OR REPLACE INTO materials (id, name, description, category, max_quantity, min_order_qty, available, image_url, price, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 1, NULL, 0, ?)`,
+      args: [mat.id, mat.name, mat.description || null, mat.category, mat.max_quantity, mat.min_order_qty || null, now],
+    });
+    for (const [minQty, maxQty, weekdayHt, weekendHt] of mat.tiers) {
+      await client.execute({
+        sql: `INSERT INTO material_price_tiers (id, material_id, min_qty, max_qty, price_weekday_ht, price_weekend_ht, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        args: [crypto.randomUUID(), mat.id, minQty, maxQty, weekdayHt, weekendHt, now],
+      });
+    }
   }
 }
 

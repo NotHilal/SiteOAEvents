@@ -1,10 +1,14 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Head from 'next/head'
 import AOS from 'aos'
+import { supabase } from '../src/lib/supabase.js'
+
+const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1920&q=80'
 
 const SERVICES = [
   {
+    slotKey: 'service_1',
     icon: 'fas fa-rings-wedding',
     img: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=900&q=80',
     title: 'Organisation de Mariage',
@@ -19,6 +23,7 @@ const SERVICES = [
     reverse: false,
   },
   {
+    slotKey: 'service_2',
     icon: 'fas fa-birthday-cake',
     img: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=900&q=80',
     title: 'Organisation d\'Anniversaire',
@@ -33,6 +38,7 @@ const SERVICES = [
     reverse: true,
   },
   {
+    slotKey: 'service_3',
     icon: 'fas fa-briefcase',
     img: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=900&q=80',
     title: 'Événements Professionnels',
@@ -47,6 +53,7 @@ const SERVICES = [
     reverse: false,
   },
   {
+    slotKey: 'service_4',
     icon: 'fas fa-star',
     img: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=900&q=80',
     title: 'Location de Décoration',
@@ -63,9 +70,19 @@ const SERVICES = [
 ]
 
 export default function Services() {
+  const [images, setImages] = useState({})
+
   useEffect(() => {
     AOS.init({ duration: 820, easing: 'ease-in-out', once: true, offset: 55 })
     AOS.refresh()
+  }, [])
+
+  useEffect(() => {
+    supabase.from('site_content').select('*').eq('key', 'images_services').then(({ data }) => {
+      const row = data && data[0]
+      if (!row) return
+      try { setImages(JSON.parse(row.value)) } catch {}
+    })
   }, [])
 
   return (
@@ -74,11 +91,11 @@ export default function Services() {
         <title>Prestations — OA Événementiel</title>
         <meta name="description" content="Découvrez nos prestations d'organisation d'événements (mariages, anniversaires, événements professionnels) et location de décoration en Île-de-France." />
       </Head>
-      
+
       <div className="site-wrap">
         <div
           className="page-header"
-          style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1920&q=80)' }}
+          style={{ backgroundImage: `url(${images.page_header || PAGE_HEADER_DEFAULT})` }}
         >
           <div className="page-header-overlay" />
           <div className="container">
@@ -98,7 +115,7 @@ export default function Services() {
               <div key={i} className="service-block">
                 <div className={`row align-items-center${s.reverse ? ' flex-row-reverse' : ''}`}>
                   <div className="col-lg-6 mb-4 mb-lg-0" data-aos={s.reverse ? 'fade-left' : 'fade-right'}>
-                    <img src={s.img} alt={s.title} className="service-block-image" />
+                    <img src={images[s.slotKey] || s.img} alt={s.title} className="service-block-image" />
                   </div>
                   <div className={`col-lg-6 ${s.reverse ? 'pe-lg-5' : 'ps-lg-5'}`} data-aos={s.reverse ? 'fade-right' : 'fade-left'} data-aos-delay="100">
                     <div className="service-block-icon"><i className={s.icon} /></div>
