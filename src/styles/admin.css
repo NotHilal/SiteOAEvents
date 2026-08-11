@@ -498,6 +498,18 @@ a { color:var(--rose-gold); }
 .block-tab.active { background:var(--rose-gold); color:#fff; }
 .block-tab:hover:not(.active) { background:var(--cream); }
 
+/* Separate class (not .block-tabs) for the material popup's 2-tab row
+   (Informations/Tarification) specifically so it's exempt from the
+   ".block-tabs { display:none }" mobile rule below — that rule exists
+   because a 3-5 label row (Réglages, Visuel Site) silently overflows at
+   mobile widths, which two short labels never will, so there's no need to
+   fall back to a tap-to-expand dropdown here; a plain pill row stays
+   visible and tappable on every screen size. */
+.mat-form-tabs { display:flex; gap:0; margin-bottom:18px; border:1.5px solid var(--border); border-radius: var(--r-full); overflow:hidden; }
+.mat-form-tab { flex:1; background:transparent; border:none; padding:10px; font-family:'Lato',sans-serif; font-weight:700; font-size:.78rem; letter-spacing:1px; text-transform:uppercase; color:var(--gray); cursor:pointer; transition:all .22s; }
+.mat-form-tab.active { background:var(--rose-gold); color:#fff; }
+.mat-form-tab:hover:not(.active) { background:var(--cream); }
+
 /* Mobile-only "tap to expand" alternative to the pill row above (hidden on
    mobile, see the 768px block below) — a 3-5 item row of full labels never
    fits a phone width without either scrolling sideways or squashing labels
@@ -547,6 +559,80 @@ a { color:var(--rose-gold); }
 .mat-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 20px; }
 .mat-form-actions { display:flex; gap:10px; margin-top:8px; }
 @media(max-width:576px){ .mat-form-grid { grid-template-columns:1fr; } }
+
+/* Article edit/add popup (Espace OA > Matériel) — the form itself is long
+   (name/category/description/stock, tiered pricing rows, image), so the
+   "Tarification" and "Image" blocks get a light card treatment to read as
+   distinct sections at a glance instead of one long undifferentiated form,
+   on both desktop and the narrower mobile modal. */
+.mat-edit-modal-card > .adm-form-group {
+  background: rgba(20,16,10,.02);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 16px 18px;
+}
+.mat-edit-modal-card > .mat-form-grid { margin-bottom: 18px; }
+@media (max-width: 640px) {
+  .mat-edit-modal-card > .adm-form-group { padding: 14px; }
+}
+
+/* Click-to-reveal help bubble — replaces permanent paragraphs of
+   explanatory text next to a field/checkbox with a small "i" that only
+   shows its explanation when asked. Click (not hover) so it works
+   identically on mobile, where hover doesn't exist. */
+.help-tip { position: relative; display: inline-flex; vertical-align: middle; }
+.help-tip-btn {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: var(--border);
+  color: var(--gray);
+  font-size: .6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .18s, color .18s;
+}
+.help-tip-btn:hover, .help-tip-btn[aria-expanded="true"] { background: var(--rose-gold); color: #fff; }
+.help-tip-bubble {
+  position: absolute;
+  bottom: calc(100% + 9px);
+  /* Centered on the icon (not left:0) — the icon can sit anywhere
+     horizontally (end of a checkbox label, next to a section title), and a
+     left-anchored bubble was overflowing off the right edge of narrow
+     mobile modals since it always grew rightward regardless of where the
+     icon actually was. Centering plus a viewport-relative max-width keeps
+     it on-screen everywhere the icon can appear. */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: 250px;
+  max-width: min(250px, calc(100vw - 32px));
+  background: var(--dark);
+  color: #fff;
+  font-size: .76rem;
+  font-weight: 400;
+  line-height: 1.55;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  box-shadow: 0 10px 28px rgba(0,0,0,.28);
+  text-transform: none;
+  letter-spacing: normal;
+}
+.help-tip-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  /* --arrow-shift (set inline, see HelpTip in espace-oa.jsx) counters
+     whatever edge-correction offset got applied to the bubble itself, so
+     the arrow keeps pointing at the icon instead of drifting off with it. */
+  margin-left: calc(-6px + var(--arrow-shift, 0px));
+  border: 6px solid transparent;
+  border-top-color: var(--dark);
+}
 
 .adm-label-opt { font-weight:400; color:var(--gray); font-size:.8rem; letter-spacing:0; text-transform:none; }
 

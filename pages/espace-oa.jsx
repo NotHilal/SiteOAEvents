@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+﻿import { useEffect, useState, useRef } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { supabase } from '../src/lib/supabase.js'
@@ -66,6 +66,10 @@ const REGLAGES_TABS = [
   { key:'virement', label:'Virement' },
   { key:'installments', label:'Paiement en plusieurs fois' },
 ]
+const MAT_FORM_TABS = [
+  { key:'infos', label:'Informations' },
+  { key:'tarification', label:'Tarification' },
+]
 const MAT_PAGE_SIZE = 8
 const CAT_PAGE_SIZE = 10
 const DAY_PAGE_SIZE = 4
@@ -108,6 +112,7 @@ export default function AdminDashboard() {
   const [blocView, setBlocView] = useState('month')
   const [matPage, setMatPage] = useState(0)
   const [matFormVisible, setMatFormVisible] = useState(false)
+  const [matFormTab, setMatFormTab] = useState('infos')
   const [editingMat, setEditingMat] = useState(null)
   const [matForm, setMatForm] = useState({ name:'', category:'', description:'', qty:1, tieredPricing:false, weekendDiffers:true, tiers:[{...EMPTY_TIER}] })
   const [matTiersError, setMatTiersError] = useState('')
@@ -165,7 +170,7 @@ export default function AdminDashboard() {
   // scrolling underneath it. Freezing the page instead makes the modal feel
   // like the thing you're actually looking at, not a floating overlay.
   useEffect(() => {
-    const anyModalOpen = !!(dayModal || resaDetail || deleteModal || catModalOpen || contactModal || msgDetail || mobileNavOpen)
+    const anyModalOpen = !!(dayModal || resaDetail || deleteModal || catModalOpen || contactModal || msgDetail || mobileNavOpen || matFormVisible)
     // html has an explicit overflow-x set (see style.css, for the horizontal-
     // scrollbar fix) which stops the browser from propagating body's overflow
     // to the viewport — so html itself must be locked too, or this silently
@@ -173,7 +178,7 @@ export default function AdminDashboard() {
     document.documentElement.style.overflowY = anyModalOpen ? 'hidden' : ''
     document.body.style.overflow = anyModalOpen ? 'hidden' : ''
     return () => { document.documentElement.style.overflowY = ''; document.body.style.overflow = '' }
-  }, [dayModal, resaDetail, deleteModal, catModalOpen, contactModal, msgDetail, mobileNavOpen])
+  }, [dayModal, resaDetail, deleteModal, catModalOpen, contactModal, msgDetail, mobileNavOpen, matFormVisible])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -505,7 +510,7 @@ export default function AdminDashboard() {
 
   function openAddMat() {
     setEditingMat(null); setMatForm({ name:'', category:'', description:'', qty:1, tieredPricing:false, weekendDiffers:true, tiers:[{...EMPTY_TIER}] })
-    setMatImageUrl(''); setMatImageFile(null); setMatImagePreview(null); setMatQtyError(false); setMatPriceError(false); setMatTiersError(''); setMatFormVisible(true)
+    setMatImageUrl(''); setMatImageFile(null); setMatImagePreview(null); setMatQtyError(false); setMatPriceError(false); setMatTiersError(''); setMatFormTab('infos'); setMatFormVisible(true)
   }
   async function openEditMat(id) {
     const [{ data: m }, { data: tiers }] = await Promise.all([
@@ -523,13 +528,17 @@ export default function AdminDashboard() {
       weekendDiffers: loadedTiers.some(t => parseFloat(t.weekday) !== parseFloat(t.weekend)),
       tiers: loadedTiers,
     })
-    setMatImageUrl(m.image_url||''); setMatImageFile(null); setMatImagePreview(m.image_url||null); setMatQtyError(false); setMatPriceError(false); setMatTiersError(''); setMatFormVisible(true)
+    setMatImageUrl(m.image_url||''); setMatImageFile(null); setMatImagePreview(m.image_url||null); setMatQtyError(false); setMatPriceError(false); setMatTiersError(''); setMatFormTab('infos'); setMatFormVisible(true)
   }
   async function saveMaterial() {
     const qtyNum = parseInt(String(matForm.qty))
     let valid = true
-    if (!matForm.name.trim()) valid = false
-    if (!qtyNum || qtyNum < 1 || !/^\d+$/.test(String(matForm.qty))) { setMatQtyError(true); valid = false }
+    // Errors can land on either popup tab (see MAT_FORM_TABS) — whichever
+    // is hit first when validating jumps the user there automatically, so
+    // a mistake on the tab they're not currently looking at is never silent.
+    let errorTab = null
+    if (!matForm.name.trim()) { valid = false; errorTab = errorTab || 'infos' }
+    if (!qtyNum || qtyNum < 1 || !/^\d+$/.test(String(matForm.qty))) { setMatQtyError(true); valid = false; errorTab = errorTab || 'infos' }
 
     // Tiers are forced back to a single 1..∞ band when "paliers dégressifs"
     // is off, and the weekend price is mirrored from the weekday one when
@@ -546,13 +555,13 @@ export default function AdminDashboard() {
       }
     })
     setMatTiersError('')
-    if (!parsedTiers.length) { setMatTiersError('Au moins un palier de prix est requis.'); valid = false }
+    if (!parsedTiers.length) { setMatTiersError('Au moins un palier de prix est requis.'); valid = false; errorTab = errorTab || 'tarification' }
     for (const t of parsedTiers) {
-      if (!t.minQty || t.minQty < 1) { setMatTiersError('Quantité minimale invalide sur un palier.'); valid = false; break }
-      if (t.maxQty != null && t.maxQty < t.minQty) { setMatTiersError('Quantité maximale doit être supérieure ou égale au minimum.'); valid = false; break }
-      if (isNaN(t.weekday) || t.weekday < 0 || isNaN(t.weekend) || t.weekend < 0) { setMatPriceError(true); valid = false; break }
+      if (!t.minQty || t.minQty < 1) { setMatTiersError('Quantité minimale invalide sur un palier.'); valid = false; errorTab = errorTab || 'tarification'; break }
+      if (t.maxQty != null && t.maxQty < t.minQty) { setMatTiersError('Quantité maximale doit être supérieure ou égale au minimum.'); valid = false; errorTab = errorTab || 'tarification'; break }
+      if (isNaN(t.weekday) || t.weekday < 0 || isNaN(t.weekend) || t.weekend < 0) { setMatPriceError(true); valid = false; errorTab = errorTab || 'tarification'; break }
     }
-    if (!valid) return
+    if (!valid) { if (errorTab) setMatFormTab(errorTab); return }
     setMatSaving(true)
     try {
       let imageUrl = matImageUrl || null
@@ -596,7 +605,19 @@ export default function AdminDashboard() {
   function toggleWeekendDiffers() {
     setMatForm(f => ({ ...f, weekendDiffers: !f.weekendDiffers }))
   }
-  function addTierRow() { setMatForm(f => ({...f, tiers: [...f.tiers, {...EMPTY_TIER, minQty:''}]})) }
+  // The new row's "Qté min" defaults to (previous row's "Qté max" + 1) —
+  // tiers are meant to be contiguous, so this is almost always what's
+  // wanted and saves retyping it; left blank only when the previous row's
+  // max is itself blank (i.e. that row is the open-ended "∞" tier, so
+  // there's no sensible next value to suggest).
+  function addTierRow() {
+    setMatForm(f => {
+      const last = f.tiers[f.tiers.length - 1]
+      const lastMax = last && last.maxQty !== '' && last.maxQty != null ? parseInt(last.maxQty, 10) : NaN
+      const nextMin = !isNaN(lastMax) ? String(lastMax + 1) : ''
+      return {...f, tiers: [...f.tiers, {...EMPTY_TIER, minQty: nextMin}]}
+    })
+  }
   function removeTierRow(i) { setMatForm(f => ({...f, tiers: f.tiers.filter((_,idx) => idx!==i)})) }
   function updateTierRow(i, field, value) { setMatForm(f => ({...f, tiers: f.tiers.map((t,idx) => idx===i ? {...t,[field]:value} : t)})) }
   async function removeStorageImg(url) {
@@ -857,99 +878,134 @@ export default function AdminDashboard() {
               </div>
             </div>
             {matFormVisible && (
-              <div className="mat-form-card">
-                <h3>{editingMat ? "Modifier l'article" : 'Nouvel article'}</h3>
-                <div className="mat-form-grid">
-                  <div className="adm-form-group">
-                    <label>Nom <span className="req">*</span></label>
-                    <input className="adm-input" value={matForm.name} onChange={e => setMatForm(f=>({...f,name:e.target.value}))} style={!matForm.name.trim()?{borderColor:'var(--danger)'}:{}} />
-                  </div>
-                  <div className="adm-form-group">
-                    <label>Catégorie</label>
-                    <select className="adm-input" value={matForm.category} onChange={e => setMatForm(f=>({...f,category:e.target.value}))}>
-                      <option value="">— Sans catégorie —</option>
-                      {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="adm-form-group">
-                    <label>Description</label>
-                    <input className="adm-input" placeholder="Courte description" value={matForm.description} onChange={e => setMatForm(f=>({...f,description:e.target.value}))} />
-                  </div>
-                  <div className="adm-form-group">
-                    <label>Stock initial <span className="req">*</span></label>
-                    <input type="number" min={1} className="adm-input" value={matForm.qty} onChange={e => { setMatForm(f=>({...f,qty:e.target.value})); setMatQtyError(false) }} style={matQtyError?{borderColor:'var(--danger)'}:{}} />
-                    {matQtyError && <div style={{marginTop:6,color:'var(--danger)',fontSize:'.8rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />Veuillez entrer un nombre entier valide (≥ 1).</div>}
-                  </div>
-                </div>
+              <div className="modal-overlay" style={{display:'flex'}} onClick={e => { if (e.target === e.currentTarget) setMatFormVisible(false) }}>
+                <div className="modal-card detail-modal-card mat-edit-modal-card">
+                  <button className="modal-close" onClick={() => setMatFormVisible(false)}><i className="fas fa-times" /></button>
+                  <h3 className="modal-title"><i className={`fas ${editingMat ? 'fa-pen' : 'fa-plus'}`} style={{marginRight:8,color:'var(--rose-gold)'}} />{editingMat ? "Modifier l'article" : 'Nouvel article'}</h3>
 
-                <div className="adm-form-group" style={{marginTop:8}}>
-                  <label>Tarification</label>
-                  <p style={{fontSize:'.8rem',color:'var(--gray)',margin:'0 0 10px'}}>Répondez à ces deux questions pour n'afficher que les champs dont vous avez besoin. Les prix se saisissent HT — le TTC (20% TVA) affiché à côté se calcule tout seul.</p>
+                  <div className="mat-form-tabs">
+                    {MAT_FORM_TABS.map(t => (
+                      <button key={t.key} className={`mat-form-tab${matFormTab===t.key?' active':''}`} onClick={() => setMatFormTab(t.key)}>{t.label}</button>
+                    ))}
+                  </div>
 
-                  <label style={{display:'flex',alignItems:'center',gap:8,fontWeight:400,fontSize:'.9rem',marginBottom:8,cursor:'pointer'}}>
-                    <input type="checkbox" checked={matForm.tieredPricing} onChange={toggleTieredPricing} />
-                    Le tarif change selon la quantité louée (ex : moins cher à partir de 10 tables)
-                  </label>
-                  <label style={{display:'flex',alignItems:'center',gap:8,fontWeight:400,fontSize:'.9rem',marginBottom:14,cursor:'pointer'}}>
-                    <input type="checkbox" checked={matForm.weekendDiffers} onChange={toggleWeekendDiffers} />
-                    Le tarif est différent le week-end / jours fériés
-                  </label>
-
-                  {matForm.tieredPricing && (
-                    <p style={{fontSize:'.8rem',color:'var(--gray)',margin:'0 0 8px'}}>
-                      Une ligne par palier de quantité. Le "Qté min" du 1er palier est aussi la quantité minimale de location (ex : 20 pour Chaise Napoléon — un palier qui commence à 20 empêche d'en louer moins).
-                    </p>
+                  {matFormTab === 'infos' && (
+                    <>
+                      <div className="mat-form-grid">
+                        <div className="adm-form-group">
+                          <label>Nom <span className="req">*</span></label>
+                          <input className="adm-input" value={matForm.name} onChange={e => setMatForm(f=>({...f,name:e.target.value}))} style={!matForm.name.trim()?{borderColor:'var(--danger)'}:{}} />
+                        </div>
+                        <div className="adm-form-group">
+                          <label>Catégorie</label>
+                          <select className="adm-input" value={matForm.category} onChange={e => setMatForm(f=>({...f,category:e.target.value}))}>
+                            <option value="">— Sans catégorie —</option>
+                            {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                          </select>
+                        </div>
+                        <div className="adm-form-group">
+                          <label>Description</label>
+                          <input className="adm-input" placeholder="Courte description" value={matForm.description} onChange={e => setMatForm(f=>({...f,description:e.target.value}))} />
+                        </div>
+                        <div className="adm-form-group">
+                          <label>Stock initial <span className="req">*</span></label>
+                          <input type="number" min={1} className="adm-input" value={matForm.qty} onChange={e => { setMatForm(f=>({...f,qty:e.target.value})); setMatQtyError(false) }} style={matQtyError?{borderColor:'var(--danger)'}:{}} />
+                          {matQtyError && <div style={{marginTop:6,color:'var(--danger)',fontSize:'.8rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />Veuillez entrer un nombre entier valide (≥ 1).</div>}
+                        </div>
+                      </div>
+                      <div className="adm-form-group" style={{marginTop:8}}>
+                        <label>Image <span className="adm-label-opt">(optionnel)</span></label>
+                        <div className="img-upload-area" onClick={() => fileInputRef.current?.click()}>
+                          {matImagePreview
+                            ? <img src={matImagePreview} alt="" className="img-preview-thumb" />
+                            : <div className="img-upload-placeholder"><i className="fas fa-image" /><p>Aucune image sélectionnée</p><span>JPG, PNG, WEBP — max 5 Mo</span></div>
+                          }
+                        </div>
+                        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{display:'none'}} onChange={e => handleImageFile(e.target.files[0])} />
+                        <div className="img-upload-btns">
+                          <button className="adm-btn-ghost btn-sm" onClick={() => fileInputRef.current?.click()}><i className="fas fa-upload" style={{marginRight:4}} />Choisir une image</button>
+                          {matImagePreview && <button className="adm-btn-delete btn-sm" onClick={removeImage}><i className="fas fa-times" style={{marginRight:4}} />Retirer</button>}
+                        </div>
+                      </div>
+                    </>
                   )}
 
-                  {matForm.tiers.map((t, i) => (
-                    <div key={i} style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:10,flexWrap:'wrap'}}>
+                  {matFormTab === 'tarification' && (
+                    <div className="adm-form-group" style={{marginTop:8}}>
+                      <label style={{display:'flex',alignItems:'flex-start',gap:8,fontWeight:400,fontSize:'.9rem',marginBottom:8,cursor:'pointer'}}>
+                        <input type="checkbox" checked={matForm.tieredPricing} onChange={toggleTieredPricing} style={{marginTop:3,flexShrink:0}} />
+                        {/* min-width:0 is the actual fix — a flex item's default min-width is
+                            "auto" (its content's full width), so this text was refusing to
+                            wrap and pushing the row's later items (the checkbox below, its
+                            help icon) off past the edge on narrow mobile widths instead of
+                            just flowing onto a second line like normal text. */}
+                        <span style={{minWidth:0}}>Le tarif change selon la quantité louée</span>
+                        <HelpTip text="Permet de fixer un prix différent selon la quantité louée, via des paliers (ex : moins cher à partir de 10 unités)." />
+                      </label>
+                      <label style={{display:'flex',alignItems:'flex-start',gap:8,fontWeight:400,fontSize:'.9rem',marginBottom:6,cursor:'pointer'}}>
+                        <input type="checkbox" checked={matForm.weekendDiffers} onChange={toggleWeekendDiffers} style={{marginTop:3,flexShrink:0}} />
+                        <span style={{minWidth:0}}>Le tarif est différent le week-end / jours fériés</span>
+                        <HelpTip text="« Week-end » = vendredi à dimanche + jours fériés. « Semaine » = lundi à jeudi. Appliqué automatiquement selon la date choisie par le client." />
+                      </label>
+
                       {matForm.tieredPricing && (
-                        <>
-                          <input type="number" min={1} className="adm-input" style={{width:80}} placeholder="Qté min" value={t.minQty} onChange={e => updateTierRow(i,'minQty',e.target.value)} />
-                          <span style={{color:'var(--gray)',lineHeight:'38px'}}>à</span>
-                          <input type="number" min={1} className="adm-input" style={{width:80}} placeholder="∞" value={t.maxQty} onChange={e => updateTierRow(i,'maxQty',e.target.value)} />
-                        </>
-                      )}
-                      <div>
-                        <input type="number" min={0} step="0.01" className="adm-input" style={{width:130}} placeholder={matForm.weekendDiffers ? 'Prix semaine HT' : 'Prix HT'} value={t.weekday} onChange={e => updateTierRow(i,'weekday',e.target.value)} />
-                        {t.weekday !== '' && !isNaN(parseFloat(t.weekday)) && <div style={{fontSize:'.72rem',color:'var(--gray)',marginTop:2}}>= {(parseFloat(t.weekday)*1.2).toFixed(2)} € TTC</div>}
-                      </div>
-                      {matForm.weekendDiffers && (
-                        <div>
-                          <input type="number" min={0} step="0.01" className="adm-input" style={{width:130}} placeholder="Prix week-end HT" value={t.weekend} onChange={e => updateTierRow(i,'weekend',e.target.value)} />
-                          {t.weekend !== '' && !isNaN(parseFloat(t.weekend)) && <div style={{fontSize:'.72rem',color:'var(--gray)',marginTop:2}}>= {(parseFloat(t.weekend)*1.2).toFixed(2)} € TTC</div>}
+                        <div style={{display:'flex',alignItems:'center',gap:6,margin:'14px 0 8px'}}>
+                          <span style={{fontSize:'.75rem',fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--dark-mid)'}}>Paliers de quantité</span>
+                          <HelpTip text={'Chaque ligne fixe un prix pour une tranche de quantité louée : par exemple 1 à 19 unités à un tarif, puis 20 unités et plus à un tarif dégressif. Le "Qté min" de la toute première ligne devient aussi la quantité minimale imposée au client pour cet article — ex : si la 1ère ligne commence à 20, il ne pourra jamais en louer moins de 20 (comme pour la Chaise Napoléon).'} />
                         </div>
                       )}
-                      {matForm.tieredPricing && matForm.tiers.length > 1 && (
-                        <button className="adm-btn-delete btn-sm" onClick={() => removeTierRow(i)}><i className="fas fa-trash" /></button>
+
+                      {matForm.tiers.map((t, i) => (
+                        <div key={i} style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:10,flexWrap:'wrap'}}>
+                          {matForm.tieredPricing && (
+                            <>
+                              <div>
+                                <span style={{display:'block',fontSize:'.66rem',fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',color:'var(--gray)',marginBottom:3}}>Qté min</span>
+                                <input type="number" min={1} className="adm-input" style={{width:80}} placeholder="Qté min" value={t.minQty} onChange={e => updateTierRow(i,'minQty',e.target.value)} />
+                              </div>
+                              <span style={{color:'var(--gray)',lineHeight:'38px',marginTop:16}}>à</span>
+                              <div>
+                                <span style={{display:'block',fontSize:'.66rem',fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',color:'var(--gray)',marginBottom:3}}>Qté max</span>
+                                <input type="number" min={1} className="adm-input" style={{width:80}} placeholder="∞" value={t.maxQty} onChange={e => updateTierRow(i,'maxQty',e.target.value)} />
+                              </div>
+                            </>
+                          )}
+                          <div>
+                            {/* Persistent micro-label, unlike the placeholder alone — the
+                                placeholder disappears once a price is typed in, so there was
+                                no way left to tell which field was which at a glance. */}
+                            {matForm.weekendDiffers && (
+                              <span style={{display:'block',fontSize:'.66rem',fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',color:'var(--gray)',marginBottom:3}}>Semaine</span>
+                            )}
+                            <input type="number" min={0} step="0.01" className="adm-input" style={{width:130}} placeholder={matForm.weekendDiffers ? 'Prix semaine HT' : 'Prix HT'} value={t.weekday} onChange={e => updateTierRow(i,'weekday',e.target.value)} />
+                            {t.weekday !== '' && !isNaN(parseFloat(t.weekday)) && <div style={{fontSize:'.72rem',color:'var(--gray)',marginTop:2}}>= {(parseFloat(t.weekday)*1.2).toFixed(2)} € TTC</div>}
+                          </div>
+                          {matForm.weekendDiffers && (
+                            <div>
+                              <span style={{display:'block',fontSize:'.66rem',fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',color:'var(--gray)',marginBottom:3}}>Week-end / Férié</span>
+                              <input type="number" min={0} step="0.01" className="adm-input" style={{width:130}} placeholder="Prix week-end HT" value={t.weekend} onChange={e => updateTierRow(i,'weekend',e.target.value)} />
+                              {t.weekend !== '' && !isNaN(parseFloat(t.weekend)) && <div style={{fontSize:'.72rem',color:'var(--gray)',marginTop:2}}>= {(parseFloat(t.weekend)*1.2).toFixed(2)} € TTC</div>}
+                            </div>
+                          )}
+                          {matForm.tieredPricing && matForm.tiers.length > 1 && (
+                            <button className="adm-btn-delete btn-sm" onClick={() => removeTierRow(i)}><i className="fas fa-trash" /></button>
+                          )}
+                        </div>
+                      ))}
+                      {matForm.tieredPricing && (
+                        <button className="adm-btn-ghost btn-sm" onClick={addTierRow}><i className="fas fa-plus" style={{marginRight:4}} />Ajouter un palier</button>
                       )}
+                      {matTiersError && <div style={{marginTop:6,color:'var(--danger)',fontSize:'.8rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />{matTiersError}</div>}
+                      {matPriceError && <div style={{marginTop:6,color:'var(--danger)',fontSize:'.8rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />Veuillez entrer des prix valides (≥ 0).</div>}
                     </div>
-                  ))}
-                  {matForm.tieredPricing && (
-                    <button className="adm-btn-ghost btn-sm" onClick={addTierRow}><i className="fas fa-plus" style={{marginRight:4}} />Ajouter un palier</button>
                   )}
-                  {matTiersError && <div style={{marginTop:6,color:'var(--danger)',fontSize:'.8rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />{matTiersError}</div>}
-                  {matPriceError && <div style={{marginTop:6,color:'var(--danger)',fontSize:'.8rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />Veuillez entrer des prix valides (≥ 0).</div>}
-                </div>
-                <div className="adm-form-group" style={{marginTop:8}}>
-                  <label>Image <span className="adm-label-opt">(optionnel)</span></label>
-                  <div className="img-upload-area" onClick={() => fileInputRef.current?.click()}>
-                    {matImagePreview
-                      ? <img src={matImagePreview} alt="" className="img-preview-thumb" />
-                      : <div className="img-upload-placeholder"><i className="fas fa-image" /><p>Aucune image sélectionnée</p><span>JPG, PNG, WEBP — max 5 Mo</span></div>
-                    }
+
+                  <div className="mat-form-actions">
+                    <button className="adm-btn-primary" onClick={saveMaterial} disabled={matSaving}>
+                      {matSaving ? <><i className="fas fa-circle-notch fa-spin" style={{marginRight:8}} />Enregistrement…</> : <><i className="fas fa-save" style={{marginRight:8}} />Enregistrer</>}
+                    </button>
+                    <button className="adm-btn-ghost" onClick={() => setMatFormVisible(false)}>Annuler</button>
                   </div>
-                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{display:'none'}} onChange={e => handleImageFile(e.target.files[0])} />
-                  <div className="img-upload-btns">
-                    <button className="adm-btn-ghost btn-sm" onClick={() => fileInputRef.current?.click()}><i className="fas fa-upload" style={{marginRight:4}} />Choisir une image</button>
-                    {matImagePreview && <button className="adm-btn-delete btn-sm" onClick={removeImage}><i className="fas fa-times" style={{marginRight:4}} />Retirer</button>}
-                  </div>
-                </div>
-                <div className="mat-form-actions">
-                  <button className="adm-btn-primary" onClick={saveMaterial} disabled={matSaving}>
-                    {matSaving ? <><i className="fas fa-circle-notch fa-spin" style={{marginRight:8}} />Enregistrement…</> : <><i className="fas fa-save" style={{marginRight:8}} />Enregistrer</>}
-                  </button>
-                  <button className="adm-btn-ghost" onClick={() => setMatFormVisible(false)}>Annuler</button>
                 </div>
               </div>
             )}
@@ -1350,6 +1406,63 @@ export default function AdminDashboard() {
 }
 
 /* ── Sub-components ─────────────────────────────────── */
+
+// Small "ⓘ" trigger that reveals a short explanation on click — used in
+// place of permanent paragraphs of help text cluttering a form (e.g. the
+// Tarification tab). Click-to-toggle rather than hover so it works the same
+// on mobile (no hover state) and desktop, and closes on blur so it never
+// gets stuck open after clicking elsewhere.
+//
+// The bubble is centered on the icon by default (see .help-tip-bubble CSS),
+// but the icon itself can end up anywhere horizontally — after a short
+// label, or after text that's wrapped onto a new line right at the edge of
+// a narrow mobile modal — so plain centering still let it run off-screen
+// and get clipped. Once open, this measures the bubble's actual rendered
+// position and nudges it back inside the viewport with an extra transform
+// offset; the arrow (::after, via --arrow-shift) gets the opposite
+// correction so it still points back at the icon instead of drifting off
+// with the rest of the bubble.
+function HelpTip({ text }) {
+  const [open, setOpen] = useState(false)
+  const [shift, setShift] = useState(0)
+  const bubbleRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const bubble = bubbleRef.current
+    if (!bubble) return
+    const r = bubble.getBoundingClientRect()
+    const margin = 10
+    let delta = 0
+    if (r.left < margin) delta = margin - r.left
+    else if (r.right > window.innerWidth - margin) delta = (window.innerWidth - margin) - r.right
+    if (delta) setShift(delta)
+  }, [open])
+
+  return (
+    <span className="help-tip">
+      <button
+        type="button"
+        className="help-tip-btn"
+        onClick={() => { setShift(0); setOpen(o => !o) }}
+        onBlur={() => setOpen(false)}
+        aria-label="Aide"
+        aria-expanded={open}
+      >
+        <i className="fas fa-info" />
+      </button>
+      {open && (
+        <span
+          ref={bubbleRef}
+          className="help-tip-bubble"
+          style={{ transform: `translateX(calc(-50% + ${shift}px))`, '--arrow-shift': `${-shift}px` }}
+        >
+          {text}
+        </span>
+      )}
+    </span>
+  )
+}
 
 function InstallmentTierFields({ title, minAmount, onMinAmount, last }) {
   return (
