@@ -380,6 +380,15 @@
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
   padding: 8px 8px 10px;
+  /* Click-and-drag day selection (see ReservationWizard.jsx) holds the
+     mouse/finger down and moves across cells — without this, that reads as
+     a text-selection drag and highlights the day numbers. Scroll-blocking
+     during an actual drag is handled in JS (preventDefault on touchmove,
+     only once a drag has started on a real cell) rather than a blanket
+     touch-action: none here, so touching the grid without landing on a
+     selectable day doesn't swallow the page's normal scroll. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .rcd {
@@ -983,14 +992,12 @@
   margin-top: 2px;
 }
 .mat-check-label > div { min-width: 0; flex: 1; }
-.mat-name-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.mat-name-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .mat-name {
   font-weight: 700;
   font-size: .86rem;
   color: var(--dark);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
 }
 .mat-desc {
   font-size: .74rem;
@@ -1003,6 +1010,98 @@
   margin-top: 2px;
 }
 .mat-price { font-size: .74rem; color: var(--rose-gold); font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+
+/* Info trigger sits in the bottom-right of the card, grouped with the
+   qty/add controls (see .mat-card-footer-right) — opens .mat-info-modal
+   with the item's full description instead of showing it inline on every
+   card. */
+.mat-card-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.mat-info-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: #f0ede8;
+  color: var(--gray);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: .68rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .18s, color .18s;
+}
+.mat-info-btn:hover, .mat-info-btn:focus-visible { background: var(--rose-gold); color: #fff; }
+
+.mat-info-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 2000;
+}
+.mat-info-modal {
+  background: #fff;
+  width: 100%;
+  max-width: 420px;
+  max-height: 86vh;
+  overflow-y: auto;
+  position: relative;
+  padding: 22px;
+}
+.mat-info-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: #f0ede8;
+  color: var(--dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: .85rem;
+}
+.mat-info-modal-close:hover { background: var(--rose-gold); color: #fff; }
+.mat-info-modal-img {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.mat-info-modal-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mat-info-modal-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+  color: var(--dark);
+  margin: 0 0 10px;
+  padding-right: 24px;
+}
+.mat-info-modal-desc {
+  font-size: .88rem;
+  color: var(--gray);
+  line-height: 1.6;
+  margin: 0 0 10px;
+}
+.mat-info-modal-meta {
+  font-size: .8rem;
+  color: var(--rose-gold);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
 
 /* Stock badge + qty controls pinned to the bottom of the card so a longer
    description on one card doesn't drag the footer down unevenly. */

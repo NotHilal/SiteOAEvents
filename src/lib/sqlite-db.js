@@ -319,6 +319,15 @@ async function init() {
     args: ['about_page', aboutPageDefault, settingsNow],
   });
 
+  // Max consecutive days selectable in the booking wizard's calendar step —
+  // lives in site_content (not settings) because the wizard is a public,
+  // logged-out page and needs to read it without auth, editable from
+  // Espace OA > Réglages.
+  await client.execute({
+    sql: 'INSERT OR IGNORE INTO site_content (key, value, updated_at) VALUES (?, ?, ?)',
+    args: ['max_consecutive_days', '7', settingsNow],
+  });
+
   // Per-page image overrides, editable from Espace OA > Visuel Site. Each
   // starts empty ({}) — public pages fall back to their own hardcoded
   // default image per slot when a key is missing, so an empty row changes

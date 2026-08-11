@@ -28,6 +28,7 @@ function addDays(dateStr, n) {
 function capitalise(s) { return s.charAt(0).toUpperCase() + s.slice(1) }
 
 const EMPTY_FORM = { prenom:'', nom:'', email:'', phone:'', address:'', type:'', nb:'', message:'' }
+const DEFAULT_MAX_CONSECUTIVE_DAYS = 7
 
 // Shared by pages/reservation.jsx (simulation=false, submits a real request)
 // and pages/devis.jsx (simulation=true, same steps but the last one just
@@ -63,6 +64,19 @@ export default function ReservationWizard({ simulation = false }) {
   const [quote, setQuote] = useState(null) // { distanceKm, durationMin, fee }
   const [quoteLoading, setQuoteLoading] = useState(false)
   const [quoteError, setQuoteError] = useState('')
+  const [infoMaterial, setInfoMaterial] = useState(null)
+  const [maxConsecutiveDays, setMaxConsecutiveDays] = useState(DEFAULT_MAX_CONSECUTIVE_DAYS)
+  // Two-click range selection: the first click on an empty calendar sets
+  // `rangeAnchor` and picks that single day; a second click on a different
+  // day fills in everything between the two (inclusive) in one step — no
+  // need to click every day in between, and no drag-and-hold either (which
+  // turned out to be too sensitive to the tiniest pointer movement during a
+  // plain click, on both mouse and touch, and would select several days
+  // from what was meant to be a single click). Reset to null once a range
+  // is "closed" (two days picked, or a single day toggled off) so the next
+  // click always starts a fresh pick rather than endlessly adjusting the
+  // same range.
+  const [rangeAnchor, setRangeAnchor] = useState(null)
   const wizardRef = useRef(null)
 
   // Shown on the success screen once the request is submitted — the order
@@ -74,6 +88,7 @@ export default function ReservationWizard({ simulation = false }) {
   useEffect(() => {
     loadBlockedData()
     loadMaterials()
+    loadMaxConsecutiveDays()
   }, [])
 
   // Pick up anything carried over from a simulation on /devis (see
@@ -113,12 +128,23 @@ export default function ReservationWizard({ simulation = false }) {
 
   useEffect(() => { setMatPage(1) }, [matFilter, matSearch])
 
+  useEffect(() => {
+    if (!infoMaterial) return
+    const onKey = e => { if (e.key === 'Escape') setInfoMaterial(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [infoMaterial])
+
   async function loadBlockedData() {
     try {
       const [bd, bh, resv] = await Promise.all([
         supabase.from('blocked_dates').select('date'),
         supabase.from('blocked_hours').select('date, hour'),
-        supabase.from('reservations').select('date, dates').in('status', ['confirmed','pending']),
+        // Not supabase.from('reservations') — that table's GET requires
+        // admin auth (it holds customer PII), which silently 401'd for
+        // every anonymous visitor here. This route returns only date/dates
+        // for active reservations, safe for the public wizard to read.
+        fetch('/api/reservations/public').then(r => r.json()),
       ])
       const bSet = new Set((bd.data||[]).map(r => r.date))
       const hMap = {}
@@ -141,10 +167,13 @@ export default function ReservationWizard({ simulation = false }) {
     if (!dates.length) { setStockUsed({}); return }
     try {
       const max = dates[dates.length - 1]
-      const res = await supabase.from('reservations')
-        .select('materials, date, dates')
-        .in('status', ['confirmed','pending'])
-        .lte('date', max)
+      // Same reasoning as loadBlockedData above — direct reservations reads
+      // need auth, so this goes through the PII-free public endpoint too.
+      // This one matters even more than the calendar highlighting: without
+      // it, stockUsed silently computes as {} for every anonymous visitor,
+      // meaning materials always looked fully available regardless of what
+      // was actually already booked.
+      const res = await fetch('/api/reservations/public?before=' + encodeURIComponent(max)).then(r => r.json())
       // Renting equipment isn't like booking a venue — several clients can
       // rent for the same day as long as combined stock allows it. So usage
       // must ACCUMULATE across every overlapping reservation, not just take
@@ -173,6 +202,17 @@ export default function ReservationWizard({ simulation = false }) {
     setTiersByMaterial(groupTiersByMaterial(tierRes.data || []))
   }
 
+  // Admin-configurable (Espace OA > Réglages) — lives in site_content since
+  // this page reads it while logged out. Falls back to the default if the
+  // row is missing/invalid rather than blocking date selection entirely.
+  async function loadMaxConsecutiveDays() {
+    try {
+      const { data } = await supabase.from('site_content').select('*').eq('key', 'max_consecutive_days')
+      const n = parseInt(data?.[0]?.value, 10)
+      if (n > 0) setMaxConsecutiveDays(n)
+    } catch {}
+  }
+
   function getAvail(m) {
     return Math.max(0, m.max_quantity - (stockUsed[String(m.id)]||0))
   }
@@ -190,53 +230,139 @@ export default function ReservationWizard({ simulation = false }) {
     setTimeout(() => setCalError(''), 4000)
   }
 
-  function toggleDate(dateStr) {
-    const idx = selectedDates.indexOf(dateStr)
-    if (idx !== -1) {
-      const isEdge = (idx === 0 || idx === selectedDates.length - 1)
-      if (!isEdge) {
-        showCalError('Pour retirer un jour intermédiaire, commencez par les extrémités ou effacez tout.')
+  // Same "is this day pickable at all" check the calendar grid itself uses
+  // to build `disabled` per cell — recomputed here (rather than looking a
+  // cell up) since a two-click range can span days the click endpoints
+  // didn't land on directly.
+  function isDateDisabled(ds) {
+    const d = new Date(ds + 'T00:00:00')
+    const t = new Date(); t.setHours(0, 0, 0, 0)
+    const isPast = d <= t
+    const isBlk = blockedDates.has(ds)
+    const blkH = blockedHours[ds] || []
+    const allBlk = blkH.length >= HOURS.length
+    return isPast || isBlk || allBlk
+  }
+
+  // Builds the inclusive day range between two dates (either order). Returns
+  // null (not a truncated range) if the two dates can't actually form one
+  // valid period together — too far apart for the max-consecutive-days cap,
+  // or a blocked/busy day sits between them — rather than silently handing
+  // back some other shorter range starting from `a` that the user never
+  // asked for and doesn't even include `b` (that read as "I clicked day 22
+  // then day 1 and it selected the 1st–7th" — technically consistent with
+  // "walk from the earlier date", but not what anyone means by clicking two
+  // days). The caller decides what to do when this can't complete.
+  function buildRange(a, b) {
+    const start = a < b ? a : b
+    const end = a < b ? b : a
+    const range = [start]
+    let cursor = start
+    while (cursor < end) {
+      if (range.length >= maxConsecutiveDays) return null
+      const candidate = addDays(cursor, 1)
+      if (isDateDisabled(candidate)) return null
+      if (busyDates.has(candidate)) return null
+      range.push(candidate)
+      cursor = candidate
+    }
+    return range
+  }
+
+  // Simple two-click range picking — no dragging, no holding the pointer
+  // down: click a day to start, click a second day (further ahead, see
+  // reachableForward above) to fill in everything between. Click the same
+  // lone day again to deselect it. Once a range of 2+ days is set, clicking
+  // one of its edges trims it there; clicking anything else abandons it and
+  // starts a fresh pick — friendlier than the old "can't remove a middle
+  // day" error, since there's always something sensible for a click to do.
+  function handleDayClick(dateStr) {
+    if (!selectedDates.length) {
+      setRangeAnchor(dateStr)
+      setSelectedDates([dateStr])
+      loadStockForDates([dateStr])
+      return
+    }
+
+    if (selectedDates.length === 1) {
+      const anchor = selectedDates[0]
+      if (dateStr === anchor) {
+        setSelectedDates([])
+        setRangeAnchor(null)
+        setTimeType('full')
+        setSelectedHours([])
+        setStockUsed({})
         return
       }
-      const next = selectedDates.filter((_, i) => i !== idx)
+      // Forward-only: a day before the anchor never extends the range
+      // backward, it starts a fresh pick there instead (same outcome as
+      // the "can't connect" case below, so it's handled by simply skipping
+      // buildRange when dateStr is earlier than the anchor).
+      const range = dateStr > anchor ? buildRange(anchor, dateStr) : null
+      if (!range) {
+        // Can't connect the two days into one valid period (too far apart
+        // for the max, or something unavailable in between) — start a
+        // fresh single-day pick on the day just clicked instead of leaving
+        // a confusing partial selection the user didn't ask for. Restarts
+        // silently, no error toast — clicking a second day the anchor can't
+        // reach just reads as "actually, let me start from here instead",
+        // not a mistake worth interrupting the user over.
+        setRangeAnchor(dateStr)
+        setSelectedDates([dateStr])
+        setTimeType('full')
+        setSelectedHours([])
+        loadStockForDates([dateStr])
+        return
+      }
+      setSelectedDates(range)
+      setRangeAnchor(null)
+      loadStockForDates(range)
+      if (range.length > 1) { setTimeType('full'); setSelectedHours([]) }
+      return
+    }
+
+    const minDate = selectedDates[0]
+    const maxDate = selectedDates[selectedDates.length - 1]
+    if (dateStr === minDate || dateStr === maxDate) {
+      const next = selectedDates.filter(d => d !== dateStr)
       setSelectedDates(next)
+      setRangeAnchor(next.length === 1 ? next[0] : null)
       if (!next.length) { setTimeType('full'); setSelectedHours([]); setStockUsed({}) }
       else loadStockForDates(next)
       return
     }
-    if (selectedDates.length === 0) {
-      const next = [dateStr]
-      setSelectedDates(next)
-      loadStockForDates(next)
+
+    // Any other day (inside the current range or elsewhere): start over.
+    setRangeAnchor(dateStr)
+    setSelectedDates([dateStr])
+    setTimeType('full')
+    setSelectedHours([])
+    loadStockForDates([dateStr])
+  }
+
+  // Dedicated to the "×" on each date pill in the side panel — always means
+  // "remove exactly this date", never "start a new pick" the way clicking
+  // the calendar grid can. Middle dates still can't be removed directly
+  // (would break the contiguous-range assumption the rest of the wizard,
+  // pricing and delivery quote rely on) — same rule as before.
+  function removeDate(dateStr) {
+    const idx = selectedDates.indexOf(dateStr)
+    if (idx === -1) return
+    const isEdge = (idx === 0 || idx === selectedDates.length - 1)
+    if (!isEdge) {
+      showCalError('Pour retirer un jour intermédiaire, commencez par les extrémités ou effacez tout.')
       return
     }
-    if (selectedDates.length >= 3) {
-      showCalError('Maximum 3 jours consécutifs atteint. Effacez la sélection pour recommencer.')
-      return
-    }
-    const minDate = selectedDates[0]
-    const maxDate = selectedDates[selectedDates.length - 1]
-    const prev = addDays(minDate, -1)
-    const next = addDays(maxDate, 1)
-    if (dateStr === prev || dateStr === next) {
-      if (busyDates.has(dateStr)) {
-        showCalError('Ce jour est déjà réservé — impossible de l\'inclure dans une plage multi-jours.')
-        return
-      }
-      const updated = [...selectedDates, dateStr].sort()
-      setSelectedDates(updated)
-      loadStockForDates(updated)
-    } else {
-      const updated = [dateStr]
-      setSelectedDates(updated)
-      setTimeType('full')
-      setSelectedHours([])
-      loadStockForDates(updated)
-    }
+    const next = selectedDates.filter((_, i) => i !== idx)
+    setSelectedDates(next)
+    setRangeAnchor(next.length === 1 ? next[0] : null)
+    if (!next.length) { setTimeType('full'); setSelectedHours([]); setStockUsed({}) }
+    else loadStockForDates(next)
   }
 
   function clearAllDates() {
     setSelectedDates([])
+    setRangeAnchor(null)
     setTimeType('full')
     setSelectedHours([])
     setStockUsed({})
@@ -341,6 +467,7 @@ export default function ReservationWizard({ simulation = false }) {
   function resetWizard() {
     setCurrentStep(1)
     setSelectedDates([])
+    setRangeAnchor(null)
     setTimeType('full')
     setSelectedHours([])
     setStockUsed({})
@@ -451,6 +578,29 @@ export default function ReservationWizard({ simulation = false }) {
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
   const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7
 
+  // Selection only ever builds forward from the first day picked — clicking
+  // an earlier day starts a brand-new pick rather than extending the range
+  // backward (see handleDayClick), so there's no "day before" to hint at
+  // anymore. Once exactly one day is chosen, highlight every day reachable
+  // going forward from it (up to maxConsecutiveDays - 1 more), stopping
+  // early at the first blocked/busy day — same rules buildRange enforces —
+  // so it's obvious at a glance which days can complete the range.
+  const reachableForward = new Set()
+  if (selectedDates.length === 1) {
+    let cursor = selectedDates[0]
+    for (let n = 1; n < maxConsecutiveDays; n++) {
+      const candidate = addDays(cursor, 1)
+      const cd = new Date(candidate + 'T00:00:00')
+      const cIsPast = cd <= today
+      const cIsBlk = blockedDates.has(candidate)
+      const cBlkH = blockedHours[candidate] || []
+      const cAllBlk = cBlkH.length >= HOURS.length
+      if (cIsPast || cIsBlk || cAllBlk || busyDates.has(candidate)) break
+      reachableForward.add(candidate)
+      cursor = candidate
+    }
+  }
+
   const calCells = []
   for (let i = 0; i < totalCells; i++) {
     const dayNum = i - firstDay + 1
@@ -468,10 +618,7 @@ export default function ReservationWizard({ simulation = false }) {
       const isBusy = !isPast && !isBlk && !allBlk && !partial && busyDates.has(ds)
       const isSel = selectedDates.includes(ds)
       const disabled = isPast || isBlk || allBlk
-      let isAdj = false
-      if (!disabled && !isSel && selectedDates.length > 0 && selectedDates.length < 3) {
-        isAdj = (ds === addDays(selectedDates[0], -1) || ds === addDays(selectedDates[selectedDates.length-1], 1))
-      }
+      const isAdj = !disabled && !isSel && reachableForward.has(ds)
       calCells.push({ dayNum, ds, isPast, isBlk, allBlk, isWkend, partial, isBusy, isSel, disabled, isAdj })
     }
   }
@@ -637,7 +784,7 @@ export default function ReservationWizard({ simulation = false }) {
                 <div className="step-panel">
                   <span className="step-tag">Étape {currentStep} / 4</span>
                   <h2 className="step-title">Choisissez vos dates</h2>
-                  <p className="step-desc">Sélectionnez 1 à 3 jours consécutifs pour votre événement.</p>
+                  <p className="step-desc">Sélectionnez 1 à {maxConsecutiveDays} jours consécutifs pour votre événement.</p>
 
                   <div className={`res-step1-layout${selectedDates.length ? '' : ' res-step1-solo'}`}>
                   {/* Calendar */}
@@ -676,7 +823,7 @@ export default function ReservationWizard({ simulation = false }) {
                           <div
                             key={i}
                             className={cls}
-                            onClick={() => !cell.disabled && toggleDate(cell.ds)}
+                            onClick={() => !cell.disabled && handleDayClick(cell.ds)}
                           >
                             <span>{cell.dayNum}</span>
                             {cell.isSel && <i className="fas fa-check rcd-check" />}
@@ -694,10 +841,12 @@ export default function ReservationWizard({ simulation = false }) {
                       <i className="fas fa-info-circle" />
                       <span>
                         {!selectedDates.length
-                          ? 'Cliquez sur le jour de départ (3 jours consécutifs maximum)'
-                          : selectedDates.length >= 3
-                            ? 'Maximum atteint — retirez un jour ou effacez tout pour recommencer'
-                            : selectedDates.length + ' jour sélectionné — cliquez sur un jour adjacent pour l\'ajouter (max 3)'
+                          ? `Cliquez un jour pour le sélectionner, ou un second jour pour choisir une période (${maxConsecutiveDays} jours consécutifs maximum)`
+                          : selectedDates.length === 1
+                            ? 'Cliquez un jour suivant (surligné) pour créer une période, ou recliquez ce jour pour le désélectionner'
+                            : selectedDates.length >= maxConsecutiveDays
+                              ? 'Maximum atteint — cliquez une extrémité pour retirer un jour, ou un autre jour pour recommencer'
+                              : selectedDates.length + ' jours sélectionnés — cliquez une extrémité pour ajuster, ou un autre jour pour recommencer'
                         }
                       </span>
                     </div>
@@ -720,7 +869,7 @@ export default function ReservationWizard({ simulation = false }) {
                         {selectedDates.map(ds => (
                           <span key={ds} className="date-pill">
                             {formatDateLabel(ds)}
-                            <button className="date-pill-rm" onClick={() => toggleDate(ds)}>
+                            <button className="date-pill-rm" onClick={() => removeDate(ds)}>
                               <i className="fas fa-times" />
                             </button>
                           </span>
@@ -824,7 +973,15 @@ export default function ReservationWizard({ simulation = false }) {
                     </div>
                     <div className="form-group">
                       <label>Téléphone</label>
-                      <input type="tel" className="form-control" value={form.phone} onChange={e => setForm(f=>({...f,phone:e.target.value}))} />
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={15}
+                        className="form-control"
+                        value={form.phone}
+                        onChange={e => setForm(f=>({...f,phone:e.target.value.replace(/\D/g,'')}))}
+                      />
                     </div>
                   </div>
                   <div className="form-group addr-autocomplete-wrap">
@@ -863,7 +1020,16 @@ export default function ReservationWizard({ simulation = false }) {
                     </div>
                     <div className="form-group">
                       <label>Nombre de personnes <span className="req">*</span></label>
-                      <input type="number" min={1} className="form-control" value={form.nb} onChange={e => { setForm(f=>({...f,nb:e.target.value})); setStep2Error(false) }} style={step2Error && (!form.nb || parseInt(form.nb) < 1) ? {borderColor:'#e53e3e'} : {}} />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={5}
+                        className="form-control"
+                        value={form.nb}
+                        onChange={e => { setForm(f=>({...f,nb:e.target.value.replace(/\D/g,'')})); setStep2Error(false) }}
+                        style={step2Error && (!form.nb || parseInt(form.nb) < 1) ? {borderColor:'#e53e3e'} : {}}
+                      />
                     </div>
                   </div>
                   <div className="form-group">
@@ -965,7 +1131,6 @@ export default function ReservationWizard({ simulation = false }) {
                                         <span className="mat-name">{m.name}</span>
                                         <span className="mat-price">{unitPrice.toFixed(2)} €</span>
                                       </div>
-                                      {m.description && <span className="mat-desc">{m.description}</span>}
                                       {minQty > 1 && <span className="mat-desc" style={{fontSize:'.75rem',color:'var(--gray)'}}>Minimum {minQty} unités</span>}
                                     </div>
                                   </label>
@@ -976,13 +1141,25 @@ export default function ReservationWizard({ simulation = false }) {
                                         ? <span className="mat-stock-badge mat-stock-out"><i className="fas fa-times-circle" /> Stock insuffisant (min. {minQty})</span>
                                         : <span className="mat-stock-badge mat-stock-ok"><i className="fas fa-check-circle" /> {avail} dispo.</span>
                                     }
-                                    {selected && (
-                                      <div className="mat-qty-wrap">
-                                        <button className="qty-btn" onClick={() => setCart(c => ({...c,[String(m.id)]: Math.max(minQty,qty-1)}))}>−</button>
-                                        <span className="qty-val">{qty}</span>
-                                        <button className="qty-btn" onClick={() => setCart(c => ({...c,[String(m.id)]: Math.min(avail,qty+1)}))}>+</button>
-                                      </div>
-                                    )}
+                                    <div className="mat-card-footer-right">
+                                      {selected && (
+                                        <div className="mat-qty-wrap">
+                                          <button className="qty-btn" onClick={() => setCart(c => ({...c,[String(m.id)]: Math.max(minQty,qty-1)}))}>−</button>
+                                          <span className="qty-val">{qty}</span>
+                                          <button className="qty-btn" onClick={() => setCart(c => ({...c,[String(m.id)]: Math.min(avail,qty+1)}))}>+</button>
+                                        </div>
+                                      )}
+                                      {m.description && (
+                                        <button
+                                          type="button"
+                                          className="mat-info-btn"
+                                          onClick={() => setInfoMaterial(m)}
+                                          aria-label={`Informations sur ${m.name}`}
+                                        >
+                                          <i className="fas fa-info" />
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -1009,6 +1186,29 @@ export default function ReservationWizard({ simulation = false }) {
                     <div className="mat-subtotal-box">
                       <span>Sous-total matériaux</span>
                       <strong>{materialsTotal.toFixed(2)} €</strong>
+                    </div>
+                  )}
+
+                  {infoMaterial && (
+                    <div className="mat-info-modal-overlay" onClick={() => setInfoMaterial(null)}>
+                      <div className="mat-info-modal" onClick={e => e.stopPropagation()}>
+                        <button type="button" className="mat-info-modal-close" onClick={() => setInfoMaterial(null)} aria-label="Fermer">
+                          <i className="fas fa-times" />
+                        </button>
+                        {infoMaterial.image_url && (
+                          <div className="mat-info-modal-img">
+                            <img src={infoMaterial.image_url} alt={infoMaterial.name} />
+                          </div>
+                        )}
+                        <h3 className="mat-info-modal-title">{infoMaterial.name}</h3>
+                        <p className="mat-info-modal-desc">{infoMaterial.description}</p>
+                        {getMinOrderQty(tiersByMaterial[String(infoMaterial.id)]) > 1 && (
+                          <p className="mat-info-modal-meta">
+                            <i className="fas fa-info-circle" />
+                            Minimum {getMinOrderQty(tiersByMaterial[String(infoMaterial.id)])} unités
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
 

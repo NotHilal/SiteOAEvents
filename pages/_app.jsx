@@ -80,8 +80,24 @@ export default function App({ Component, pageProps }) {
       {!isAdmin && <Loader />}
       {!isAdmin && <Navbar />}
       {/* key={asPath} forces a remount on navigation, which restarts the
-          .oa-page-transition CSS animation for every new page. */}
-      <div key={router.asPath} className="oa-page-transition">
+          .oa-page-transition CSS animation for every new page. The animation
+          animates `transform`, and CSS animations keep their end-state
+          computed value (an identity matrix, not the literal keyword `none`)
+          applied for as long as fill-mode holds it — and ANY non-`none`
+          transform on an ancestor, identity or not, turns it into the
+          positioning containing block for descendant `position: fixed`
+          elements instead of the viewport. That silently broke fixed-position
+          overlays rendered inside page content (e.g. a modal). Once the
+          animation finishes, drop the `animation` property entirely (via
+          this class, added directly to the DOM node, no re-render) so
+          `transform` falls back to its real default of `none` and fixed
+          descendants target the viewport again. e.target check excludes
+          animations bubbling up from descendants (AOS, etc). */}
+      <div
+        key={router.asPath}
+        className="oa-page-transition"
+        onAnimationEnd={e => { if (e.target === e.currentTarget) e.currentTarget.classList.add('oa-anim-done') }}
+      >
         <Component {...pageProps} />
       </div>
       {!isAdmin && <Footer />}

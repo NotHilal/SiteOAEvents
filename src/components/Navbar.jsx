@@ -146,14 +146,6 @@ export default function Navbar() {
               <i className="fas fa-shopping-bag" />
               {cartCount > 0 && <span className="header-cart-badge">{cartCount}</span>}
             </Link>
-            <div className="header-btn header-btn-secondary">
-              <Link href="/espace-oa" className="theme-button theme-button-outline w-inline-block">
-                <div className="theme-button-content">
-                  <div className="theme-button-text">Espace OA</div>
-                  <div className="theme-button-hover-text">Espace OA</div>
-                </div>
-              </Link>
-            </div>
             <div className="header-btn">
               <Link href="/reservation" className="theme-button w-inline-block">
                 <div className="theme-button-content">
@@ -227,16 +219,6 @@ export default function Navbar() {
             .mobile-menu-box is the only part that scrolls (see .mobile-menu
             flex layout in style.css). */}
         <div className="mobile-menu-footer">
-          <Link
-            href="/espace-oa"
-            className="theme-button theme-button-outline w-inline-block"
-            style={{ width: '100%', textAlign: 'center' }}
-            onClick={() => setMobileOpen(false)}
-          >
-            <div className="theme-button-content" style={{ justifyContent: 'center' }}>
-              <div className="theme-button-text">Espace OA</div>
-            </div>
-          </Link>
           <Link
             href="/reservation"
             className="theme-button w-inline-block"

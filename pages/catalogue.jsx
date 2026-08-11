@@ -19,11 +19,19 @@ export default function Catalogue() {
   const [matFilter, setMatFilter] = useState('all')
   const [matSearch, setMatSearch] = useState('')
   const [matPage, setMatPage] = useState(1)
+  const [infoMaterial, setInfoMaterial] = useState(null)
 
   useEffect(() => {
     AOS.init({ duration: 820, easing: 'ease-in-out', once: true, offset: 55 })
     AOS.refresh()
   }, [])
+
+  useEffect(() => {
+    if (!infoMaterial) return
+    const onKey = e => { if (e.key === 'Escape') setInfoMaterial(null) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [infoMaterial])
 
   useEffect(() => {
     setCart(getCatalogueCart())
@@ -163,31 +171,42 @@ export default function Catalogue() {
                               <span className="mat-name">{m.name}</span>
                               <span className="mat-price">{unitPrice > 0 ? `dès ${unitPrice.toFixed(2)} €` : ''}</span>
                             </div>
-                            {m.description && <span className="mat-desc">{m.description}</span>}
                             {minQty > 1 && <span className="mat-desc" style={{fontSize:'.75rem',color:'var(--gray)'}}>Minimum {minQty} unités</span>}
                             <div className="mat-card-footer">
                               <span className="mat-stock-badge mat-stock-ok"><i className="fas fa-check-circle" /> Disponible</span>
-                              {selected ? (
-                                <div className="mat-qty-wrap">
-                                  <button className="qty-btn" onClick={() => {
-                                    const next = Math.max(0, qty - 1)
-                                    const n = { ...cart }
-                                    if (next < minQty) delete n[String(m.id)]
-                                    else n[String(m.id)] = next
-                                    updateCart(n)
-                                  }}>−</button>
-                                  <span className="qty-val">{qty}</span>
-                                  <button className="qty-btn" onClick={() => updateCart({ ...cart, [String(m.id)]: Math.min(maxQty, qty + 1) })}>+</button>
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="mat-add-btn"
-                                  onClick={() => updateCart({ ...cart, [String(m.id)]: minQty })}
-                                >
-                                  <i className="fas fa-plus" /> Ajouter
-                                </button>
-                              )}
+                              <div className="mat-card-footer-right">
+                                {selected ? (
+                                  <div className="mat-qty-wrap">
+                                    <button className="qty-btn" onClick={() => {
+                                      const next = Math.max(0, qty - 1)
+                                      const n = { ...cart }
+                                      if (next < minQty) delete n[String(m.id)]
+                                      else n[String(m.id)] = next
+                                      updateCart(n)
+                                    }}>−</button>
+                                    <span className="qty-val">{qty}</span>
+                                    <button className="qty-btn" onClick={() => updateCart({ ...cart, [String(m.id)]: Math.min(maxQty, qty + 1) })}>+</button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="mat-add-btn"
+                                    onClick={() => updateCart({ ...cart, [String(m.id)]: minQty })}
+                                  >
+                                    <i className="fas fa-plus" /> Ajouter
+                                  </button>
+                                )}
+                                {m.description && (
+                                  <button
+                                    type="button"
+                                    className="mat-info-btn"
+                                    onClick={() => setInfoMaterial(m)}
+                                    aria-label={`Informations sur ${m.name}`}
+                                  >
+                                    <i className="fas fa-info" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -208,6 +227,29 @@ export default function Catalogue() {
                   </div>
                 )}
               </>
+            )}
+
+            {infoMaterial && (
+              <div className="mat-info-modal-overlay" onClick={() => setInfoMaterial(null)}>
+                <div className="mat-info-modal" onClick={e => e.stopPropagation()}>
+                  <button type="button" className="mat-info-modal-close" onClick={() => setInfoMaterial(null)} aria-label="Fermer">
+                    <i className="fas fa-times" />
+                  </button>
+                  {infoMaterial.image_url && (
+                    <div className="mat-info-modal-img">
+                      <img src={infoMaterial.image_url} alt={infoMaterial.name} />
+                    </div>
+                  )}
+                  <h3 className="mat-info-modal-title">{infoMaterial.name}</h3>
+                  <p className="mat-info-modal-desc">{infoMaterial.description}</p>
+                  {getMinOrderQty(tiersByMaterial[String(infoMaterial.id)]) > 1 && (
+                    <p className="mat-info-modal-meta">
+                      <i className="fas fa-info-circle" />
+                      Minimum {getMinOrderQty(tiersByMaterial[String(infoMaterial.id)])} unités
+                    </p>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </section>

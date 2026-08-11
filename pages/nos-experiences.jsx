@@ -23,7 +23,7 @@ const EXPERIENCES = [
     highlights: ['180 invités', 'Chapiteau + jardin', 'Scénographie florale', 'Coordination jour J'],
   },
   {
-    title: 'Sarah & Nadia',
+    title: 'Nadia & Rémi',
     tag: 'Mariage élégant — Septembre 2025',
     img: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=1000&q=80',
     video: null,

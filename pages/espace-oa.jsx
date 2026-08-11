@@ -134,6 +134,7 @@ export default function AdminDashboard() {
     depot_address:'', delivery_base_fee:'', delivery_per_km:'',
     bank_holder:'', bank_iban:'', bank_bic:'',
     installment_2x_min_amount:'', installment_3x_min_amount:'', installment_min_total_4x:'',
+    max_consecutive_days:'',
   })
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [settingsSaved, setSettingsSaved] = useState(false)
@@ -245,7 +246,13 @@ export default function AdminDashboard() {
     setMaterialTiers(tierRes.data || [])
   }
   async function loadSettings() {
-    const { data } = await supabase.from('settings').select('*')
+    const [{ data }, { data: contentData }] = await Promise.all([
+      supabase.from('settings').select('*'),
+      // max_consecutive_days lives in site_content, not settings — the
+      // booking wizard is a public logged-out page and needs to read it
+      // without auth (see requiresAuth in pages/api/db.js).
+      supabase.from('site_content').select('*').eq('key', 'max_consecutive_days'),
+    ])
     const map = {}
     ;(data||[]).forEach(s => { map[s.key] = s.value })
     setSettingsForm({
@@ -258,6 +265,7 @@ export default function AdminDashboard() {
       installment_2x_min_amount: map.installment_2x_min_amount || '0',
       installment_3x_min_amount: map.installment_3x_min_amount || '0',
       installment_min_total_4x: map.installment_min_total_4x || '300',
+      max_consecutive_days: contentData?.[0]?.value || '7',
     })
   }
   async function saveSettings() {
@@ -266,6 +274,9 @@ export default function AdminDashboard() {
     const baseFee = parseFloat(String(settingsForm.delivery_base_fee).replace(',', '.'))
     const perKm = parseFloat(String(settingsForm.delivery_per_km).replace(',', '.'))
     if (isNaN(baseFee) || baseFee < 0 || isNaN(perKm) || perKm < 0) { setSettingsError('Frais invalides (doivent être ≥ 0).'); return }
+
+    const maxDays = parseInt(settingsForm.max_consecutive_days, 10)
+    if (isNaN(maxDays) || maxDays < 1 || maxDays > 30) { setSettingsError('Nombre de jours consécutifs invalide (entre 1 et 30).'); return }
 
     const tiers = [
       { n: 2, minAmountKey:'installment_2x_min_amount' },
@@ -291,6 +302,7 @@ export default function AdminDashboard() {
         supabase.from('settings').update({ value: String(parsedTiers[2].minAmount) }).eq('key', 'installment_2x_min_amount'),
         supabase.from('settings').update({ value: String(parsedTiers[3].minAmount) }).eq('key', 'installment_3x_min_amount'),
         supabase.from('settings').update({ value: String(parsedTiers[4].minAmount) }).eq('key', 'installment_min_total_4x'),
+        supabase.from('site_content').update({ value: String(maxDays) }).eq('key', 'max_consecutive_days'),
       ])
       await loadSettings()
       setSettingsSaved(true)
@@ -1144,6 +1156,19 @@ export default function AdminDashboard() {
                         onChange={e => setSettingsForm(f => ({...f, delivery_per_km: e.target.value}))}
                       />
                     </div>
+                  </div>
+                  <div className="adm-form-group">
+                    <label>Jours consécutifs maximum par réservation <span className="req">*</span></label>
+                    <input
+                      type="number" min={1} max={30} step="1"
+                      className="adm-input"
+                      style={{maxWidth:160}}
+                      value={settingsForm.max_consecutive_days}
+                      onChange={e => setSettingsForm(f => ({...f, max_consecutive_days: e.target.value}))}
+                    />
+                    <p style={{color:'var(--gray)',fontSize:'.78rem',margin:'6px 0 0'}}>
+                      Nombre de jours consécutifs qu'un client peut sélectionner à l'étape "Date" du formulaire de réservation.
+                    </p>
                   </div>
                 </div>
               )}

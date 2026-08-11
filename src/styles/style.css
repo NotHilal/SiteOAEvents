@@ -286,6 +286,18 @@
 .service-block {
   padding: 60px 0;
   border-bottom: 1px solid var(--border);
+  /* The two alternating columns inside use data-aos="fade-left"/"fade-right"
+     (see services.jsx / nos-experiences.jsx), whose pre-animation state is a
+     ±100px horizontal translate (AOS's own default, see aos.css) — before
+     AOS's IntersectionObserver adds .aos-animate (or if it never does, e.g.
+     the block is already in view on load in some browsers), that transform
+     visually bleeds the column past the viewport edge. html's overflow-x:
+     hidden doesn't reliably contain that on every browser/device (unlike a
+     genuinely wider box, a transform-caused overflow is a rendering-only
+     effect some engines don't clip the same way at the document root),
+     which showed up as a real, touch-scrollable horizontal gap on mobile.
+     Clipped here instead, at the actual source of the bleed. */
+  overflow-x: hidden;
 }
 
 .service-block:last-child { border-bottom: none; }
@@ -919,17 +931,6 @@ body {
 .header-dropdown-link:hover { background: rgba(201,161,90,.1); color: var(--oa-accent-dark); }
 .header-dropdown-link-current { color: var(--oa-accent-dark); }
 
-/* furnish.css hides the nav links and shows the hamburger at <=991px, but
-   only hides .header-btn (the Espace OA / Réserver buttons) at <=479px —
-   leaving the entire 480-991px range (most tablets and large phones)
-   showing the hamburger AND both header buttons at once, which crowds and
-   wraps ("Espace OA" onto two lines). Hide the secondary one at the same
-   991px breakpoint the hamburger appears at; "Réserver" (the primary CTA)
-   stays visible next to it. */
-@media (max-width: 991px) {
-  .header-btn-secondary { display: none; }
-}
-
 /* The underline-on-hover was previously driven by a Webflow IX2 interaction
    (data-w-id), not CSS — furnish.css only sets the line's resting state
    (transform: scaleX(0)). Now that IX2 is gone, hover has to animate it. */
@@ -949,6 +950,12 @@ body {
 }
 .oa-page-transition {
   animation: oaPageFadeIn .65s cubic-bezier(.16,.84,.44,1) both;
+}
+/* Added by _app.jsx once the animation above finishes — see the comment
+   there for why this has to fully remove `animation` (not just neutralize
+   its end value) to stop breaking position:fixed descendants. */
+.oa-page-transition.oa-anim-done {
+  animation: none;
 }
 
 /* Top progress bar — driven by navState in _app.jsx (idle/loading/done). */
@@ -1132,16 +1139,32 @@ body {
   .oa-navbar .header-logo { height: 34px !important; }
   .oa-navbar .header-logo-text { font-size: .92rem; }
   .mobile-menu { max-width: 300px; }
-  .mobile-logo-box { padding: 16px 18px; margin-bottom: 0; }
-  .mobile-logo-box .header-logo { height: 30px !important; }
-  .mobile-logo-box .header-logo-text { font-size: .92rem; }
-  .mobile-menu-close-btn { width: 32px; height: 32px; font-size: .82rem; }
-  .mobile-dropdown-link { padding: 13px 20px !important; }
+  .mobile-logo-box { padding: 10px 18px; margin-bottom: 0; }
+  .mobile-logo-box .header-logo { height: 26px !important; }
+  .mobile-logo-box .header-logo-text { font-size: .86rem; }
+  .mobile-menu-close-btn { width: 28px; height: 28px; font-size: .74rem; }
+  .mobile-dropdown-link { padding: 9px 20px !important; }
   .mobile-dropdown-link:hover { padding-left: 26px !important; }
-  .mobile-dropdown-title { font-size: 1rem; letter-spacing: 0; }
-  .mobile-menu-footer { padding: 14px 20px calc(14px + env(safe-area-inset-bottom, 0px)); gap: 8px; }
+  .mobile-dropdown-title { font-size: .88rem; letter-spacing: 0; }
+  .mobile-menu-footer { padding: 10px 20px calc(10px + env(safe-area-inset-bottom, 0px)); gap: 6px; }
   .mobile-menu-footer > a.theme-button,
-  .mobile-menu-footer > a.theme-button-outline { padding: 11px 20px; font-size: .7rem; }
+  .mobile-menu-footer > a.theme-button-outline { padding: 8px 20px; font-size: .66rem; }
+}
+
+/* Shorter phones (SE-class, ~568-660px tall) still couldn't fit all 9 links
+   + footer without scrolling even after the tightening above — verified by
+   rendering the drawer at 320x568 and measuring: logo box + 9 rows + footer
+   summed to ~694px against a 568px-tall viewport. Shrink further, keyed off
+   height (not width) since this is a vertical-fit problem, not a narrow-
+   screen one — a wide-but-short window has the exact same issue. */
+@media (max-width: 991px) and (max-height: 700px) {
+  .mobile-logo-box { padding: 7px 18px; }
+  .mobile-logo-box .header-logo { height: 22px !important; }
+  .mobile-dropdown-link { padding: 6px 20px !important; }
+  .mobile-dropdown-title { font-size: .82rem; }
+  .mobile-menu-footer { padding: 7px 20px calc(7px + env(safe-area-inset-bottom, 0px)); gap: 5px; }
+  .mobile-menu-footer > a.theme-button,
+  .mobile-menu-footer > a.theme-button-outline { padding: 7px 20px; font-size: .62rem; }
 }
 
 /* ===== HOMEPAGE — EDITORIAL RECONSTRUCTION =====
