@@ -104,13 +104,14 @@ export default function Contact() {
                   { icon: 'fas fa-map-marker-alt', title: 'Localisation', text: 'Île-de-France, France' },
                   { icon: 'fas fa-phone', title: 'Téléphone', text: 'Sur demande' },
                   { icon: 'fas fa-envelope', title: 'Email', text: 'contact@oa-evenementiel.fr' },
-                  { icon: 'fas fa-clock', title: 'Disponibilité', text: 'Lun – Sam : 9h – 19h' },
+                  { icon: 'fas fa-clock', title: 'Disponibilité', text: 'Lun – Dim : 9h – 20h', note: 'Livraison et prestations possibles 24h/24, 7j/7' },
                 ].map((item, i) => (
                   <div key={i} className="contact-info-item">
                     <div className="contact-info-icon"><i className={item.icon} /></div>
                     <div className="contact-info-text">
                       <h5>{item.title}</h5>
                       <p>{item.text}</p>
+                      {item.note && <p className="contact-info-note">({item.note})</p>}
                     </div>
                   </div>
                 ))}

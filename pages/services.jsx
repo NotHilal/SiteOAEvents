@@ -14,7 +14,6 @@ const SERVICES = [
     title: 'Organisation de Mariage',
     desc: 'De la recherche de la salle à la coordination le jour J, nous gérons chaque détail de votre mariage pour que vous viviez pleinement ce moment unique.',
     items: [
-      'Recherche et réservation du lieu',
       'Coordination des prestataires',
       'Décoration et mise en scène',
       'Planning détaillé et suivi',
@@ -31,8 +30,6 @@ const SERVICES = [
     items: [
       'Thème et décoration sur mesure',
       'Animation et divertissements',
-      'Traiteur et gâteau personnalisé',
-      'Invitations et coordination',
       'Surprise ou événement planifié',
     ],
     reverse: true,

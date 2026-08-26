@@ -466,6 +466,13 @@
   line-height: 1.6;
 }
 
+.contact-info-text .contact-info-note {
+  font-size: .8rem;
+  font-style: italic;
+  opacity: .8;
+  margin-top: 2px;
+}
+
 .contact-form-wrap {
   background: rgba(255, 255, 255, 0.4);
   backdrop-filter: blur(20px);
