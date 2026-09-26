@@ -27,6 +27,16 @@ function addDays(dateStr, n) {
 }
 function capitalise(s) { return s.charAt(0).toUpperCase() + s.slice(1) }
 
+// Scrolls through Lenis (see _app.jsx) when it's running. A native
+// scrollIntoView/scrollTo({ behavior: 'smooth' }) fights Lenis's own
+// animation frame by frame, which made every step change stutter.
+function smoothScrollTo(target) {
+  const lenis = typeof window !== 'undefined' ? window.__lenis : null
+  if (lenis) { lenis.scrollTo(target, { offset: target === 0 ? 0 : -90 }); return }
+  if (target === 0) window.scrollTo({ top: 0, behavior: 'smooth' })
+  else target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 const EMPTY_FORM = { prenom:'', nom:'', email:'', phone:'', address:'', type:'', nb:'', message:'' }
 const DEFAULT_MAX_CONSECUTIVE_DAYS = 7
 
@@ -445,13 +455,13 @@ export default function ReservationWizard({ simulation = false }) {
     if (!validateStep(currentStep)) return
     if (currentStep === 4) { simulation ? finishSimulation() : submitForm(); return }
     setCurrentStep(c => c + 1)
-    setTimeout(() => wizardRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }), 50)
+    setTimeout(() => smoothScrollTo(wizardRef.current), 50)
   }
 
   function goPrev() {
     if (currentStep > 1) {
       setCurrentStep(c => c - 1)
-      setTimeout(() => wizardRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }), 50)
+      setTimeout(() => smoothScrollTo(wizardRef.current), 50)
     }
   }
 
@@ -461,7 +471,7 @@ export default function ReservationWizard({ simulation = false }) {
   // a confirmation + order reference.
   function finishSimulation() {
     setSuccess(true)
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+    smoothScrollTo(0)
   }
 
   function resetWizard() {
@@ -477,7 +487,7 @@ export default function ReservationWizard({ simulation = false }) {
     setQuoteError('')
     setSuccess(false)
     setOrderReference(null)
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+    smoothScrollTo(0)
   }
 
   // "Faire une vraie demande" from a finished simulation — hand off what
@@ -534,9 +544,7 @@ export default function ReservationWizard({ simulation = false }) {
 
       setOrderReference(data.reference || null)
       setSuccess(true)
-      if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'smooth' })
-      }
+      smoothScrollTo(0)
     } catch {
       setSubmitError(true)
     } finally {
@@ -737,7 +745,7 @@ export default function ReservationWizard({ simulation = false }) {
       <div className="site-wrap">
         <div
           className="page-header page-header-compact"
-          style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=1920&q=80)' }}
+          style={{ backgroundImage: 'url(/PHOTO-2026-09-26-16-24-35.jpg)' }}
         >
           <div className="page-header-overlay" />
           <div className="container">
@@ -1108,7 +1116,7 @@ export default function ReservationWizard({ simulation = false }) {
                               <div key={m.id} className={`mat-card${selected?' mat-card-checked':''}${unavail?' mat-card-unavail':''}`}>
                                 <div className={`mat-card-img${!m.image_url?' mat-card-img-empty':''}`}>
                                   {m.image_url
-                                    ? <img src={m.image_url} alt={m.name} />
+                                    ? <img src={m.image_url} alt={m.name} loading="lazy" decoding="async" />
                                     : <i className="fas fa-image" />
                                   }
                                   {unavail && (

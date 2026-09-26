@@ -61,28 +61,17 @@ export default function Navbar() {
     }
   }, [mobileOpen])
 
-  // The browsing-focused pages (Catalogue/Galerie/Nos Expériences) collapse
-  // into a "Découvrir" dropdown on desktop — 9 flat top-level links was too
-  // crowded and wrapped onto two lines. Nothing is removed: the mobile
-  // drawer still lists every page flat (see ALL_LINKS below), and the
-  // dropdown keeps all three one hover away on desktop.
-  const NAV_BEFORE = [
+  // Contact lives in the floating ContactWidget (bottom-right on every
+  // page) and Suivi de commande is reached from the confirmation email's
+  // link (plus the footer), so neither takes a slot in the top bar.
+  const NAV_LINKS = [
     { href: '/', label: 'Accueil' },
     { href: '/services', label: 'Prestations' },
-  ]
-  const DISCOVER_LINKS = [
     { href: '/catalogue', label: 'Catalogue' },
     { href: '/galerie', label: 'Galerie' },
-    { href: '/nos-experiences', label: 'Nos Expériences' },
-  ]
-  const NAV_AFTER = [
     { href: '/devis', label: 'Simulation de Devis' },
-    { href: '/suivi', label: 'Suivi de commande' },
     { href: '/a-propos', label: 'À Propos' },
-    { href: '/contact', label: 'Contact' },
   ]
-  const ALL_LINKS = [...NAV_BEFORE, ...DISCOVER_LINKS, ...NAV_AFTER]
-  const discoverActive = DISCOVER_LINKS.some(l => l.href === router.pathname)
 
   return (
     <section className={`main-header oa-navbar${scrolled ? ' oa-navbar-scrolled' : ''}`}>
@@ -102,34 +91,7 @@ export default function Navbar() {
           </Link>
 
           <div className="header-menu-box">
-            {NAV_BEFORE.map(link => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`header-menu-link w-inline-block ${router.pathname === link.href ? 'w--current' : ''}`}
-              >
-                <p className="header-menu-text">{link.label}</p>
-                <div className="header-menu-line"></div>
-              </Link>
-            ))}
-
-            <div className={`header-menu-link header-dropdown-wrap w-inline-block${discoverActive ? ' w--current' : ''}`} tabIndex={0}>
-              <p className="header-menu-text">Découvrir <i className="fas fa-chevron-down header-dropdown-caret" /></p>
-              <div className="header-menu-line"></div>
-              <div className="header-dropdown">
-                {DISCOVER_LINKS.map(link => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`header-dropdown-link${router.pathname === link.href ? ' header-dropdown-link-current' : ''}`}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            {NAV_AFTER.map(link => (
+            {NAV_LINKS.map(link => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -196,7 +158,7 @@ export default function Navbar() {
           </button>
         </div>
         <div className="mobile-menu-box">
-          {ALL_LINKS.map(link => (
+          {NAV_LINKS.map(link => (
             <Link
               key={link.href}
               href={link.href}

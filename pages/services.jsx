@@ -4,13 +4,13 @@ import Head from 'next/head'
 import AOS from 'aos'
 import { supabase } from '../src/lib/supabase.js'
 
-const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1920&q=80'
+const PAGE_HEADER_DEFAULT = '/PHOTO-2026-09-26-16-24-38_2.jpg'
 
 const SERVICES = [
   {
     slotKey: 'service_1',
     icon: 'fas fa-rings-wedding',
-    img: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=900&q=80',
+    img: '/PHOTO-2026-09-26-16-24-06.jpg',
     title: 'Organisation de Mariage',
     desc: 'De la recherche de la salle à la coordination le jour J, nous gérons chaque détail de votre mariage pour que vous viviez pleinement ce moment unique.',
     items: [
@@ -24,7 +24,7 @@ const SERVICES = [
   {
     slotKey: 'service_2',
     icon: 'fas fa-birthday-cake',
-    img: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=900&q=80',
+    img: '/PHOTO-2026-09-26-16-24-40_1.jpg',
     title: 'Organisation d\'Anniversaire',
     desc: 'Qu\'il s\'agisse d\'un anniversaire intime ou d\'une grande fête, nous créons l\'ambiance parfaite pour célébrer vos moments de vie avec éclat.',
     items: [
@@ -37,7 +37,7 @@ const SERVICES = [
   {
     slotKey: 'service_3',
     icon: 'fas fa-briefcase',
-    img: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=900&q=80',
+    img: '/PHOTO-2026-09-26-16-24-41.jpg',
     title: 'Événements Professionnels',
     desc: 'Séminaires, galas d\'entreprise, inaugurations ou soirées de fin d\'année — nous organisons vos événements professionnels avec la même passion et le même soin.',
     items: [
@@ -52,7 +52,7 @@ const SERVICES = [
   {
     slotKey: 'service_4',
     icon: 'fas fa-star',
-    img: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=900&q=80',
+    img: '/PHOTO-2026-09-26-16-24-37_2.jpg',
     title: 'Location de Décoration',
     desc: 'Accédez à notre belle sélection d\'accessoires de décoration pour sublimer vos événements à moindre coût. Nous livrons et installons tout sur place.',
     items: [

@@ -6,27 +6,28 @@ import AOS from 'aos'
 import { supabase } from '../src/lib/supabase.js'
 import { getUnitPriceTtc, groupTiersByMaterial, getMinOrderQty } from '../src/lib/pricing.js'
 import { addToCatalogueCart } from '../src/lib/cart.js'
+import { openContactWidget } from '../src/components/ContactWidget.jsx'
 
-const HERO_DEFAULTS = { hero_left: '/Minimalist_Living_Room.avif', hero_right: '/Modern_Minimalist_Living_Room.avif' }
+const HERO_DEFAULTS = { hero_left: '/PHOTO-2026-09-26-16-24-38_3.jpg', hero_right: '/PHOTO-2026-09-26-16-24-07.jpg' }
 
 const UNIVERS = [
   {
     slotKey: 'univers_1',
     title: 'Mariages & Réceptions',
     text: 'De la demande à la nuit de noces, une scénographie pensée dans le moindre détail.',
-    img: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=900&q=80',
+    img: '/PHOTO-2026-09-26-16-18-07_1.jpg',
   },
   {
     slotKey: 'univers_2',
     title: 'Anniversaires & Fêtes',
     text: "Des célébrations sur mesure, intimes ou grandioses, à votre image.",
-    img: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=900&q=80',
+    img: '/PHOTO-2026-09-26-16-24-39_3.jpg',
   },
   {
     slotKey: 'univers_3',
     title: 'Location de Décoration',
     text: 'Mobilier, art de la table et scénographie disponibles à la location, livrés et installés.',
-    img: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=900&q=80',
+    img: '/PHOTO-2026-09-26-16-24-37.jpg',
   },
 ]
 
@@ -45,12 +46,12 @@ const VALEURS = [
 ]
 
 const REALISATIONS = [
-  { slotKey: 'realisation_1', src: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=800&q=80', label: 'Mariage' },
-  { slotKey: 'realisation_2', src: 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=800&q=80', label: 'Mariage' },
-  { slotKey: 'realisation_3', src: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=800&q=80', label: 'Anniversaire' },
-  { slotKey: 'realisation_4', src: 'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=800&q=80', label: 'Anniversaire' },
-  { slotKey: 'realisation_5', src: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&q=80', label: 'Événement Pro' },
-  { slotKey: 'realisation_6', src: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=800&q=80', label: 'Location Déco' },
+  { slotKey: 'realisation_1', src: '/PHOTO-2026-09-26-16-18-06.jpg', label: 'Mariage' },
+  { slotKey: 'realisation_2', src: '/PHOTO-2026-09-26-16-24-41_1.jpg', label: 'Mariage' },
+  { slotKey: 'realisation_3', src: '/PHOTO-2026-09-26-16-24-39_3.jpg', label: 'Réception' },
+  { slotKey: 'realisation_4', src: '/PHOTO-2026-09-26-16-24-33.jpg', label: 'Art de la table' },
+  { slotKey: 'realisation_5', src: '/PHOTO-2026-09-26-16-24-38_1.jpg', label: 'Dîner en plein air' },
+  { slotKey: 'realisation_6', src: '/PHOTO-2026-09-26-16-24-42.jpg', label: 'Location Déco' },
 ]
 
 const STATS = [
@@ -479,9 +480,9 @@ export default function Home() {
             <p className="apropos-cta-text">Parlons de votre projet et voyons comment lui donner vie ensemble.</p>
             <div className="oa-center-cta" style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link href="/devis" className="btn btn-rose-gold">Simuler mon devis</Link>
-              <Link href="/contact" className="theme-button theme-button-outline w-inline-block">
+              <button type="button" onClick={openContactWidget} className="theme-button theme-button-outline w-inline-block">
                 <div className="theme-button-content"><div className="theme-button-text">Nous contacter</div></div>
-              </Link>
+              </button>
             </div>
           </div>
         </section>

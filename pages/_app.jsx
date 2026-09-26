@@ -5,6 +5,7 @@ import Lenis from 'lenis'
 import Loader from '../src/components/Loader.jsx'
 import Navbar from '../src/components/Navbar.jsx'
 import Footer from '../src/components/Footer.jsx'
+import ContactWidget from '../src/components/ContactWidget.jsx'
 
 export default function App({ Component, pageProps }) {
   const router = useRouter()
@@ -101,6 +102,7 @@ export default function App({ Component, pageProps }) {
         <Component {...pageProps} />
       </div>
       {!isAdmin && <Footer />}
+      {!isAdmin && <ContactWidget />}
     </>
   )
 }

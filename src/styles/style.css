@@ -287,7 +287,7 @@
   padding: 60px 0;
   border-bottom: 1px solid var(--border);
   /* The two alternating columns inside use data-aos="fade-left"/"fade-right"
-     (see services.jsx / nos-experiences.jsx), whose pre-animation state is a
+     (see services.jsx), whose pre-animation state is a
      ±100px horizontal translate (AOS's own default, see aos.css) — before
      AOS's IntersectionObserver adds .aos-animate (or if it never does, e.g.
      the block is already in view on load in some browsers), that transform
@@ -303,7 +303,10 @@
 .service-block:last-child { border-bottom: none; }
 
 .service-block-image {
-  width: 100%; height: 360px;
+  width: 100%;
+  aspect-ratio: 1 / 1; /* photos are mostly portrait — a square frame keeps the subject instead of a thin band */
+  max-height: 560px;
+  height: auto;
   object-fit: cover;
   border-radius: 0px; /* Sharp */
 }
@@ -409,10 +412,12 @@
 }
 
 .gallery-full-item { padding: 8px; }
+.gallery-more { text-align: center; margin-top: 36px; }
 
 .gallery-full-item img {
   width: 100%;
-  height: 280px;
+  aspect-ratio: 4 / 5; /* same frame for every photo, portrait or landscape */
+  height: auto;
   object-fit: cover;
   cursor: pointer;
   border-radius: 0px; /* Sharp */
@@ -475,7 +480,10 @@
 
 .contact-form-wrap {
   background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(20px);
+  /* Was blur(20px) — expensive to resample on every scroll frame over the
+     tiled marble background behind it. Lower radius keeps the frosted-glass
+     look at a fraction of the repaint cost. */
+  backdrop-filter: blur(8px);
   padding: 44px 40px;
   border-radius: 0px; /* Sharp */
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
@@ -702,6 +710,7 @@ body {
 .list-item { margin-bottom: 9px; }
 .list-text-link { font-size: 14px; color: var(--gray); transition: color .2s; }
 .list-text-link:hover { color: var(--dark); }
+.footer-link-btn { background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; text-align: left; }
 .footer-contact-line { font-size: 14px; color: var(--gray); }
 .footer-contact-line i { width: 16px; margin-right: 6px; color: var(--gray); }
 .footer-cta-link { font-weight: 700; color: var(--dark) !important; }
@@ -894,49 +903,6 @@ body {
    plain black links with a gold hairline. */
 .header-menu-link:hover .header-menu-text { color: var(--oa-accent-dark); }
 .header-menu-link.w--current .header-menu-text { color: var(--oa-accent-dark); font-weight: 600; }
-
-/* "Découvrir" dropdown — groups Catalogue/Galerie/Nos Expériences under one
-   top-level item instead of three separate links, so the bar reads as a
-   normal 6-7 item nav instead of a crowded 9-item row. Pure CSS hover (plus
-   :focus-within for keyboard use) rather than JS state — the panel is a DOM
-   child of the trigger, so :hover naturally holds while the pointer moves
-   from trigger down into the panel, no dead zone to manage. */
-.header-dropdown-wrap { position: relative; cursor: pointer; outline: none; }
-.header-dropdown-caret { font-size: .6rem; margin-left: 5px; transition: transform .25s ease; }
-.header-dropdown-wrap:hover .header-dropdown-caret,
-.header-dropdown-wrap:focus-within .header-dropdown-caret { transform: rotate(180deg); }
-.header-dropdown {
-  position: absolute;
-  top: 100%; left: 50%;
-  transform: translateX(-50%) translateY(6px);
-  min-width: 190px;
-  background: #fff;
-  border: 1px solid var(--oa-border);
-  box-shadow: 0 20px 45px rgba(22,20,15,.14);
-  padding: 8px;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity .22s ease, transform .22s ease, visibility .22s;
-  z-index: 20;
-}
-.header-dropdown-wrap:hover .header-dropdown,
-.header-dropdown-wrap:focus-within .header-dropdown {
-  opacity: 1; visibility: visible; pointer-events: auto; transform: translateX(-50%) translateY(0);
-}
-.header-dropdown-link {
-  display: block;
-  padding: 11px 16px;
-  font-family: var(--oa-font-heading);
-  font-size: .82rem;
-  font-weight: 600;
-  color: var(--oa-text);
-  text-decoration: none;
-  white-space: nowrap;
-  transition: background .18s ease, color .18s ease;
-}
-.header-dropdown-link:hover { background: rgba(201,161,90,.1); color: var(--oa-accent-dark); }
-.header-dropdown-link-current { color: var(--oa-accent-dark); }
 
 /* The underline-on-hover was previously driven by a Webflow IX2 interaction
    (data-w-id), not CSS — furnish.css only sets the line's resting state
@@ -1474,4 +1440,164 @@ body {
   .oa-section-head-split { flex-direction: column; align-items: flex-start; }
   .oa-prestation-card { padding: 24px 20px; }
   .oa-prestation-icon { width: 46px; height: 46px; font-size: .95rem; margin-bottom: 14px; }
+}
+
+/* ===== CONTACT WIDGET =====
+   Floating button + panel replacing the old /contact page (see
+   src/components/ContactWidget.jsx). Sits under the mobile menu (998) and
+   header (1000) but above page content and the catalogue cart bar (60). */
+.oa-contact-fab {
+  position: fixed;
+  right: 24px; bottom: 24px;
+  z-index: 900;
+  display: inline-flex; align-items: center; gap: 10px;
+  height: 56px; min-width: 56px;
+  padding: 0 22px;
+  border: none; border-radius: 999px;
+  background: var(--oa-accent);
+  color: #fff;
+  font-family: var(--oa-font-heading);
+  font-size: .8rem; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  box-shadow: 0 12px 30px rgba(179,141,71,.35);
+  cursor: pointer;
+  transition: background .2s ease, transform .2s ease, bottom .25s ease;
+}
+.oa-contact-fab:hover { background: var(--oa-accent-dark); transform: translateY(-2px); }
+.oa-contact-fab i { font-size: 1.05rem; }
+.oa-contact-fab.is-open { padding: 0; justify-content: center; width: 56px; }
+/* Lift above the catalogue's fixed cart bar when it's showing. */
+body:has(.oa-catalogue-cartbar) .oa-contact-fab { bottom: 104px; }
+body:has(.oa-catalogue-cartbar) .oa-contact-panel { bottom: 172px; max-height: calc(100vh - 280px); }
+
+.oa-contact-panel {
+  position: fixed;
+  right: 24px; bottom: 92px;
+  z-index: 900;
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 200px); /* clears the sticky header */
+  display: flex; flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--oa-border);
+  box-shadow: 0 30px 70px rgba(22,20,15,.22);
+  opacity: 0; visibility: hidden;
+  transform: translateY(14px) scale(.98);
+  transform-origin: bottom right;
+  transition: opacity .22s ease, transform .22s ease, visibility .22s;
+}
+.oa-contact-panel.is-open { opacity: 1; visibility: visible; transform: none; }
+
+.oa-contact-panel-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid var(--oa-border);
+}
+.oa-contact-panel-head h3 {
+  font-family: var(--oa-font-display);
+  font-size: 1.5rem;
+  margin: 4px 0 0;
+  color: var(--oa-text);
+}
+.oa-contact-close {
+  border: none; background: none;
+  font-size: 1.1rem; color: var(--oa-muted);
+  padding: 4px; cursor: pointer;
+}
+.oa-contact-close:hover { color: var(--oa-text); }
+
+.oa-contact-panel-body { padding: 18px 24px 24px; overflow-y: auto; overscroll-behavior: contain; }
+.oa-contact-panel-body .form-group { margin-bottom: 14px; }
+.oa-contact-panel-body .form-group .form-control { padding: 10px 14px; }
+.oa-contact-panel-body textarea.form-control { min-height: 96px; }
+.oa-contact-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.oa-contact-infos {
+  list-style: none; padding: 0; margin: 0 0 18px;
+  font-size: .88rem; color: var(--oa-muted);
+}
+.oa-contact-infos li { margin-bottom: 6px; }
+.oa-contact-infos i { width: 18px; color: var(--oa-accent); margin-right: 6px; }
+.oa-contact-infos a { color: inherit; }
+
+.oa-contact-success { text-align: center; padding: 24px 0 8px; }
+.oa-contact-success i { font-size: 2.4rem; color: var(--oa-accent); margin-bottom: 12px; }
+.oa-contact-success p { margin-bottom: 20px; }
+
+@media (max-width: 560px) {
+  .oa-contact-fab { right: 16px; bottom: 16px; }
+  .oa-contact-fab-label { display: none; }
+  .oa-contact-fab { padding: 0; width: 56px; justify-content: center; }
+  .oa-contact-panel {
+    right: 16px; left: 16px; bottom: 84px;
+    width: auto; max-width: none;
+    max-height: calc(100vh - 180px);
+  }
+  body:has(.oa-catalogue-cartbar) .oa-contact-fab { bottom: 96px; }
+  body:has(.oa-catalogue-cartbar) .oa-contact-panel { bottom: 164px; }
+  .oa-contact-row { grid-template-columns: 1fr; gap: 0; }
+}
+
+/* Hero photos — fixed frames so any photo (portrait, landscape, cropped
+   screenshot) sits the same way: tall main photo, shorter second one. */
+.hero-image-box .animated-image-wrapper:not(.two) .animated-image { aspect-ratio: 4 / 5; height: auto; max-height: 72vh; }
+.hero-image-box .animated-image-wrapper.two .animated-image { height: 100%; }
+
+/* ===== GALERIE — COVERFLOW CAROUSEL =====
+   See src/components/GalleryCarousel.jsx. Slides are absolutely placed in
+   the middle of the stage; the pos-classes move/scale/blur them, and the
+   transition animates the move when the current photo changes. */
+.oa-coverflow { margin: 8px 0 56px; outline: none; }
+.oa-coverflow-stage {
+  position: relative;
+  height: clamp(340px, 62vh, 620px);
+  overflow: hidden;
+  touch-action: pan-y;
+  user-select: none;
+}
+.oa-coverflow-slide {
+  position: absolute;
+  top: 0; left: 50%;
+  height: 100%;
+  aspect-ratio: 4 / 5;
+  max-width: 78%;
+  padding: 0; border: none; background: none;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 24px 50px rgba(22,20,15,.18);
+  transition: transform .6s cubic-bezier(.16,.84,.44,1), filter .6s ease, opacity .6s ease;
+}
+.oa-coverflow-slide img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+.oa-coverflow-posp0 { transform: translateX(-50%) scale(1); z-index: 3; }
+.oa-coverflow-posm1 { transform: translateX(-128%) scale(.8); filter: blur(5px); opacity: .7; z-index: 2; }
+.oa-coverflow-posp1 { transform: translateX(28%) scale(.8); filter: blur(5px); opacity: .7; z-index: 2; }
+.oa-coverflow-posm2 { transform: translateX(-190%) scale(.6); filter: blur(8px); opacity: 0; z-index: 1; pointer-events: none; }
+.oa-coverflow-posp2 { transform: translateX(90%) scale(.6); filter: blur(8px); opacity: 0; z-index: 1; pointer-events: none; }
+.oa-coverflow-posm1:hover, .oa-coverflow-posp1:hover { opacity: .9; }
+.oa-coverflow-label {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 36px 18px 16px;
+  background: linear-gradient(transparent, rgba(22,20,15,.65));
+  color: #fff;
+  font-family: var(--oa-font-heading);
+  font-size: .72rem; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  text-align: left;
+}
+.oa-coverflow-controls {
+  display: flex; align-items: center; justify-content: center; gap: 18px;
+  margin-top: 22px;
+}
+.oa-coverflow-controls .oa-carousel-arrow { position: static; transform: none; }
+.oa-coverflow-count {
+  font-family: var(--oa-font-heading);
+  font-size: .8rem; font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--oa-muted);
+  min-width: 64px; text-align: center;
+}
+@media (max-width: 640px) {
+  .oa-coverflow-stage { height: 56vh; }
+  .oa-coverflow-posm1 { transform: translateX(-122%) scale(.78); }
+  .oa-coverflow-posp1 { transform: translateX(22%) scale(.78); }
 }

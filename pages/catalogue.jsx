@@ -7,7 +7,7 @@ import { supabase } from '../src/lib/supabase.js'
 import { getUnitPriceTtc, groupTiersByMaterial, getMinOrderQty } from '../src/lib/pricing.js'
 import { getCatalogueCart, setCatalogueCart, sendCatalogueCartToReservation } from '../src/lib/cart.js'
 
-const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1478146059778-26028b07395a?w=1920&q=80'
+const PAGE_HEADER_DEFAULT = '/PHOTO-2026-09-26-16-24-00.jpg'
 const MAT_PER_PAGE = 9
 
 export default function Catalogue() {
@@ -153,7 +153,7 @@ export default function Catalogue() {
                 {!filteredMats.length ? (
                   <p className="no-mat-msg"><i className="fas fa-info-circle me-2" />Aucun article ne correspond à votre recherche.</p>
                 ) : (
-                  <div className="mat-grid" data-aos="fade-up">
+                  <div className="mat-grid mat-grid-catalogue" data-aos="fade-up">
                     {pagedMats.map(m => {
                       const tiers = tiersByMaterial[String(m.id)]
                       const minQty = getMinOrderQty(tiers)
@@ -164,7 +164,7 @@ export default function Catalogue() {
                       return (
                         <div key={m.id} className={`mat-card${selected?' mat-card-checked':''}`}>
                           <div className={`mat-card-img${!m.image_url?' mat-card-img-empty':''}`}>
-                            {m.image_url ? <img src={m.image_url} alt={m.name} /> : <i className="fas fa-image" />}
+                            {m.image_url ? <img src={m.image_url} alt={m.name} loading="lazy" decoding="async" /> : <i className="fas fa-image" />}
                           </div>
                           <div className="mat-card-body">
                             <div className="mat-name-row">

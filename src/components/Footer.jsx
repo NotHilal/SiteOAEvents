@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { openContactWidget } from './ContactWidget.jsx'
 
 export default function Footer() {
   return (
@@ -42,13 +43,14 @@ export default function Footer() {
                 <ul role="list" className="list-style-one">
                   <li className="list-item"><Link href="/" className="list-text-link">Accueil</Link></li>
                   <li className="list-item"><Link href="/services" className="list-text-link">Prestations</Link></li>
+                  <li className="list-item"><Link href="/catalogue" className="list-text-link">Catalogue</Link></li>
                   <li className="list-item"><Link href="/galerie" className="list-text-link">Galerie</Link></li>
-                  <li className="list-item"><Link href="/devis" className="list-text-link">Simulation de Devis</Link></li>
                 </ul>
                 <ul role="list" className="list-style-one">
+                  <li className="list-item"><Link href="/devis" className="list-text-link">Simulation de Devis</Link></li>
                   <li className="list-item"><Link href="/suivi" className="list-text-link">Suivi de commande</Link></li>
                   <li className="list-item"><Link href="/a-propos" className="list-text-link">À Propos</Link></li>
-                  <li className="list-item"><Link href="/contact" className="list-text-link">Contact</Link></li>
+                  <li className="list-item"><button type="button" className="list-text-link footer-link-btn" onClick={openContactWidget}>Contact</button></li>
                 </ul>
               </div>
             </div>

@@ -1,5 +1,7 @@
 import crypto from 'crypto';
+import fs from 'fs';
 import { createClient } from '@libsql/client';
+import { DEFAULT_GALERIE_PHOTOS } from './galerie-defaults.js';
 
 // Uses a local file by default (same file as before, now read/written over
 // libSQL instead of better-sqlite3) so local dev needs zero setup. Set
@@ -7,6 +9,13 @@ import { createClient } from '@libsql/client';
 // database instead — same client, same query code either way, since
 // better-sqlite3 can't run on Vercel (its serverless functions have a
 // read-only filesystem, so writing a local .sqlite file there crashes).
+// `data/` is gitignored (it holds the sqlite file), so a fresh clone doesn't
+// have it — libSQL doesn't create missing parent directories itself and
+// throws ConnectionFailed instead, so it has to exist before createClient runs.
+if (!process.env.TURSO_DATABASE_URL) {
+  fs.mkdirSync('./data', { recursive: true });
+}
+
 const client = createClient({
   url: process.env.TURSO_DATABASE_URL || 'file:./data/db.sqlite',
   authToken: process.env.TURSO_AUTH_TOKEN,
@@ -339,30 +348,30 @@ async function init() {
     });
   }
   // Galerie is a dynamic list (add/remove from Espace OA > Visuel Site >
-  // Galerie), not fixed slots — seeded with the same 12 default photos
-  // pages/galerie.jsx falls back to, so a fresh DB's admin list and public
-  // page start in sync instead of the admin seeing an empty list.
-  const galerieDefault = JSON.stringify({
-    page_header: null,
-    photos: [
-      { id: 'photo_1', src: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=800&q=80', cat: 'mariage', label: 'Mariage' },
-      { id: 'photo_2', src: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=800&q=80', cat: 'mariage', label: 'Mariage' },
-      { id: 'photo_3', src: 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=800&q=80', cat: 'mariage', label: 'Mariage' },
-      { id: 'photo_4', src: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=800&q=80', cat: 'anniversaire', label: 'Anniversaire' },
-      { id: 'photo_5', src: 'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=800&q=80', cat: 'anniversaire', label: 'Anniversaire' },
-      { id: 'photo_6', src: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80', cat: 'anniversaire', label: 'Anniversaire' },
-      { id: 'photo_7', src: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&q=80', cat: 'pro', label: 'Événement Pro' },
-      { id: 'photo_8', src: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80', cat: 'pro', label: 'Événement Pro' },
-      { id: 'photo_9', src: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800&q=80', cat: 'pro', label: 'Événement Pro' },
-      { id: 'photo_10', src: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=800&q=80', cat: 'deco', label: 'Location Déco' },
-      { id: 'photo_11', src: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80', cat: 'deco', label: 'Location Déco' },
-      { id: 'photo_12', src: 'https://images.unsplash.com/photo-1478146059778-26028b07395a?w=800&q=80', cat: 'deco', label: 'Location Déco' },
-    ],
-  });
+  // Galerie), not fixed slots — seeded with the real event photos from
+  // src/lib/galerie-defaults.js, so a fresh DB's admin list and public page
+  // start in sync instead of the admin seeing an empty list.
+  const galerieDefault = JSON.stringify({ page_header: null, photos: DEFAULT_GALERIE_PHOTOS });
   await client.execute({
     sql: 'INSERT OR IGNORE INTO site_content (key, value, updated_at) VALUES (?, ?, ?)',
     args: ['images_galerie', galerieDefault, settingsNow],
   });
+  // Older DBs were seeded with Unsplash placeholder photos. Swap them for the
+  // real ones — but only photos still pointing at Unsplash, so anything the
+  // admin uploaded in the meantime is kept (and stays first in the list).
+  const galerieRow = await client.execute("SELECT value FROM site_content WHERE key = 'images_galerie'");
+  if (galerieRow.rows.length) {
+    let parsed = null;
+    try { parsed = JSON.parse(galerieRow.rows[0].value); } catch {}
+    const photos = Array.isArray(parsed?.photos) ? parsed.photos : null;
+    if (photos && photos.some(p => String(p.src).includes('images.unsplash.com'))) {
+      const kept = photos.filter(p => !String(p.src).includes('images.unsplash.com'));
+      await client.execute({
+        sql: "UPDATE site_content SET value = ?, updated_at = ? WHERE key = 'images_galerie'",
+        args: [JSON.stringify({ ...parsed, photos: [...kept, ...DEFAULT_GALERIE_PHOTOS] }), settingsNow],
+      });
+    }
+  }
 
   // One-time migration: replace the placeholder demo catalog seeded above
   // (only ever ran on a brand-new DB) with the real price list from the
@@ -373,6 +382,26 @@ async function init() {
     await seedRealCatalog();
     await client.execute({
       sql: "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('catalog_v2_seeded', '1', ?)",
+      args: [new Date().toISOString()],
+    });
+  }
+
+  // Swap tall photos for their 4:3 catalogue versions — only where the
+  // image is still the one set by seedBrochureAdditions (not an admin upload).
+  for (const name of ['arche-ronde', 'rideau-classique', 'tables-basses-marbre', 'tables-miroir-dorees']) {
+    await client.execute({
+      sql: 'UPDATE materials SET image_url = ? WHERE image_url = ?',
+      args: [`/pics/catalogue/${name}.jpg`, `/pics/${name}.jpg`],
+    });
+  }
+
+  // Brochure items missing from the catalog + product photos from pics/.
+  // Runs once per DB (flag), so admin edits/deletions made afterwards stick.
+  const brochureFlag = await client.execute("SELECT value FROM settings WHERE key = 'catalog_v3_brochure'");
+  if (!brochureFlag.rows.length || brochureFlag.rows[0].value !== '1') {
+    await seedBrochureAdditions();
+    await client.execute({
+      sql: "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('catalog_v3_brochure', '1', ?)",
       args: [new Date().toISOString()],
     });
   }
@@ -489,6 +518,94 @@ async function seedRealCatalog() {
               VALUES (?, ?, ?, ?, ?, ?, ?)`,
         args: [crypto.randomUUID(), mat.id, minQty, maxQty, weekdayHt, weekendHt, now],
       });
+    }
+  }
+}
+
+// Items from the owners' brochures (pics/Brochure OA *.jpeg) that weren't in
+// the price sheet above. Brochure prices are TTC, flat (no weekday/weekend
+// split), so HT = TTC / 1.2 — stored with enough decimals that
+// ttcFromHt() rounds back to the exact brochure price. Stock is a
+// placeholder to correct via Espace OA > Matériel.
+const BROCHURE_CATEGORY = { id: 'cat-vaisselle', name: 'VAISSELLE & ART DE LA TABLE' };
+const BROCHURE_MATERIALS = [
+  { id: 'mat-vaisselle-kit', name: 'Kit complet vaisselle (par personne)', description: 'Grande et petite assiette, couverts or ou argent. À rendre sale.', category: BROCHURE_CATEGORY.name, max_quantity: 500, ttc: 3.50, image: 'kit-vaisselle' },
+  { id: 'mat-vaisselle-verres', name: 'Option verres à pied et à eau (par personne)', description: 'Les 2 verres, en complément du kit vaisselle.', category: BROCHURE_CATEGORY.name, max_quantity: 500, ttc: 0.50, image: 'verres' },
+  { id: 'mat-vaisselle-sous-assiette', name: 'Sous-assiette dorée transparente', category: BROCHURE_CATEGORY.name, max_quantity: 300, ttc: 1.00, image: 'sous-assiettes-dorees' },
+  { id: 'mat-vaisselle-nappe', name: 'Nappe professionnelle', description: 'Livrée propre et repassée, à rendre sale.', category: BROCHURE_CATEGORY.name, max_quantity: 80, ttc: 12.00, image: 'nappes' },
+  { id: 'mat-deco-tables-miroir', name: 'Lot de 2 tables miroir dorées', category: 'DÉCORATIONS', max_quantity: 3, ttc: 30.00, image: 'catalogue/tables-miroir-dorees' },
+];
+
+// Product photo (public/pics/<name>.jpg) per existing catalog item — only
+// applied where no image has been set yet, never over an admin upload.
+// pics/catalogue/ holds 4:3 versions of tall photos (whole photo over a
+// blurred fill) so the catalogue's 4:3 frame doesn't cut the subject, e.g.
+// the sofa under the flower arch.
+const MATERIAL_IMAGES = {
+  'mat-banq-2-beige': 'banquette-2-places-beige',
+  'mat-banq-2-taupe': 'banquette-2-places-taupe',
+  'mat-banq-3-beige': 'banquette-3-places-beige',
+  'mat-chaise-napoleon': 'chaises-napoleon',
+  'mat-deco-arche-carree': 'arche-carree',
+  'mat-deco-arche-ronde': 'catalogue/arche-ronde',
+  'mat-deco-rideau-classique': 'catalogue/rideau-classique',
+  'mat-deco-rideau-tresse': 'rideau-tresse',
+  'mat-deco-tables-basses': 'catalogue/tables-basses-marbre',
+  'mat-opt-kit-led': 'kit-lumiere-led',
+  'mat-opt-parasol': 'tente-parasol-chauffant',
+  'mat-opt-poids-15': 'tente-poids-lestage',
+  'mat-opt-poids-30': 'tente-poids-lestage',
+  'mat-table-rect': 'table-rectangulaire',
+  'mat-table-ronde-152': 'table-ronde-152',
+  'mat-table-ronde-180': 'table-ronde-180',
+  'mat-tente-32': 'tente-32m2',
+  'mat-tente-50': 'tente-50m2',
+  'mat-tente-72': 'tente-72m2',
+  'mat-tente-100': 'tente-100m2',
+};
+
+async function seedBrochureAdditions() {
+  const now = new Date().toISOString();
+  await client.execute({
+    sql: 'INSERT OR IGNORE INTO categories (id, name, created_at) VALUES (?, ?, ?)',
+    args: [BROCHURE_CATEGORY.id, BROCHURE_CATEGORY.name, now],
+  });
+  for (const mat of BROCHURE_MATERIALS) {
+    const inserted = await client.execute({
+      sql: `INSERT OR IGNORE INTO materials (id, name, description, category, max_quantity, available, image_url, price, created_at)
+            VALUES (?, ?, ?, ?, ?, 1, ?, 0, ?)`,
+      args: [mat.id, mat.name, mat.description || null, mat.category, mat.max_quantity, `/pics/${mat.image}.jpg`, now],
+    });
+    if (!inserted.rowsAffected) continue;
+    const ht = Math.round((mat.ttc / 1.2) * 1e6) / 1e6;
+    await client.execute({
+      sql: `INSERT INTO material_price_tiers (id, material_id, min_qty, max_qty, price_weekday_ht, price_weekend_ht, created_at)
+            VALUES (?, ?, 1, NULL, ?, ?, ?)`,
+      args: [crypto.randomUUID(), mat.id, ht, ht, now],
+    });
+  }
+  for (const [id, image] of Object.entries(MATERIAL_IMAGES)) {
+    await client.execute({
+      sql: "UPDATE materials SET image_url = ? WHERE id = ? AND (image_url IS NULL OR image_url = '')",
+      args: [`/pics/${image}.jpg`, id],
+    });
+  }
+  // Append the new gallery photos (pics/) to an already-seeded gallery.
+  const galerieRow = await client.execute("SELECT value FROM site_content WHERE key = 'images_galerie'");
+  if (galerieRow.rows.length) {
+    let parsed = null;
+    try { parsed = JSON.parse(galerieRow.rows[0].value); } catch {}
+    if (Array.isArray(parsed?.photos)) {
+      const existing = new Set(parsed.photos.map(p => p.src));
+      const missing = DEFAULT_GALERIE_PHOTOS
+        .filter(p => p.src.startsWith('/pics/') && !existing.has(p.src))
+        .map(p => ({ ...p, id: 'pics-' + p.src.slice('/pics/'.length, -'.jpg'.length) }));
+      if (missing.length) {
+        await client.execute({
+          sql: "UPDATE site_content SET value = ?, updated_at = ? WHERE key = 'images_galerie'",
+          args: [JSON.stringify({ ...parsed, photos: [...parsed.photos, ...missing] }), now],
+        });
+      }
     }
   }
 }

@@ -3,6 +3,9 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { supabase } from '../src/lib/supabase.js'
 import { ttcFromHt, groupTiersByMaterial } from '../src/lib/pricing.js'
+// Galerie categories drive GalerieManager's dropdown (dynamic add/remove
+// list, not fixed slots) — shared with the filters on pages/galerie.jsx.
+import { GALERIE_CATEGORIES } from '../src/lib/galerie-defaults.js'
 
 const EMPTY_TIER = { minQty:1, maxQty:'', weekday:'', weekend:'' }
 
@@ -39,18 +42,6 @@ const SERVICES_SLOTS = [
   { key:'service_3', label:'Événements Professionnels' },
   { key:'service_4', label:'Location de Décoration' },
 ]
-// Galerie is a dynamic add/remove list (GalerieManager below), not fixed
-// slots like the other Visuel Site tabs — this just drives its category
-// dropdown, kept in sync with the filter labels on pages/galerie.jsx.
-const GALERIE_CATEGORIES = [
-  { key:'mariage', label:'Mariages' },
-  { key:'anniversaire', label:'Anniversaires' },
-  { key:'pro', label:'Événements Pro' },
-  { key:'deco', label:'Location Déco' },
-]
-const CONTACT_SLOTS = [
-  { key:'page_header', label:'Bannière de page' },
-]
 // Drives the mobile "tap to expand" tab menus (see .block-tabs-mobile) —
 // same tab set/order as the desktop pill row, just labelled once here so
 // both places can't drift out of sync.
@@ -59,7 +50,6 @@ const VISUEL_TABS = [
   { key:'prestations', label:'Prestations' },
   { key:'galerie', label:'Galerie' },
   { key:'apropos', label:'À Propos' },
-  { key:'contact', label:'Contact' },
 ]
 const REGLAGES_TABS = [
   { key:'adresse', label:'Adresse & livraison' },
@@ -1026,7 +1016,6 @@ export default function AdminDashboard() {
               <button className={`block-tab${visuelTab==='prestations'?' active':''}`} onClick={() => setVisuelTab('prestations')}>Prestations</button>
               <button className={`block-tab${visuelTab==='galerie'?' active':''}`} onClick={() => setVisuelTab('galerie')}>Galerie</button>
               <button className={`block-tab${visuelTab==='apropos'?' active':''}`} onClick={() => setVisuelTab('apropos')}>À Propos</button>
-              <button className={`block-tab${visuelTab==='contact'?' active':''}`} onClick={() => setVisuelTab('contact')}>Contact</button>
             </div>
             {/* Mobile-only: the 5-item pill row above doesn't fit a phone
                 width without either scrolling or squashing to illegible
@@ -1054,7 +1043,6 @@ export default function AdminDashboard() {
             {visuelTab==='accueil' && <ImageSlotGrid contentKey="images_home" slots={HOME_SLOTS} bucket="home" />}
             {visuelTab==='prestations' && <ImageSlotGrid contentKey="images_services" slots={SERVICES_SLOTS} bucket="services" />}
             {visuelTab==='galerie' && <GalerieManager />}
-            {visuelTab==='contact' && <ImageSlotGrid contentKey="images_contact" slots={CONTACT_SLOTS} bucket="contact" />}
 
             {visuelTab==='apropos' && (
             <div className="mat-form-card">

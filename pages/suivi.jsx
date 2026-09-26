@@ -92,7 +92,7 @@ export default function Suivi() {
       <div className="site-wrap">
         <div
           className="page-header"
-          style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1920&q=80)' }}
+          style={{ backgroundImage: 'url(/PHOTO-2026-09-26-16-24-39_2.jpg)' }}
         >
           <div className="page-header-overlay" />
           <div className="container">

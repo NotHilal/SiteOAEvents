@@ -14,6 +14,14 @@ const nextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // Removed pages — keep old links/bookmarks working. Contact is now the
+  // floating ContactWidget; ?contact=1 tells it to open on arrival.
+  async redirects() {
+    return [
+      { source: '/nos-experiences', destination: '/galerie', permanent: true },
+      { source: '/contact', destination: '/?contact=1', permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

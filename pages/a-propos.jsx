@@ -9,7 +9,7 @@ const VALUE_ICONS = ['/return.avif', '/delivery-truck.avif', '/customer-service.
 
 // Matches the seed row in src/lib/sqlite-db.js — used as the initial state
 // so there's no flash of empty content before the fetch resolves.
-const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1920&q=80'
+const PAGE_HEADER_DEFAULT = '/PHOTO-2026-09-26-16-24-39_1.jpg'
 
 const DEFAULT_CONTENT = {
   founderName: "[Prénom Nom], fondateur d'OA Événementiel",

@@ -2,44 +2,24 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Head from 'next/head'
 import Lightbox from 'yet-another-react-lightbox'
+import GalleryCarousel from '../src/components/GalleryCarousel.jsx'
 import AOS from 'aos'
 import { supabase } from '../src/lib/supabase.js'
+import { GALERIE_CATEGORIES, DEFAULT_GALERIE_PHOTOS } from '../src/lib/galerie-defaults.js'
 
-const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1920&q=80'
+const PAGE_HEADER_DEFAULT = '/PHOTO-2026-09-26-16-24-43.jpg'
 
-// Used only as a fallback for a brand-new DB whose images_galerie row hasn't
-// been migrated to the { page_header, photos: [...] } shape yet (see
-// src/lib/sqlite-db.js seed) — the real, editable list lives in the DB from
-// then on (Espace OA > Visuel Site > Galerie), not here.
-const DEFAULT_PHOTOS = [
-  { id: 'photo_1', src: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=800&q=80', cat: 'mariage', label: 'Mariage' },
-  { id: 'photo_2', src: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=800&q=80', cat: 'mariage', label: 'Mariage' },
-  { id: 'photo_3', src: 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=800&q=80', cat: 'mariage', label: 'Mariage' },
-  { id: 'photo_4', src: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=800&q=80', cat: 'anniversaire', label: 'Anniversaire' },
-  { id: 'photo_5', src: 'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=800&q=80', cat: 'anniversaire', label: 'Anniversaire' },
-  { id: 'photo_6', src: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80', cat: 'anniversaire', label: 'Anniversaire' },
-  { id: 'photo_7', src: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=800&q=80', cat: 'pro', label: 'Événement Pro' },
-  { id: 'photo_8', src: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&q=80', cat: 'pro', label: 'Événement Pro' },
-  { id: 'photo_9', src: 'https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800&q=80', cat: 'pro', label: 'Événement Pro' },
-  { id: 'photo_10', src: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=800&q=80', cat: 'deco', label: 'Location Déco' },
-  { id: 'photo_11', src: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80', cat: 'deco', label: 'Location Déco' },
-  { id: 'photo_12', src: 'https://images.unsplash.com/photo-1478146059778-26028b07395a?w=800&q=80', cat: 'deco', label: 'Location Déco' },
-]
-
-const FILTERS = [
-  { key: 'all', label: 'Tous' },
-  { key: 'mariage', label: 'Mariages' },
-  { key: 'anniversaire', label: 'Anniversaires' },
-  { key: 'pro', label: 'Événements Pro' },
-  { key: 'deco', label: 'Location Déco' },
-]
+const FILTERS = [{ key: 'all', label: 'Tous' }, ...GALERIE_CATEGORIES]
+// Photos shown before the "Afficher toutes les photos" button.
+const INITIAL_COUNT = 12
 
 export default function Galerie() {
   const [activeFilter, setActiveFilter] = useState('all')
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [pageHeader, setPageHeader] = useState(null)
-  const [photos, setPhotos] = useState(DEFAULT_PHOTOS)
+  const [photos, setPhotos] = useState(DEFAULT_GALERIE_PHOTOS)
+  const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
     AOS.init({ duration: 820, easing: 'ease-in-out', once: true, offset: 55 })
@@ -59,6 +39,8 @@ export default function Galerie() {
   }, [])
 
   const filtered = activeFilter === 'all' ? photos : photos.filter(p => p.cat === activeFilter)
+  const visible = showAll ? filtered : filtered.slice(0, INITIAL_COUNT)
+  // The lightbox browses the whole filtered set, not just the visible part.
   const lightboxSlides = filtered.map(p => ({ src: p.src }))
 
   const openLightbox = (idx) => {
@@ -97,15 +79,17 @@ export default function Galerie() {
                 <button
                   key={f.key}
                   className={activeFilter === f.key ? 'active' : ''}
-                  onClick={() => setActiveFilter(f.key)}
+                  onClick={() => { setActiveFilter(f.key); setShowAll(false) }}
                 >
                   {f.label}
                 </button>
               ))}
             </div>
 
+            <GalleryCarousel key={activeFilter} photos={filtered} onOpen={openLightbox} />
+
             <div className="row gallery-full-grid">
-              {filtered.map((photo, i) => (
+              {visible.map((photo, i) => (
                 <div key={photo.id} className="col-md-4 gallery-full-item" data-aos="fade-up" data-aos-delay={(i % 3) * 80}>
                   <button
                     className="gallery-link w-100 border-0 p-0"
@@ -120,6 +104,17 @@ export default function Galerie() {
                 </div>
               ))}
             </div>
+
+            {filtered.length > INITIAL_COUNT && (
+              <div className="gallery-more">
+                <button type="button" className="btn btn-rose-gold" onClick={() => setShowAll(v => !v)}>
+                  {showAll
+                    ? <><i className="fas fa-chevron-up me-2" />Afficher moins</>
+                    : <><i className="fas fa-images me-2" />Afficher toutes les photos ({filtered.length})</>
+                  }
+                </button>
+              </div>
+            )}
           </div>
         </section>
 
