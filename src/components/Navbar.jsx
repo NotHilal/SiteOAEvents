@@ -3,13 +3,19 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { getCatalogueCartCount, CART_EVENT } from '../lib/cart.js'
 import Icon from './Icon.jsx'
+import AccountMenu from './AccountMenu.jsx'
+import ContactMenu from './ContactMenu.jsx'
 import { track } from '../lib/analytics.js'
+import { SITE } from '../lib/site.js'
 
 // Header modelled on options.fr (saved reference at /example): three equal
 // columns — "Menu" drawer toggle + primary CTA on the left, a large centered
 // logo that compacts on scroll, and a row of thin outline icons with tooltips
 // on the right. Every page lives in the slide-in drawer rather than in a
 // crowded inline link row.
+
+// "Nous trouver" target: the Localisation block on the contact page.
+const LOCATION_HREF = '/contact#localisation'
 
 // Drawer contents: main pages as large uppercase lines, practical links as a
 // smaller gold group beneath — same two-tier split as options.fr's menu.
@@ -26,11 +32,18 @@ const SERVICE_LINKS = [
   { href: '/devis', label: 'Simulation de devis' },
   { href: '/suivi', label: 'Suivi de commande' },
   { href: '/contact', label: 'Contact' },
+  // Also in the header icon row, which hides them below 992px.
+  ...(SITE.phone ? [{ href: `tel:${SITE.phone}`, label: 'Nous appeler', external: true }] : []),
+  { href: LOCATION_HREF, label: 'Nous trouver' },
 ]
+// Right-hand icon row, in options.fr's order: phone (rendered separately as
+// a dropdown), find us, contact, catalogue — then Mon compte and the cart.
+// `current` marks the one icon whose page it is, so /contact doesn't light
+// up multiple icons at once.
 const ICON_LINKS = [
-  { href: '/devis', label: 'Simulation de devis', icon: 'calculator' },
-  { href: '/suivi', label: 'Suivi de commande', icon: 'truck' },
-  { href: '/contact', label: 'Contactez-nous', icon: 'mail' },
+  { href: LOCATION_HREF, label: 'Nous trouver', icon: 'location' },
+  { href: '/contact', label: 'Contactez-nous', icon: 'mail', current: true },
+  { href: '/catalogue', label: 'Catalogue', icon: 'book', current: true },
 ]
 
 export default function Navbar() {
@@ -131,22 +144,28 @@ export default function Navbar() {
         </div>
 
         <nav className="oah-right" aria-label="Accès rapides">
-          {ICON_LINKS.map(link => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`oah-icon${isCurrent(link.href) ? ' is-current' : ''}`}
-              aria-label={link.label}
-            >
-              <Icon name={link.icon} />
-              <span className="oah-tooltip" aria-hidden="true">{link.label}</span>
-            </Link>
-          ))}
+          <ContactMenu />
+          {ICON_LINKS.map(link => {
+            const Tag = link.external ? 'a' : Link
+            return (
+              <Tag
+                key={link.label}
+                href={link.href}
+                {...(link.href === LOCATION_HREF && { scroll: false })}
+                className={`oah-icon oah-icon-secondary${link.current && isCurrent(link.href) ? ' is-current' : ''}`}
+                aria-label={link.label}
+              >
+                <Icon name={link.icon} ion size={32} />
+                <span className="oah-tooltip" aria-hidden="true">{link.label}</span>
+              </Tag>
+            )
+          })}
+          <AccountMenu />
           <Link
             href="/catalogue"
             className="oah-icon oah-icon-cart"
           >
-            <Icon name="bag" />
+            <Icon name="cart" ion size={32} />
             <span className="oah-cart-count" aria-hidden="true">{cartCount}</span>
             <span className="oah-tooltip" aria-hidden="true">Mon panier</span>
             <span className="visually-hidden">Mon panier{cartCount > 0 ? `, ${cartCount} article${cartCount > 1 ? 's' : ''}` : ''}</span>
@@ -194,16 +213,20 @@ export default function Navbar() {
         </nav>
 
         <nav className="oah-drawer-services" aria-label="Services">
-          {SERVICE_LINKS.map(link => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`oah-drawer-service${isCurrent(link.href) ? ' is-current' : ''}`}
-              onClick={() => setMenuOpen(false)}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {SERVICE_LINKS.map(link => {
+            const Tag = link.external ? 'a' : Link
+            return (
+              <Tag
+                key={link.href}
+                href={link.href}
+                {...(link.href === LOCATION_HREF && { scroll: false })}
+                className={`oah-drawer-service${isCurrent(link.href) ? ' is-current' : ''}`}
+                onClick={() => setMenuOpen(false)}
+              >
+                {link.label}
+              </Tag>
+            )
+          })}
         </nav>
       </div>
     </header>

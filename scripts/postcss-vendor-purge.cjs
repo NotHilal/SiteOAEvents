@@ -34,6 +34,14 @@ module.exports = () => ({
     const file = (cssRoot.source && cssRoot.source.input && cssRoot.source.input.file) || ''
     if (process.env.PURGE_DEBUG) console.log('[vendor-purge]', file)
     if (!VENDOR.test(file) || process.env.NO_VENDOR_PURGE) return
+    // The purge result depends on pages/ and src/, not on the vendor file
+    // itself — declare them as dependencies, or the bundler's cache keeps
+    // serving the old purged CSS and a newly used class (e.g. a Font
+    // Awesome icon added to a component) stays missing until the cache is
+    // wiped. Same mechanism Tailwind uses.
+    for (const dir of ['pages', 'src']) {
+      helpers.result.messages.push({ type: 'dir-dependency', plugin: 'vendor-purge', dir: path.join(root, dir), glob: '**/*.{js,jsx}', parent: file })
+    }
     return purge.OnceExit(cssRoot, helpers)
   },
 })

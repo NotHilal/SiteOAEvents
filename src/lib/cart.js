@@ -24,10 +24,14 @@ export function setCatalogueCart(cart) {
   window.dispatchEvent(new Event(CART_EVENT))
 }
 
-export function addToCatalogueCart(materialId, qty = 1) {
+// Adds on top of what's already in the cart for that item (same rule as
+// the catalogue's + button), capped at the item's stock when `maxQty` is
+// given.
+export function addToCatalogueCart(materialId, qty = 1, maxQty = null) {
   const cart = getCatalogueCart()
   const key = String(materialId)
-  const next = { ...cart, [key]: (cart[key] || 0) + qty }
+  const total = (cart[key] || 0) + qty
+  const next = { ...cart, [key]: maxQty ? Math.min(maxQty, total) : total }
   setCatalogueCart(next)
   return next
 }

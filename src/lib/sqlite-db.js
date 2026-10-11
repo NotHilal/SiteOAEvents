@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { createClient } from '@libsql/client';
+import { slugify } from './slug.js';
 
 // Uses a local file by default (same file as before, now read/written over
 // libSQL instead of better-sqlite3) so local dev needs zero setup. Set
@@ -226,11 +227,35 @@ async function init() {
   // NULL means no minimum. Enforced client-side in the booking wizard.
   await ensureColumn('materials', 'min_order_qty', 'INTEGER');
 
+  // Product / variant model behind /catalogue/[slug]. A material is one
+  // purchasable configuration (own price tiers, stock, image). Materials
+  // sharing a product_id are variants of that product (Poids de lestage
+  // 15 kg / 30 kg) and get the multiple-options page; a material with no
+  // product_id is a product on its own and gets the single-option page.
+  // slug is stored (not derived on every request) so renaming an item in
+  // Espace OA doesn't break links already shared.
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS products (
+      id TEXT PRIMARY KEY,
+      slug TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      description TEXT,
+      category TEXT,
+      created_at TEXT
+    )
+  `);
+  await ensureColumn('materials', 'slug', 'TEXT');
+  await ensureColumn('materials', 'product_id', 'TEXT');
+  await ensureColumn('materials', 'variant_label', 'TEXT');
+  await ensureColumn('materials', 'variant_order', 'INTEGER');
+
   await client.executeMultiple(`
     CREATE INDEX IF NOT EXISTS idx_payments_reservation ON payments(reservation_id);
     CREATE INDEX IF NOT EXISTS idx_payments_due_status ON payments(due_date, status);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_reservations_reference ON reservations(reference);
     CREATE INDEX IF NOT EXISTS idx_material_price_tiers_material ON material_price_tiers(material_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_materials_slug ON materials(slug);
+    CREATE INDEX IF NOT EXISTS idx_materials_product ON materials(product_id);
   `);
 
   // Seed default categories if empty
@@ -382,6 +407,34 @@ async function init() {
       args: [new Date().toISOString()],
     });
   }
+
+  // One-time: group the real catalogue's size/length/weight/colour variants
+  // into products (see PRODUCT_FAMILIES). Flag-guarded like the seed above,
+  // so later edits made in Espace OA are never overwritten.
+  const familiesFlag = await client.execute("SELECT value FROM settings WHERE key = 'product_families_v1_seeded'");
+  if (!familiesFlag.rows.length || familiesFlag.rows[0].value !== '1') {
+    await seedProductFamilies();
+    await client.execute({
+      sql: "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('product_families_v1_seeded', '1', ?)",
+      args: [new Date().toISOString()],
+    });
+  }
+
+  // Every material gets a URL slug from its name (once — kept on rename).
+  // Runs on each start so items added since get one too; a clash with an
+  // existing slug or product slug gets a -2, -3… suffix.
+  const { rows: unslugged } = await client.execute('SELECT id, name FROM materials WHERE slug IS NULL OR slug = \'\'');
+  if (unslugged.length) {
+    const { rows: taken } = await client.execute('SELECT slug FROM materials WHERE slug IS NOT NULL UNION SELECT slug FROM products');
+    const used = new Set(taken.map(r => r.slug));
+    for (const m of unslugged) {
+      const base = slugify(m.name) || slugify(m.id);
+      let slug = base;
+      for (let n = 2; used.has(slug); n++) slug = `${base}-${n}`;
+      used.add(slug);
+      await client.execute({ sql: 'UPDATE materials SET slug = ? WHERE id = ?', args: [slug, m.id] });
+    }
+  }
 }
 
 const DEMO_CATEGORY_IDS = ['c1', 'c2', 'c3', 'c4'];
@@ -462,6 +515,47 @@ const REAL_MATERIALS = [
   { id: 'mat-opt-galette', name: 'Option galette de chaise', description: 'Option pour Chaise Napoléon', category: 'OPTIONS & ACCESSOIRES', max_quantity: 500,
     tiers: [[1, null, 0.50, 0.50]] },
 ];
+
+// Variant groupings, reviewed item by item. Only items that are the same
+// product in a different size, length, weight or colour are grouped;
+// different models stay separate products even when the names look alike
+// (round vs square flower arch, classic vs braided curtain, the chair vs its
+// cushion option). Each variant keeps its own price tiers, stock and image.
+const PRODUCT_FAMILIES = [
+  { id: 'prod-banquette', slug: 'banquette', name: 'Banquette', category: 'BANQUETTES',
+    variants: [['mat-banq-2-beige', '2 places – Beige'], ['mat-banq-2-taupe', '2 places – Taupe'], ['mat-banq-3-beige', '3 places – Beige']] },
+  { id: 'prod-table-ronde', slug: 'table-ronde', name: 'Table ronde', category: 'TABLES',
+    variants: [['mat-table-ronde-152', 'Ø152 cm'], ['mat-table-ronde-180', 'Ø180 cm']] },
+  { id: 'prod-tente-reception', slug: 'tente-de-reception', name: 'Tente de réception', category: 'TENTES',
+    variants: [['mat-tente-32', '32 m² (4 × 8 m)'], ['mat-tente-50', '50 m² (5 × 10 m)'], ['mat-tente-72', '72 m² (6 × 12 m)'], ['mat-tente-100', '100 m² (5 × 20 m)']] },
+  { id: 'prod-rallonge-electrique', slug: 'rallonge-electrique', name: 'Rallonge électrique', category: 'OPTIONS & ACCESSOIRES',
+    variants: [['mat-opt-rallonge-5', '5 mètres'], ['mat-opt-rallonge-10', '10 mètres']] },
+  { id: 'prod-poids-lestage', slug: 'poids-de-lestage', name: 'Poids de lestage', category: 'OPTIONS & ACCESSOIRES',
+    variants: [['mat-opt-poids-15', '15 kg'], ['mat-opt-poids-30', '30 kg']] },
+];
+
+async function seedProductFamilies() {
+  const now = new Date().toISOString();
+  for (const fam of PRODUCT_FAMILIES) {
+    // Skip a family whose items aren't all in this DB (e.g. deleted in
+    // Espace OA) rather than creating a half-empty product.
+    const { rows } = await client.execute({
+      sql: `SELECT id FROM materials WHERE id IN (${fam.variants.map(() => '?').join(',')})`,
+      args: fam.variants.map(([id]) => id),
+    });
+    if (rows.length !== fam.variants.length) continue;
+    await client.execute({
+      sql: 'INSERT OR IGNORE INTO products (id, slug, name, description, category, created_at) VALUES (?, ?, ?, NULL, ?, ?)',
+      args: [fam.id, fam.slug, fam.name, fam.category, now],
+    });
+    for (const [i, [materialId, label]] of fam.variants.entries()) {
+      await client.execute({
+        sql: 'UPDATE materials SET product_id = ?, variant_label = ?, variant_order = ? WHERE id = ?',
+        args: [fam.id, label, i + 1, materialId],
+      });
+    }
+  }
+}
 
 async function seedRealCatalog() {
   const now = new Date().toISOString();

@@ -10,6 +10,7 @@
 /* Custom styles */
 @import './styles/style.css';
 @import './styles/reservation.css';
+@import './styles/product.css';
 @import './styles/admin.css';
 
 /* Swiper hero overrides */

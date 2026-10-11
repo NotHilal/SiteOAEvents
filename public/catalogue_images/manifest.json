@@ -1,0 +1,722 @@
+[
+  {
+    "order": 1,
+    "id": "mat-banq-2-beige",
+    "name": "Banquette 2 places – Beige",
+    "slug": "banquette-2-places-beige",
+    "category": "BANQUETTES",
+    "description": "Banquette 2 places en velours beige élégante pour coin lounge, salon et réception.",
+    "primary_image": {
+      "filename": "01_banquette-2-places-beige.jpg",
+      "path": "catalogue_images/01_banquette-2-places-beige.jpg",
+      "public_url": "/catalogue_images/01_banquette-2-places-beige.jpg",
+      "width": 1024,
+      "height": 1024,
+      "size_bytes": 72467,
+      "source_url": "Uploaded by user (Unknown.jpg)"
+    },
+    "alternatives": [
+      {
+        "filename": "01_banquette-2-places-beige_alt1.jpg",
+        "path": "catalogue_images/alternatives/01_banquette-2-places-beige_alt1.jpg",
+        "width": 700,
+        "height": 700,
+        "source_url": "https://www.cdiscount.com/pdt2/6/8/7/5/700x700/aaciz65687/rw/banquette-2-places-velours.jpg"
+      },
+      {
+        "filename": "01_banquette-2-places-beige_alt2.jpg",
+        "path": "catalogue_images/alternatives/01_banquette-2-places-beige_alt2.jpg",
+        "width": 700,
+        "height": 700,
+        "source_url": "https://www.cdiscount.com/pdt2/4/4/6/2/700x700/aacis57446/rw/banquette-salle--manger-2.jpg"
+      },
+      {
+        "filename": "01_banquette-2-places-beige_alt3.jpg",
+        "path": "catalogue_images/alternatives/01_banquette-2-places-beige_alt3.jpg",
+        "width": 732,
+        "height": 732,
+        "source_url": "https://medias.maisonsdumonde.com/images/f_auto,q_auto,w_732/v1/mkp/M24179959_1/banquette-scandinave-2-places-en-bois-et-velours-cotele-beige.jpg"
+      }
+    ]
+  },
+  {
+    "order": 2,
+    "id": "mat-banq-2-taupe",
+    "name": "Banquette 2 places – Taupe",
+    "slug": "banquette-2-places-taupe",
+    "category": "BANQUETTES",
+    "description": "Banquette 2 places en velours taupe pour coin lounge et réception haut de gamme.",
+    "primary_image": {
+      "filename": "02_banquette-2-places-taupe.jpg",
+      "path": "catalogue_images/02_banquette-2-places-taupe.jpg",
+      "public_url": "/catalogue_images/02_banquette-2-places-taupe.jpg",
+      "width": 736,
+      "height": 736,
+      "size_bytes": 30062,
+      "source_url": "https://i.pinimg.com/736x/1e/a6/4c/1ea64cfe4a6e9cd6f506cddb8121ace8.jpg"
+    },
+    "alternatives": [
+      {
+        "filename": "02_banquette-2-places-taupe_alt1.jpg",
+        "path": "catalogue_images/alternatives/02_banquette-2-places-taupe_alt1.jpg",
+        "width": 1080,
+        "height": 1080,
+        "source_url": "https://www.latelierbyenjoy.fr/wp-content/uploads/2023/02/D589277E-A559-42D3-9201-AD5C35C94D2E.png"
+      },
+      {
+        "filename": "02_banquette-2-places-taupe_alt2.jpg",
+        "path": "catalogue_images/alternatives/02_banquette-2-places-taupe_alt2.jpg",
+        "width": 1200,
+        "height": 1200,
+        "source_url": "https://www.paris-prix.com/405964-zoom/banquette-2-places-convertible-velours-theo-107cm-taupe.jpg"
+      },
+      {
+        "filename": "02_banquette-2-places-taupe_alt3.jpg",
+        "path": "catalogue_images/alternatives/02_banquette-2-places-taupe_alt3.jpg",
+        "width": 1200,
+        "height": 1200,
+        "source_url": "https://media.adeo.com/mkp/98809e435fb9a398b04c14227199a934/media.jpeg"
+      }
+    ]
+  },
+  {
+    "order": 3,
+    "id": "mat-deco-rideau-tresse",
+    "name": "Rideau tressé 3 × 4 m",
+    "slug": "rideau-tresse-3x4m",
+    "category": "DÉCORATIONS",
+    "description": "Structure incluse. Rideau tressé macramé / boisé décoratif pour scénographie et cérémonie.",
+    "primary_image": {
+      "filename": "05_rideau-tresse-3x4m.jpg",
+      "path": "catalogue_images/05_rideau-tresse-3x4m.jpg",
+      "public_url": "/catalogue_images/05_rideau-tresse-3x4m.jpg",
+      "width": 736,
+      "height": 736,
+      "size_bytes": 147925,
+      "source_url": "https://i.pinimg.com/736x/ff/d4/5d/ffd45dc6820d04a379ec6ae2e3b51db8.jpg"
+    },
+    "alternatives": [
+      {
+        "filename": "05_rideau-tresse-3x4m_alt1.jpg",
+        "path": "catalogue_images/alternatives/05_rideau-tresse-3x4m_alt1.jpg",
+        "width": 736,
+        "height": 981,
+        "source_url": "https://i.pinimg.com/736x/e7/f2/07/e7f2071c8bf8b1ba9f0932613ebeac60.jpg"
+      },
+      {
+        "filename": "05_rideau-tresse-3x4m_alt2.jpg",
+        "path": "catalogue_images/alternatives/05_rideau-tresse-3x4m_alt2.jpg",
+        "width": 600,
+        "height": 600,
+        "source_url": "https://du7nt18x31vr8.cloudfront.net/assets/images/product_particular/20240401/1712023906_O1CN015Nqkdz1TKIpWYTmnX_-2213308582363-0-cib.jpg"
+      },
+      {
+        "filename": "05_rideau-tresse-3x4m_alt3.jpg",
+        "path": "catalogue_images/alternatives/05_rideau-tresse-3x4m_alt3.jpg",
+        "width": 800,
+        "height": 800,
+        "source_url": "https://www.macrame-passion.com/wp-content/uploads/2024/08/rideau-macrame-boheme_1.png"
+      }
+    ]
+  },
+  {
+    "order": 4,
+    "id": "mat-deco-arche-ronde",
+    "name": "Arche de fleurs ronde",
+    "slug": "arche-de-fleurs-ronde",
+    "category": "DÉCORATIONS",
+    "description": "Structure + fleurs incluses. Arche cercle doré ornée de compositions florales pour cérémonie de mariage.",
+    "primary_image": {
+      "filename": "06_arche-de-fleurs-ronde.jpg",
+      "path": "catalogue_images/06_arche-de-fleurs-ronde.jpg",
+      "public_url": "/catalogue_images/06_arche-de-fleurs-ronde.jpg",
+      "width": 2400,
+      "height": 3600,
+      "size_bytes": 1369192,
+      "source_url": "https://i.pinimg.com/originals/d0/1b/27/d01b27a468806d1ff5ee9024317655de.jpg"
+    },
+    "alternatives": [
+      {
+        "filename": "06_arche-de-fleurs-ronde_alt1.jpg",
+        "path": "catalogue_images/alternatives/06_arche-de-fleurs-ronde_alt1.jpg",
+        "width": 736,
+        "height": 981,
+        "source_url": "https://i.pinimg.com/736x/2d/53/c1/2d53c10da3542b95f748eaafbcdd6c5e.jpg"
+      },
+      {
+        "filename": "06_arche-de-fleurs-ronde_alt2.jpg",
+        "path": "catalogue_images/alternatives/06_arche-de-fleurs-ronde_alt2.jpg",
+        "width": 704,
+        "height": 1024,
+        "source_url": "https://www.deco.fr/sites/default/files/styles/1920px/public/2025-10-29/69023dfe6ef26-4-larche-florale-circulaire.jpg"
+      },
+      {
+        "filename": "06_arche-de-fleurs-ronde_alt3.jpg",
+        "path": "catalogue_images/alternatives/06_arche-de-fleurs-ronde_alt3.jpg",
+        "width": 1276,
+        "height": 957,
+        "source_url": "https://i.pinimg.com/originals/2a/f0/ff/2af0ff855a3c4cfd5762c54a802a7b3f.jpg"
+      }
+    ]
+  },
+  {
+    "order": 5,
+    "id": "mat-deco-arche-carree",
+    "name": "Arche de fleurs carrée",
+    "slug": "arche-de-fleurs-carree",
+    "category": "DÉCORATIONS",
+    "description": "Structure + fleurs incluses. Arche carrée fleurie pour cérémonie laïque et fond de réception.",
+    "primary_image": {
+      "filename": "07_arche-de-fleurs-carree.jpg",
+      "path": "catalogue_images/07_arche-de-fleurs-carree.jpg",
+      "public_url": "/catalogue_images/07_arche-de-fleurs-carree.jpg",
+      "width": 1080,
+      "height": 1080,
+      "size_bytes": 930632,
+      "source_url": "https://imagine-decor.fr/wp-content/uploads/2025/04/arche-carre-blanche-2025.png"
+    },
+    "alternatives": [
+      {
+        "filename": "07_arche-de-fleurs-carree_alt1.jpg",
+        "path": "catalogue_images/alternatives/07_arche-de-fleurs-carree_alt1.jpg",
+        "width": 1168,
+        "height": 1752,
+        "source_url": "https://www.deco.fr/sites/default/files/styles/1920px/public/2025-10-29/69023dfe6ef26-larche-de-mariage-en-fleurs-blanches.jpg"
+      },
+      {
+        "filename": "07_arche-de-fleurs-carree_alt2.jpg",
+        "path": "catalogue_images/alternatives/07_arche-de-fleurs-carree_alt2.jpg",
+        "width": 1300,
+        "height": 1300,
+        "source_url": "https://www.monsieurflower.com/wp-content/uploads/2023/07/arche-fleurie-roses-blanche-2-1.jpg"
+      },
+      {
+        "filename": "07_arche-de-fleurs-carree_alt3.jpg",
+        "path": "catalogue_images/alternatives/07_arche-de-fleurs-carree_alt3.jpg",
+        "width": 626,
+        "height": 417,
+        "source_url": "https://img.freepik.com/photos-premium/mariage-ceremonie-mariage-arche-arche-decoree-fleurs-blanches-debout-dans-bois-dans-zone-ceremonie-mariage_434033-700.jpg"
+      }
+    ]
+  },
+  {
+    "order": 6,
+    "id": "mat-table-rect",
+    "name": "Table rectangulaire",
+    "slug": "table-rectangulaire",
+    "category": "TABLES",
+    "description": "Table pliante rectangulaire de banquet pour 6 à 8 personnes, idéale pour réceptions et buffets.",
+    "primary_image": {
+      "filename": "09_table-rectangulaire.jpg",
+      "path": "catalogue_images/09_table-rectangulaire.jpg",
+      "public_url": "/catalogue_images/09_table-rectangulaire.jpg",
+      "width": 1000,
+      "height": 1000,
+      "size_bytes": 226395,
+      "source_url": "https://www.pro-mob.fr/images/ALLWELLNESS/P5031494.jpg"
+    },
+    "alternatives": [
+      {
+        "filename": "09_table-rectangulaire_alt1.jpg",
+        "path": "catalogue_images/alternatives/09_table-rectangulaire_alt1.jpg",
+        "width": 1074,
+        "height": 1057,
+        "source_url": "https://m.media-amazon.com/images/I/51CvP9o4NaL._AC_.jpg"
+      },
+      {
+        "filename": "09_table-rectangulaire_alt2.jpg",
+        "path": "catalogue_images/alternatives/09_table-rectangulaire_alt2.jpg",
+        "width": 868,
+        "height": 650,
+        "source_url": "https://www.techni-contact.com/ressources/images/produits/zoom/table-pliante-bois-traiteur-10341118-1.jpg"
+      },
+      {
+        "filename": "09_table-rectangulaire_alt3.jpg",
+        "path": "catalogue_images/alternatives/09_table-rectangulaire_alt3.jpg",
+        "width": 800,
+        "height": 455,
+        "source_url": "http://www.carayon.fr/wp-content/uploads/2014/11/0109-table-traiteur-pliante-rectangulaire.jpg"
+      }
+    ]
+  },
+  {
+    "order": 7,
+    "id": "mat-table-ronde-152",
+    "name": "Table ronde Ø152 cm",
+    "slug": "table-ronde-diam152cm",
+    "category": "TABLES",
+    "description": "Table ronde de banquet diamètre 152 cm pour 8 convives, plateau pliant traiteur.",
+    "primary_image": {
+      "filename": "10_table-ronde-diam152cm.jpg",
+      "path": "catalogue_images/10_table-ronde-diam152cm.jpg",
+      "public_url": "/catalogue_images/10_table-ronde-diam152cm.jpg",
+      "width": 800,
+      "height": 559,
+      "size_bytes": 50470,
+      "source_url": "Provided by user (table ronde.jpeg)"
+    },
+    "alternatives": [
+      {
+        "filename": "10_table-ronde-diam152cm_alt1.jpg",
+        "path": "catalogue_images/alternatives/10_table-ronde-diam152cm_alt1.jpg",
+        "width": 800,
+        "height": 800,
+        "source_url": "https://promatome.com/4675-large_default/table-pliante-ronde-152-cm-lifetime.jpg"
+      },
+      {
+        "filename": "10_table-ronde-diam152cm_alt2.jpg",
+        "path": "catalogue_images/alternatives/10_table-ronde-diam152cm_alt2.jpg",
+        "width": 1199,
+        "height": 1199,
+        "source_url": "https://sublimdecor.fr/wp-content/uploads/2023/10/table-ronde-152cm-pliable-sublimdecor.webp"
+      },
+      {
+        "filename": "10_table-ronde-diam152cm_alt3.jpg",
+        "path": "catalogue_images/alternatives/10_table-ronde-diam152cm_alt3.jpg",
+        "width": 800,
+        "height": 581,
+        "source_url": "https://www.sinotec.fr/uploads/produits/mediums/table-pliante-polyethylene-lorca-diametre-152cm.jpg"
+      }
+    ]
+  },
+  {
+    "order": 8,
+    "id": "mat-chaise-napoleon",
+    "name": "Chaise Napoléon",
+    "slug": "chaise-napoleon",
+    "category": "CHAISES",
+    "description": "Chaise Napoléon III blanche élégante pour mariage, gala et réception haut de gamme.",
+    "primary_image": {
+      "filename": "12_chaise-napoleon.jpg",
+      "path": "catalogue_images/12_chaise-napoleon.jpg",
+      "public_url": "/catalogue_images/12_chaise-napoleon.jpg",
+      "width": 1200,
+      "height": 1200,
+      "size_bytes": 123742,
+      "source_url": "https://www.beaujolaisreception.fr/wp-content/uploads/2025/10/Chaise-Napoleon-blanche-en-location-a-Lyon.jpg"
+    },
+    "alternatives": [
+      {
+        "filename": "12_chaise-napoleon_alt1.jpg",
+        "path": "catalogue_images/alternatives/12_chaise-napoleon_alt1.jpg",
+        "width": 1086,
+        "height": 1448,
+        "source_url": "https://vallee-events.fr/wp-content/uploads/2025/01/location-chaise-napoleon-blanche-rouen-mariage.jpg"
+      },
+      {
+        "filename": "12_chaise-napoleon_alt2.jpg",
+        "path": "catalogue_images/alternatives/12_chaise-napoleon_alt2.jpg",
+        "width": 2031,
+        "height": 1196,
+        "source_url": "https://sublimdecor.fr/wp-content/uploads/2023/06/Chaise-Napoeleon-Blanche.jpg"
+      },
+      {
+        "filename": "12_chaise-napoleon_alt3.jpg",
+        "path": "catalogue_images/alternatives/12_chaise-napoleon_alt3.jpg",
+        "width": 778,
+        "height": 778,
+        "source_url": "https://www.drageesanahita.com/25048-large_default/chaise-napoleon-blanche.jpg"
+      }
+    ]
+  },
+  {
+    "order": 9,
+    "id": "mat-tente-32",
+    "name": "Tente de réception 32 m² (4 × 8 m)",
+    "slug": "tente-de-reception-32m2-4x8m",
+    "category": "TENTES",
+    "description": "Installation, désinstallation et lestage (150 kg) inclus. Barnum blanc professionnel 4 × 8 m.",
+    "primary_image": {
+      "filename": "13_tente-de-reception-32m2-4x8m.jpg",
+      "path": "catalogue_images/13_tente-de-reception-32m2-4x8m.jpg",
+      "public_url": "/catalogue_images/13_tente-de-reception-32m2-4x8m.jpg",
+      "width": 736,
+      "height": 736,
+      "size_bytes": 101324,
+      "source_url": "https://i.pinimg.com/736x/76/01/7a/76017a8b269f329e90d14c20af825aa2.jpg"
+    },
+    "alternatives": [
+      {
+        "filename": "13_tente-de-reception-32m2-4x8m_alt1.jpg",
+        "path": "catalogue_images/alternatives/13_tente-de-reception-32m2-4x8m_alt1.jpg",
+        "width": 600,
+        "height": 406,
+        "source_url": "https://www.lesbullesdejosephine.fr/wp-content/uploads/2025/08/1754440827-homall-tente-de-reception-4x8armature-metallique-barnumtonnelle-stabil-22-crochets-au-sol-4-cord.jpg"
+      },
+      {
+        "filename": "13_tente-de-reception-32m2-4x8m_alt2.jpg",
+        "path": "catalogue_images/alternatives/13_tente-de-reception-32m2-4x8m_alt2.jpg",
+        "width": 470,
+        "height": 470,
+        "source_url": "https://cdn.manomano.com/tente-de-reception-4x8-m-toile-de-haute-qualite-barnum-450-n-pe-blanc-construction-en-acier-galvanise-avec-raccordement-par-vissage-P-1404305-6742874_1.jpg"
+      },
+      {
+        "filename": "13_tente-de-reception-32m2-4x8m_alt3.jpg",
+        "path": "catalogue_images/alternatives/13_tente-de-reception-32m2-4x8m_alt3.jpg",
+        "width": 970,
+        "height": 600,
+        "source_url": "https://m.media-amazon.com/images/S/aplus-media/sc/4e17a340-e1f2-47d1-9823-1f52ede66873.__CR0,1,970,600_PT0_SX970_V1___.png"
+      }
+    ]
+  },
+  {
+    "order": 10,
+    "id": "mat-tente-50",
+    "name": "Tente de réception 50 m² (5 × 10 m)",
+    "slug": "tente-de-reception-50m2-5x10m",
+    "category": "TENTES",
+    "description": "Installation, désinstallation et lestage (200 kg) inclus. Tente de réception 5 × 10 m pour 50 personnes.",
+    "primary_image": {
+      "filename": "14_tente-de-reception-50m2-5x10m.jpg",
+      "path": "catalogue_images/14_tente-de-reception-50m2-5x10m.jpg",
+      "public_url": "/catalogue_images/14_tente-de-reception-50m2-5x10m.jpg",
+      "width": 470,
+      "height": 470,
+      "size_bytes": 53507,
+      "source_url": "https://cdn.manomano.com/images/images_products/229282/P/171970643_2.jpg"
+    },
+    "alternatives": [
+      {
+        "filename": "14_tente-de-reception-50m2-5x10m_alt1.jpg",
+        "path": "catalogue_images/alternatives/14_tente-de-reception-50m2-5x10m_alt1.jpg",
+        "width": 470,
+        "height": 470,
+        "source_url": "https://cdn.manomano.com/images/images_products/1404305/P/6714998_3.jpg"
+      },
+      {
+        "filename": "14_tente-de-reception-50m2-5x10m_alt2.jpg",
+        "path": "catalogue_images/alternatives/14_tente-de-reception-50m2-5x10m_alt2.jpg",
+        "width": 470,
+        "height": 470,
+        "source_url": "https://cdn.manomano.com/images/images_products/1404305/P/6714928_2.jpg"
+      },
+      {
+        "filename": "14_tente-de-reception-50m2-5x10m_alt3.jpg",
+        "path": "catalogue_images/alternatives/14_tente-de-reception-50m2-5x10m_alt3.jpg",
+        "width": 470,
+        "height": 470,
+        "source_url": "https://cdn.manomano.com/pim-media/images/medium/e55dc3f62e1d933ea593d7f75c03e95c62eb5892.jpg"
+      }
+    ]
+  },
+  {
+    "order": 11,
+    "id": "mat-tente-72",
+    "name": "Tente de réception 72 m² (6 × 12 m)",
+    "slug": "tente-de-reception-72m2-6x12m",
+    "category": "TENTES",
+    "description": "Installation, désinstallation et lestage (250 kg) inclus. Tente de réception 6 × 12 m pour 70 à 80 personnes.",
+    "primary_image": {
+      "filename": "15_tente-de-reception-72m2-6x12m.jpg",
+      "path": "catalogue_images/15_tente-de-reception-72m2-6x12m.jpg",
+      "public_url": "/catalogue_images/15_tente-de-reception-72m2-6x12m.jpg",
+      "width": 1000,
+      "height": 750,
+      "size_bytes": 809200,
+      "source_url": "https://www.tentesdereception.be/images/feesttenten/large/TTC_feesttent_6x12_pvc_pro_wit_6.jpg"
+    },
+    "alternatives": [
+      {
+        "filename": "15_tente-de-reception-72m2-6x12m_alt1.jpg",
+        "path": "catalogue_images/alternatives/15_tente-de-reception-72m2-6x12m_alt1.jpg",
+        "width": 1500,
+        "height": 1500,
+        "source_url": "https://sweeek.twic.pics/products/3544/original/pt6x12kdwh-4d48a557acb6068840a834a6620ff432.jpg?twic=v1/resize=1500/quality=70"
+      },
+      {
+        "filename": "15_tente-de-reception-72m2-6x12m_alt2.jpg",
+        "path": "catalogue_images/alternatives/15_tente-de-reception-72m2-6x12m_alt2.jpg",
+        "width": 800,
+        "height": 800,
+        "source_url": "https://www.xptent.com/3464-large_default/-tente-de-reception-pro-6x12m-pvc-500gm-tubes-50mm-blanc-ignifuge-m2-chapiteau-resistant-pour-evenements-exterieurs-.jpg"
+      },
+      {
+        "filename": "15_tente-de-reception-72m2-6x12m_alt3.jpg",
+        "path": "catalogue_images/alternatives/15_tente-de-reception-72m2-6x12m_alt3.jpg",
+        "width": 734,
+        "height": 489,
+        "source_url": "https://www.espace-location.com/wp-content/uploads/2024/02/Tente-6x12-1.jpg"
+      }
+    ]
+  },
+  {
+    "order": 12,
+    "id": "mat-tente-100",
+    "name": "Tente de réception 100 m² (5 × 20 m)",
+    "slug": "tente-de-reception-100m2-5x20m",
+    "category": "TENTES",
+    "description": "Installation, désinstallation et lestage (300 kg) inclus. Grand chapiteau de réception 5 × 20 m (100 m²).",
+    "primary_image": {
+      "filename": "16_tente-de-reception-100m2-5x20m.jpg",
+      "path": "catalogue_images/16_tente-de-reception-100m2-5x20m.jpg",
+      "public_url": "/catalogue_images/16_tente-de-reception-100m2-5x20m.jpg",
+      "width": 1095,
+      "height": 821,
+      "size_bytes": 379761,
+      "source_url": "https://www.n1evenement.com/wp-content/uploads/2023/04/photo-11.jpg"
+    },
+    "alternatives": [
+      {
+        "filename": "16_tente-de-reception-100m2-5x20m_alt1.jpg",
+        "path": "catalogue_images/alternatives/16_tente-de-reception-100m2-5x20m_alt1.jpg",
+        "width": 1376,
+        "height": 768,
+        "source_url": "https://www.locationtente.fr/images/structures/chapiteau/01.webp"
+      },
+      {
+        "filename": "16_tente-de-reception-100m2-5x20m_alt2.jpg",
+        "path": "catalogue_images/alternatives/16_tente-de-reception-100m2-5x20m_alt2.jpg",
+        "width": 900,
+        "height": 1200,
+        "source_url": "https://i.pinimg.com/originals/41/94/93/419493bf611dbbaefc509d32d20ef7e6.jpg"
+      },
+      {
+        "filename": "16_tente-de-reception-100m2-5x20m_alt3.jpg",
+        "path": "catalogue_images/alternatives/16_tente-de-reception-100m2-5x20m_alt3.jpg",
+        "width": 1552,
+        "height": 724,
+        "source_url": "https://www.durand-location.com/wp-content/uploads/2019/09/Slide_Mariage_Bipente_10M_Structure_Blanc_-1.jpg"
+      }
+    ]
+  },
+  {
+    "order": 13,
+    "id": "mat-opt-kit-led",
+    "name": "Kit Lumière LED",
+    "slug": "kit-lumiere-led",
+    "category": "OPTIONS & ACCESSOIRES",
+    "description": "2 barres LED 6000 W d'éclairage d'ambiance pour tente, scène et salle de réception.",
+    "primary_image": {
+      "filename": "17_kit-lumiere-led.jpg",
+      "path": "catalogue_images/17_kit-lumiere-led.jpg",
+      "public_url": "/catalogue_images/17_kit-lumiere-led.jpg",
+      "width": 1600,
+      "height": 1588,
+      "size_bytes": 314085,
+      "source_url": "https://m.media-amazon.com/images/I/81WQYcU1wsL._AC_.jpg"
+    },
+    "alternatives": [
+      {
+        "filename": "17_kit-lumiere-led_alt1.jpg",
+        "path": "catalogue_images/alternatives/17_kit-lumiere-led_alt1.jpg",
+        "width": 700,
+        "height": 700,
+        "source_url": "https://www.location-sono-marseille.fr/3079-thickbox_default/location-set-projecteurs-leds-avec-pied-jeu-de-lumiere-barre-equipee-de-par-led-pour-soiree-marseille-aubagne-la-ciotat-cassis.jpg"
+      },
+      {
+        "filename": "17_kit-lumiere-led_alt2.jpg",
+        "path": "catalogue_images/alternatives/17_kit-lumiere-led_alt2.jpg",
+        "width": 699,
+        "height": 448,
+        "source_url": "https://www.loc-housses.com/wp-content/uploads/2022/04/barre-led-2.jpg"
+      },
+      {
+        "filename": "17_kit-lumiere-led_alt3.jpg",
+        "path": "catalogue_images/alternatives/17_kit-lumiere-led_alt3.jpg",
+        "width": 800,
+        "height": 800,
+        "source_url": "https://www.loc-housses.com/wp-content/uploads/2022/04/barre-LED.jpg"
+      }
+    ]
+  },
+  {
+    "order": 14,
+    "id": "mat-opt-parasol",
+    "name": "Parasol chauffant électrique",
+    "slug": "parasol-chauffant-electrique",
+    "category": "OPTIONS & ACCESSOIRES",
+    "description": "Parasol chauffant sur pied électrique infrarouge pour terrasse extérieure et cocktail.",
+    "primary_image": {
+      "filename": "18_parasol-chauffant-electrique.jpg",
+      "path": "catalogue_images/18_parasol-chauffant-electrique.jpg",
+      "public_url": "/catalogue_images/18_parasol-chauffant-electrique.jpg",
+      "width": 1024,
+      "height": 585,
+      "size_bytes": 116190,
+      "source_url": "https://www.parasol-chauffant.net/wp-content/uploads/2025/04/1743671708-design-moderne-pour-votre-terrasse-avec-un-parasol-chauffant-electrique-1024x585.jpg"
+    },
+    "alternatives": [
+      {
+        "filename": "18_parasol-chauffant-electrique_alt1.jpg",
+        "path": "catalogue_images/alternatives/18_parasol-chauffant-electrique_alt1.jpg",
+        "width": 736,
+        "height": 736,
+        "source_url": "https://i.pinimg.com/736x/7c/c2/bc/7cc2bca264919887a4f4302d792c2a3c.jpg"
+      },
+      {
+        "filename": "18_parasol-chauffant-electrique_alt2.jpg",
+        "path": "catalogue_images/alternatives/18_parasol-chauffant-electrique_alt2.jpg",
+        "width": 1344,
+        "height": 768,
+        "source_url": "https://www.parasol-chauffant.net/wp-content/uploads/2025/04/1743671739-integrer-un-parasol-chauffant-electrique-moderne-a-votre-terrasse.jpg"
+      },
+      {
+        "filename": "18_parasol-chauffant-electrique_alt3.jpg",
+        "path": "catalogue_images/alternatives/18_parasol-chauffant-electrique_alt3.jpg",
+        "width": 1344,
+        "height": 768,
+        "source_url": "https://www.parasol-chauffant.net/wp-content/uploads/2025/01/1736516487-les-criteres-essentiels-pour-choisir-un-parasol-chauffant-electrique-performant.jpg"
+      }
+    ]
+  },
+  {
+    "order": 15,
+    "id": "mat-opt-rallonge-5",
+    "name": "Rallonge électrique 5 mètres",
+    "slug": "rallonge-electrique-5m",
+    "category": "OPTIONS & ACCESSOIRES",
+    "description": "Rallonge électrique noire/orange professionnelle 5 mètres étanche extérieure.",
+    "primary_image": {
+      "filename": "19_rallonge-electrique-5m.jpg",
+      "path": "catalogue_images/19_rallonge-electrique-5m.jpg",
+      "public_url": "/catalogue_images/19_rallonge-electrique-5m.jpg",
+      "width": 1428,
+      "height": 877,
+      "size_bytes": 125180,
+      "source_url": "https://m.media-amazon.com/images/I/71RT86Rsi-L._AC_SL1428_.jpg"
+    },
+    "alternatives": [
+      {
+        "filename": "19_rallonge-electrique-5m_alt1.jpg",
+        "path": "catalogue_images/alternatives/19_rallonge-electrique-5m_alt1.jpg",
+        "width": 581,
+        "height": 600,
+        "source_url": "https://media.adeo.com/media/1190345/media.jpg"
+      },
+      {
+        "filename": "19_rallonge-electrique-5m_alt2.jpg",
+        "path": "catalogue_images/alternatives/19_rallonge-electrique-5m_alt2.jpg",
+        "width": 470,
+        "height": 470,
+        "source_url": "https://cdn.manomano.com/pim-media/images/medium/e0a46e4ec8a4dbd60df292b56f41f7ea6b864b2c.jpg"
+      },
+      {
+        "filename": "19_rallonge-electrique-5m_alt3.jpg",
+        "path": "catalogue_images/alternatives/19_rallonge-electrique-5m_alt3.jpg",
+        "width": 1000,
+        "height": 1000,
+        "source_url": "https://www.novoo.com/5162-superlarge_default/rallonge-chantier-stanley-5m.jpg"
+      }
+    ]
+  },
+  {
+    "order": 16,
+    "id": "mat-opt-rallonge-10",
+    "name": "Rallonge électrique 10 mètres",
+    "slug": "rallonge-electrique-10m",
+    "category": "OPTIONS & ACCESSOIRES",
+    "description": "Rallonge électrique professionnelle 10 mètres étanche extérieure pour alimentation tente.",
+    "primary_image": {
+      "filename": "20_rallonge-electrique-10m.jpg",
+      "path": "catalogue_images/20_rallonge-electrique-10m.jpg",
+      "public_url": "/catalogue_images/20_rallonge-electrique-10m.jpg",
+      "width": 470,
+      "height": 470,
+      "size_bytes": 24461,
+      "source_url": "https://cdn.manomano.com/pim-media/images/medium/af0f9015b681d62e3e75e257989fb1036b05813a.jpg"
+    },
+    "alternatives": [
+      {
+        "filename": "20_rallonge-electrique-10m_alt1.jpg",
+        "path": "catalogue_images/alternatives/20_rallonge-electrique-10m_alt1.jpg",
+        "width": 1001,
+        "height": 1257,
+        "source_url": "https://media.adeo.com/mkp/1fe9f57fe72d43b2abfaa3095de5643e/media.jpg"
+      },
+      {
+        "filename": "20_rallonge-electrique-10m_alt2.jpg",
+        "path": "catalogue_images/alternatives/20_rallonge-electrique-10m_alt2.jpg",
+        "width": 1428,
+        "height": 877,
+        "source_url": "https://m.media-amazon.com/images/I/71RT86Rsi-L._AC_SL1428_.jpg"
+      },
+      {
+        "filename": "20_rallonge-electrique-10m_alt3.jpg",
+        "path": "catalogue_images/alternatives/20_rallonge-electrique-10m_alt3.jpg",
+        "width": 1913,
+        "height": 1535,
+        "source_url": "https://media.adeo.com/media/852898/media.jpeg"
+      }
+    ]
+  },
+  {
+    "order": 17,
+    "id": "mat-opt-poids-30",
+    "name": "Poids de lestage 30 kg",
+    "slug": "poids-de-lestage-30kg",
+    "category": "OPTIONS & ACCESSOIRES",
+    "description": "Poids de lestage lourd en fonte 30 kg pour ancrage et sécurité de chapiteau et tente.",
+    "primary_image": {
+      "filename": "22_poids-de-lestage-30kg.jpg",
+      "path": "catalogue_images/22_poids-de-lestage-30kg.jpg",
+      "public_url": "/catalogue_images/22_poids-de-lestage-30kg.jpg",
+      "width": 800,
+      "height": 800,
+      "size_bytes": 34366,
+      "source_url": "Provided by user (Poid lestage.jpg)"
+    },
+    "alternatives": [
+      {
+        "filename": "22_poids-de-lestage-30kg_alt1.jpg",
+        "path": "catalogue_images/alternatives/22_poids-de-lestage-30kg_alt1.jpg",
+        "width": 600,
+        "height": 770,
+        "source_url": "https://www.trigano-collectivites.com/10208-large_default/poids-de-lestage-30-kg-fonte.jpg"
+      },
+      {
+        "filename": "22_poids-de-lestage-30kg_alt2.jpg",
+        "path": "catalogue_images/alternatives/22_poids-de-lestage-30kg_alt2.jpg",
+        "width": 800,
+        "height": 800,
+        "source_url": "https://chapiteaux.pro/29-large_default/poids-de-lestage-en-fonte-dacier-de-30-kg.jpg"
+      },
+      {
+        "filename": "22_poids-de-lestage-30kg_alt3.jpg",
+        "path": "catalogue_images/alternatives/22_poids-de-lestage-30kg_alt3.jpg",
+        "width": 800,
+        "height": 800,
+        "source_url": "https://chapiteaux.pro/27-large_default/poids-de-lestage-en-fonte-dacier-de-30-kg.jpg"
+      }
+    ]
+  },
+  {
+    "order": 18,
+    "id": "mat-opt-galette",
+    "name": "Option galette de chaise",
+    "slug": "option-galette-de-chaise",
+    "category": "OPTIONS & ACCESSOIRES",
+    "description": "Option pour Chaise Napoléon. Galette coussin d'assise blanche capitonnée pour chaise Napoléon.",
+    "primary_image": {
+      "filename": "23_option-galette-de-chaise.jpg",
+      "path": "catalogue_images/23_option-galette-de-chaise.jpg",
+      "public_url": "/catalogue_images/23_option-galette-de-chaise.jpg",
+      "width": 1200,
+      "height": 1200,
+      "size_bytes": 123742,
+      "source_url": "https://www.beaujolaisreception.fr/wp-content/uploads/2025/10/Chaise-Napoleon-blanche-en-location-a-Lyon.jpg"
+    },
+    "alternatives": [
+      {
+        "filename": "23_option-galette-de-chaise_alt1.jpg",
+        "path": "catalogue_images/alternatives/23_option-galette-de-chaise_alt1.jpg",
+        "width": 1200,
+        "height": 1200,
+        "source_url": "https://www.beaujolaisreception.fr/wp-content/uploads/2025/10/Chaise-Napoleon-blanche-avec-galette.jpg"
+      },
+      {
+        "filename": "23_option-galette-de-chaise_alt2.jpg",
+        "path": "catalogue_images/alternatives/23_option-galette-de-chaise_alt2.jpg",
+        "width": 1200,
+        "height": 1200,
+        "source_url": "https://www.beaujolaisreception.fr/wp-content/uploads/2025/10/Chaise-Napoleon-blanche-en-location-a-Villefranche-sur-Saone.jpg"
+      },
+      {
+        "filename": "23_option-galette-de-chaise_alt3.jpg",
+        "path": "catalogue_images/alternatives/23_option-galette-de-chaise_alt3.jpg",
+        "width": 800,
+        "height": 1338,
+        "source_url": "https://www.sinotec.fr/uploads/produits_sinotec/mediums/chaise-napoleon-polypropylene-blanche-avec-galette-blanche.jpg"
+      }
+    ]
+  }
+]

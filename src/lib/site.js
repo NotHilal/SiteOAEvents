@@ -10,6 +10,10 @@ export const SITE = {
   name: 'OA Événementiel',
   url: SITE_URL,
   email: 'contact@oa-evenementiel.fr',
+  // Business phone in international form (e.g. '+33612345678'). Empty until
+  // the real number is known: the header's phone icon then leads to the
+  // contact page instead of a tel: link.
+  phone: process.env.NEXT_PUBLIC_SITE_PHONE || '',
   region: 'Île-de-France',
   locale: 'fr_FR',
   logo: `${SITE_URL}/icon-512.png`,

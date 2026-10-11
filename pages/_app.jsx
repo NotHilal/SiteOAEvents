@@ -28,9 +28,12 @@ export default function App({ Component, pageProps }) {
   const router = useRouter()
   // Espace OA is a standalone admin dashboard with its own layout/login gate —
   // it doesn't use the public site's Navbar/Footer.
-  // /example is a design-reference page (a saved third-party site in an
-  // iframe) and gets the same bare layout.
-  const isAdmin = router.pathname === '/espace-oa' || router.pathname === '/example'
+  // /example and /example/* are design-reference pages (a saved third-party site in an
+  // iframe) and get the same bare layout.
+  const isAdmin = router.pathname === '/espace-oa' || router.pathname.startsWith('/example')
+  // asPath without its #hash: jumping to an anchor on the same page
+  // (e.g. the header's /contact#localisation) mustn't remount the page.
+  const pagePath = router.asPath.split('#')[0]
 
   // 'idle' | 'loading' | 'done' — drives the top progress bar. 'loading'
   // creeps the bar toward 80% (client navigations are near-instant, so this
@@ -42,7 +45,7 @@ export default function App({ Component, pageProps }) {
   // Fade-up-on-scroll for page content (not the navbar/footer, which live
   // outside this wrapper). Re-runs for each page, since the wrapper below
   // remounts on every navigation.
-  useScrollReveal(pageRef, isAdmin ? null : router.asPath)
+  useScrollReveal(pageRef, isAdmin ? null : pagePath)
 
   // Smooth, eased scrolling on the public site — plain mouse-wheel input has
   // no momentum by default (each tick moves a fixed amount and stops dead),
@@ -68,27 +71,49 @@ export default function App({ Component, pageProps }) {
     }
   }, [isAdmin])
 
+  // A URL with a #hash lands on that element, just below the sticky header.
+  // Called once right away, then again (smoothly) when the page's fade-in
+  // ends: that animation starts the content 28px lower and scaled down, so
+  // the first landing spot is slightly off. Links to an anchor on another
+  // page pass scroll={false} so Next's own hash scroll doesn't fight this.
+  const scrollToHash = ({ immediate }) => {
+    const id = decodeURIComponent(window.location.hash.slice(1))
+    const target = id && document.getElementById(id)
+    if (!target) return false
+    const offset = -((document.querySelector('.oah')?.offsetHeight || 0) + 16)
+    if (lenisRef.current) lenisRef.current.scrollTo(target, immediate ? { immediate: true, offset } : { offset, duration: 0.5 })
+    else window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY + offset, behavior: immediate ? 'instant' : 'smooth' })
+    return true
+  }
+
   useEffect(() => {
     const start = () => {
       clearTimeout(doneTimer.current)
       setNavState('loading')
     }
+    const scrollToHashOrTop = () => {
+      if (!scrollToHash({ immediate: true })) {
+        if (lenisRef.current) lenisRef.current.scrollTo(0, { immediate: true })
+        else window.scrollTo(0, 0)
+      }
+    }
     const finish = () => {
-      // Reset scroll here (not on start) so it happens right as the new
-      // page's content mounts, in step with the progress bar completing.
-      // Goes through Lenis (when active) rather than window.scrollTo
+      // Reset scroll (or jump to the URL's #anchor) here, not on start, so
+      // it happens right as the new page's content mounts, in step with the
+      // progress bar completing. Goes through Lenis (when active) rather than window.scrollTo
       // directly, so Lenis's internal position stays in sync — otherwise
       // the next smooth-scrolled wheel tick would jump back to wherever
       // Lenis still thought the page was.
-      if (lenisRef.current) lenisRef.current.scrollTo(0, { immediate: true })
-      else window.scrollTo(0, 0)
+      scrollToHashOrTop()
       setNavState('done')
       doneTimer.current = setTimeout(() => setNavState('idle'), 260)
     }
     router.events.on('routeChangeStart', start)
     router.events.on('routeChangeComplete', finish)
     router.events.on('routeChangeError', finish)
+    router.events.on('hashChangeComplete', scrollToHashOrTop)
     return () => {
+      router.events.off('hashChangeComplete', scrollToHashOrTop)
       router.events.off('routeChangeStart', start)
       router.events.off('routeChangeComplete', finish)
       router.events.off('routeChangeError', finish)
@@ -118,10 +143,14 @@ export default function App({ Component, pageProps }) {
           descendants target the viewport again. e.target check excludes
           animations bubbling up from descendants (scroll reveal, etc). */}
       <div
-        key={router.asPath}
+        key={pagePath}
         ref={pageRef}
         className="oa-page-transition"
-        onAnimationEnd={e => { if (e.target === e.currentTarget) e.currentTarget.classList.add('oa-anim-done') }}
+        onAnimationEnd={e => {
+          if (e.target !== e.currentTarget) return
+          e.currentTarget.classList.add('oa-anim-done')
+          scrollToHash({ immediate: false })
+        }}
       >
         <Component {...pageProps} />
       </div>

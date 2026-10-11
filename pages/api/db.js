@@ -3,6 +3,21 @@ import { isAuthorized } from '../../src/lib/auth';
 import db, { generateReservationReference } from '../../src/lib/sqlite-db';
 import { PUBLIC_SANITIZERS, isSpam } from '../../src/lib/public-submissions';
 import { rateLimit } from '../../src/lib/rate-limit';
+import { slugify } from '../../src/lib/slug';
+
+// URL slug for a new material or product (/catalogue/[slug]), unique across
+// BOTH tables: the product page resolves product slugs first, so a material
+// sharing a product's slug would be unreachable.
+async function uniqueCatalogueSlug(name, fallback) {
+  const base = slugify(name) || slugify(fallback) || 'article';
+  const rows = await db.prepare(
+    "SELECT slug FROM materials WHERE slug = ? OR slug LIKE ? UNION SELECT slug FROM products WHERE slug = ? OR slug LIKE ?"
+  ).all(base, `${base}-%`, base, `${base}-%`);
+  const used = new Set(rows.map(r => r.slug));
+  let slug = base;
+  for (let n = 2; used.has(slug); n++) slug = `${base}-${n}`;
+  return slug;
+}
 
 
 function deserializeRow(table, row) {
@@ -52,7 +67,7 @@ function serializeRow(table, data) {
   return res;
 }
 
-const ALLOWED_TABLES = ['materials', 'reservations', 'blocked_dates', 'blocked_hours', 'contacts', 'categories', 'settings', 'payments', 'material_price_tiers', 'site_content'];
+const ALLOWED_TABLES = ['materials', 'products', 'reservations', 'blocked_dates', 'blocked_hours', 'contacts', 'categories', 'settings', 'payments', 'material_price_tiers', 'site_content'];
 const isValidColumn = (col) => /^[a-zA-Z0-9_]+$/.test(col);
 
 export default async function handler(req, res) {
@@ -69,6 +84,7 @@ export default async function handler(req, res) {
   // Define table access controls
   const requiresAuth = {
     materials: ['POST', 'PUT', 'DELETE'],
+    products: ['POST', 'PUT', 'DELETE'],    // GET public, like materials: groups variants for the catalogue
     material_price_tiers: ['POST', 'PUT', 'DELETE'], // GET public — booking wizard reads prices while logged out
     categories: ['POST', 'PUT', 'DELETE'],
     blocked_dates: ['POST', 'PUT', 'DELETE'],
@@ -190,6 +206,9 @@ export default async function handler(req, res) {
           const extra = {};
           if (table === 'reservations' && !item.reference) {
             extra.reference = await generateReservationReference();
+          }
+          if ((table === 'materials' || table === 'products') && !item.slug) {
+            extra.slug = await uniqueCatalogueSlug(item.name, id);
           }
           const record = serializeRow(table, { ...item, ...extra, id, created_at });
 

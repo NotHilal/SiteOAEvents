@@ -5,6 +5,7 @@ import { useRouter } from 'next/router'
 import { supabase } from '../src/lib/supabase.js'
 import { getUnitPriceTtc, groupTiersByMaterial, getMinOrderQty } from '../src/lib/pricing.js'
 import { addToCatalogueCart } from '../src/lib/cart.js'
+import { slugify } from '../src/lib/slug.js'
 import Icon from '../src/components/Icon.jsx'
 import { track } from '../src/lib/analytics.js'
 
@@ -105,13 +106,28 @@ export default function Home() {
     Promise.all([
       supabase.from('materials').select('*').eq('available', true).order('category'),
       supabase.from('material_price_tiers').select('*'),
-    ]).then(([matRes, tierRes]) => {
+      supabase.from('products').select('*'),
+    ]).then(([matRes, tierRes, prodRes]) => {
       const tiers = groupTiersByMaterial(tierRes.data || [])
       setCatalogueTiers(tiers)
+      // First item of each category. An option of an article à options is
+      // shown as its article (name, page, cheapest option's price) — the
+      // option itself is chosen on the product page.
+      const productById = Object.fromEntries((prodRes.data || []).map(p => [String(p.id), p]))
+      const mats = matRes.data || []
       const byCategory = {}
-      ;(matRes.data || []).forEach(m => {
+      mats.forEach(m => {
         const cat = m.category || 'Autre'
-        if (!byCategory[cat]) byCategory[cat] = m
+        if (byCategory[cat]) return
+        const product = m.product_id && productById[String(m.product_id)]
+        if (!product) { byCategory[cat] = { ...m, displayName: m.name, href: `/catalogue/${m.slug || slugify(m.name)}` }; return }
+        const options = mats.filter(o => String(o.product_id) === String(product.id))
+        const prices = options.map(o => getUnitPriceTtc(tiers[String(o.id)], 'weekday', getMinOrderQty(tiers[String(o.id)]))).filter(p => p > 0)
+        byCategory[cat] = {
+          ...m, displayName: product.name, href: `/catalogue/${product.slug}`, isOptions: true,
+          image_url: options.find(o => o.image_url)?.image_url || null,
+          fromPrice: prices.length ? Math.min(...prices) : 0,
+        }
       })
       setCatalogueTeaser(Object.values(byCategory).slice(0, 4))
     })
@@ -384,27 +400,36 @@ export default function Home() {
                 {catalogueTeaser.map(m => {
                   const tiers = catalogueTiers[String(m.id)]
                   const minQty = getMinOrderQty(tiers)
-                  const price = getUnitPriceTtc(tiers, 'weekday', minQty)
+                  const price = m.isOptions ? m.fromPrice : getUnitPriceTtc(tiers, 'weekday', minQty)
                   const added = addedId === m.id
                   return (
                     <article className={`oa-product-card${added ? ' is-added' : ''}`} key={m.id}>
                       <div className="oa-product-media">
-                        {m.image_url
-                          ? <img src={m.image_url} alt={m.name} loading="lazy" />
-                          : <Icon name="image" size={40} strokeWidth={1} className="oa-product-placeholder" />}
-                        <button
-                          type="button"
-                          className="oa-product-add"
-                          onClick={() => handleQuickAdd(m)}
-                          disabled={added}
-                          aria-label={added ? `${m.name} ajouté au panier` : `Ajouter ${m.name} au panier`}
-                        >
-                          <Icon name={added ? 'check' : 'bag'} size={18} strokeWidth={1.6} />
-                          <span>{added ? 'Ajouté au panier' : 'Ajouter au panier'}</span>
-                        </button>
+                        <Link href={m.href} className="oa-product-media-link" tabIndex={-1} aria-hidden="true">
+                          {m.image_url
+                            ? <img src={m.image_url} alt="" loading="lazy" />
+                            : <Icon name="image" size={40} strokeWidth={1} className="oa-product-placeholder" />}
+                        </Link>
+                        {m.isOptions ? (
+                          <Link href={m.href} className="oa-product-add" aria-label={`Choisir une option de ${m.displayName}`}>
+                            <Icon name="bag" size={18} strokeWidth={1.6} />
+                            <span>Choisir une option</span>
+                          </Link>
+                        ) : (
+                          <button
+                            type="button"
+                            className="oa-product-add"
+                            onClick={() => handleQuickAdd(m)}
+                            disabled={added}
+                            aria-label={added ? `${m.name} ajouté au panier` : `Ajouter ${m.name} au panier`}
+                          >
+                            <Icon name={added ? 'check' : 'bag'} size={18} strokeWidth={1.6} />
+                            <span>{added ? 'Ajouté au panier' : 'Ajouter au panier'}</span>
+                          </button>
+                        )}
                       </div>
                       <div className="oa-product-details">
-                        <h3 className="oa-product-name">{m.name}</h3>
+                        <h3 className="oa-product-name"><Link href={m.href}>{m.displayName}</Link></h3>
                         {price > 0 && <p className="oa-product-price">dès {price.toFixed(2)} €</p>}
                       </div>
                     </article>

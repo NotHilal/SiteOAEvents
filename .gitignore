@@ -1,6 +1,7 @@
 # ───── Fichiers sensibles ─────
 js/supabase-config.js
 .env
+.env*.local
 
 # ───── Système ─────
 .DS_Store
@@ -20,7 +21,9 @@ npm-debug.log*
 # ───── Next.js & SQLite ─────
 .next/
 *.sqlite
+*.sqlite.bak
 *.sqlite-journal
+data/.jwt_dev_secret
 public/uploads/
 
 # ───── Serveur local ─────

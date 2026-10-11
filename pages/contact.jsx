@@ -1,10 +1,28 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Seo from '../src/components/Seo.jsx'
+import PhoneInput from '../src/components/PhoneInput.jsx'
 import { supabase } from '../src/lib/supabase.js'
 import { track } from '../src/lib/analytics.js'
 
 const WEB3FORMS_KEY = '380ad0e4-4abc-4a00-81d1-d81067d54129'
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// Same rules the browser's required/type=email checks applied before, plus
+// the phone number having to match the selected country. Shown under each
+// field instead of as browser bubbles.
+function validate(form, phoneValid) {
+  const e = {}
+  if (!form.prenom.trim()) e.prenom = 'Veuillez indiquer votre prénom.'
+  if (!form.nom.trim()) e.nom = 'Veuillez indiquer votre nom.'
+  if (!form.email.trim()) e.email = 'Veuillez indiquer votre email.'
+  else if (!EMAIL_RE.test(form.email.trim())) e.email = 'Adresse email invalide.'
+  if (!phoneValid) e.telephone = 'Numéro invalide pour le pays sélectionné.'
+  if (!form.typeEvenement) e.typeEvenement = "Veuillez choisir un type d'événement."
+  if (!form.message.trim()) e.message = 'Veuillez décrire votre projet.'
+  return e
+}
+
 const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1600&q=75&auto=format&fit=crop'
 
 export default function Contact() {
@@ -13,6 +31,10 @@ export default function Contact() {
   const [errorMsg, setErrorMsg] = useState('')
   const [status, setStatus] = useState('idle') // idle | loading | success | error
   const [images, setImages] = useState({})
+  const [errors, setErrors] = useState({})
+  const [phoneValid, setPhoneValid] = useState(true)
+  // Bumped after a successful send to remount (= clear) the phone field.
+  const [phoneKey, setPhoneKey] = useState(0)
 
 
   useEffect(() => {
@@ -23,7 +45,24 @@ export default function Contact() {
     })
   }, [])
 
-  const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  const clearError = (name) => setErrors(prev => (prev[name] ? { ...prev, [name]: undefined } : prev))
+  const handleChange = (e) => {
+    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+    clearError(e.target.name)
+  }
+  const handlePhoneChange = ({ number, valid }) => {
+    setForm(prev => ({ ...prev, telephone: number }))
+    setPhoneValid(valid)
+    if (valid) clearError('telephone')
+  }
+  // Props wiring a field to its error message under it.
+  const fieldProps = (name, id) => ({
+    'aria-invalid': errors[name] ? true : undefined,
+    'aria-describedby': errors[name] ? `${id}-error` : undefined,
+  })
+  const fieldError = (name, id) => errors[name] && (
+    <p className="field-error" id={`${id}-error`}>{errors[name]}</p>
+  )
 
   // Saved to our database first (the admin's Messages tab is the source of
   // truth), then forwarded by email via Web3Forms. Success if at least one
@@ -31,6 +70,13 @@ export default function Contact() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (status === 'loading') return
+    const found = validate(form, phoneValid)
+    setErrors(found)
+    const firstInvalid = Object.keys(found).find(k => found[k])
+    if (firstInvalid) {
+      e.currentTarget.querySelector(`[name="${firstInvalid}"]`)?.focus()
+      return
+    }
     setStatus('loading')
     setErrorMsg('')
 
@@ -85,6 +131,8 @@ export default function Contact() {
     if (saved || emailed) {
       setStatus('success')
       setForm(EMPTY)
+      setPhoneValid(true)
+      setPhoneKey(k => k + 1)
       track('Contact envoyé', { type: form.typeEvenement || 'non précisé' })
     } else {
       setErrorMsg("Votre message n'a pas pu être envoyé. Vérifiez votre connexion et réessayez, ou écrivez-nous à contact@oa-evenementiel.fr.")
@@ -128,12 +176,12 @@ export default function Contact() {
                 <p className="section-text">N'hésitez pas à nous contacter pour toute demande de renseignements ou pour démarrer la planification de votre événement.</p>
 
                 {[
-                  { icon: 'fas fa-map-marker-alt', title: 'Localisation', text: 'Île-de-France, France' },
+                  { icon: 'fas fa-map-marker-alt', title: 'Localisation', text: 'Île-de-France, France', id: 'localisation' },
                   { icon: 'fas fa-phone', title: 'Téléphone', text: 'Sur demande' },
                   { icon: 'fas fa-envelope', title: 'Email', text: 'contact@oa-evenementiel.fr', href: 'mailto:contact@oa-evenementiel.fr' },
                   { icon: 'fas fa-clock', title: 'Disponibilité', text: 'Lun – Dim : 9h – 20h', note: 'Livraison et prestations possibles 24h/24, 7j/7' },
                 ].map((item, i) => (
-                  <div key={i} className="contact-info-item">
+                  <div key={i} id={item.id} className="contact-info-item">
                     <div className="contact-info-icon"><i className={item.icon} aria-hidden="true" /></div>
                     <div className="contact-info-text">
                       <h3>{item.title}</h3>
@@ -161,18 +209,20 @@ export default function Contact() {
                   )}
 
                   <p className="form-required-hint"><span aria-hidden="true">*</span> Champs obligatoires</p>
-                  <form onSubmit={handleSubmit} noValidate={false}>
+                  <form className="contact-form" onSubmit={handleSubmit} noValidate>
                     <div className="row">
                       <div className="col-md-6">
                         <div className="form-group">
                           <label htmlFor="contact-prenom">Prénom <span className="text-rose-gold" aria-hidden="true">*</span></label>
-                          <input id="contact-prenom" autoComplete="given-name" name="prenom" className="form-control" value={form.prenom} onChange={handleChange} required />
+                          <input id="contact-prenom" autoComplete="given-name" name="prenom" className="form-control" value={form.prenom} onChange={handleChange} required {...fieldProps('prenom', 'contact-prenom')} />
+                          {fieldError('prenom', 'contact-prenom')}
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="form-group">
                           <label htmlFor="contact-nom">Nom <span className="text-rose-gold" aria-hidden="true">*</span></label>
-                          <input id="contact-nom" autoComplete="family-name" name="nom" className="form-control" value={form.nom} onChange={handleChange} required />
+                          <input id="contact-nom" autoComplete="family-name" name="nom" className="form-control" value={form.nom} onChange={handleChange} required {...fieldProps('nom', 'contact-nom')} />
+                          {fieldError('nom', 'contact-nom')}
                         </div>
                       </div>
                     </div>
@@ -180,19 +230,28 @@ export default function Contact() {
                       <div className="col-md-6">
                         <div className="form-group">
                           <label htmlFor="contact-email">Email <span className="text-rose-gold" aria-hidden="true">*</span></label>
-                          <input id="contact-email" autoComplete="email" type="email" name="email" className="form-control" value={form.email} onChange={handleChange} required />
+                          <input id="contact-email" autoComplete="email" type="email" name="email" className="form-control" value={form.email} onChange={handleChange} required {...fieldProps('email', 'contact-email')} />
+                          {fieldError('email', 'contact-email')}
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="form-group">
                           <label htmlFor="contact-telephone">Téléphone</label>
-                          <input id="contact-telephone" autoComplete="tel" type="tel" name="telephone" className="form-control" value={form.telephone} onChange={handleChange} />
+                          <PhoneInput
+                            key={phoneKey}
+                            id="contact-telephone"
+                            name="telephone"
+                            onChange={handlePhoneChange}
+                            invalid={!!errors.telephone}
+                            describedBy={errors.telephone ? 'contact-telephone-error' : undefined}
+                          />
+                          {fieldError('telephone', 'contact-telephone')}
                         </div>
                       </div>
                     </div>
                     <div className="form-group">
                       <label htmlFor="contact-type">Type d'événement <span className="text-rose-gold" aria-hidden="true">*</span></label>
-                      <select id="contact-type" name="typeEvenement" className="form-control" value={form.typeEvenement} onChange={handleChange} required>
+                      <select id="contact-type" name="typeEvenement" className="form-control" value={form.typeEvenement} onChange={handleChange} required {...fieldProps('typeEvenement', 'contact-type')}>
                         <option value="">— Choisissez —</option>
                         <option value="mariage">Mariage</option>
                         <option value="anniversaire">Anniversaire</option>
@@ -200,10 +259,12 @@ export default function Contact() {
                         <option value="location-deco">Location décoration</option>
                         <option value="autre">Autre</option>
                       </select>
+                      {fieldError('typeEvenement', 'contact-type')}
                     </div>
                     <div className="form-group">
                       <label htmlFor="contact-message">Message <span className="text-rose-gold" aria-hidden="true">*</span></label>
-                      <textarea id="contact-message" maxLength={5000} name="message" className="form-control" rows={5} value={form.message} onChange={handleChange} required placeholder="Décrivez votre projet, la date souhaitée, le nombre de personnes…" />
+                      <textarea id="contact-message" maxLength={5000} name="message" className="form-control" rows={5} value={form.message} onChange={handleChange} required placeholder="Décrivez votre projet, la date souhaitée, le nombre de personnes…" {...fieldProps('message', 'contact-message')} />
+                      {fieldError('message', 'contact-message')}
                     </div>
                     {/* Honeypot: invisible to people, filled in by bots. */}
                     <div className="hp-field" aria-hidden="true">

@@ -3,8 +3,8 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { supabase } from '../src/lib/supabase.js'
 import { ttcFromHt, groupTiersByMaterial } from '../src/lib/pricing.js'
+import MaterialEditor from '../src/components/admin/MaterialEditor.jsx'
 
-const EMPTY_TIER = { minQty:1, maxQty:'', weekday:'', weekend:'' }
 
 const HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
@@ -66,10 +66,6 @@ const REGLAGES_TABS = [
   { key:'virement', label:'Virement' },
   { key:'installments', label:'Paiement en plusieurs fois' },
 ]
-const MAT_FORM_TABS = [
-  { key:'infos', label:'Informations' },
-  { key:'tarification', label:'Tarification' },
-]
 const MAT_PAGE_SIZE = 8
 const CAT_PAGE_SIZE = 10
 const DAY_PAGE_SIZE = 4
@@ -97,6 +93,7 @@ export default function AdminDashboard() {
   const [paymentSummaries, setPaymentSummaries] = useState({})
   const [messages, setMessages] = useState([])
   const [materials, setMaterials] = useState([])
+  const [products, setProducts] = useState([])
   const [materialTiers, setMaterialTiers] = useState([])
   const [categories, setCategories] = useState([])
   const [blockedDatesMap, setBlockedDatesMap] = useState({})
@@ -111,18 +108,10 @@ export default function AdminDashboard() {
   const [blocMonth, setBlocMonth] = useState(new Date().getMonth())
   const [blocView, setBlocView] = useState('month')
   const [matPage, setMatPage] = useState(0)
-  const [matFormVisible, setMatFormVisible] = useState(false)
-  const [matFormTab, setMatFormTab] = useState('infos')
-  const [editingMat, setEditingMat] = useState(null)
-  const [matForm, setMatForm] = useState({ name:'', category:'', description:'', qty:1, tieredPricing:false, weekendDiffers:true, tiers:[{...EMPTY_TIER}] })
-  const [matTiersError, setMatTiersError] = useState('')
-  const [matImageUrl, setMatImageUrl] = useState('')
-  const [matImageFile, setMatImageFile] = useState(null)
-  const [matImagePreview, setMatImagePreview] = useState(null)
-  const [matSaving, setMatSaving] = useState(false)
-  const [matQtyError, setMatQtyError] = useState(false)
-  const [matPriceError, setMatPriceError] = useState(false)
-  const fileInputRef = useRef(null)
+  const [matSearch, setMatSearch] = useState('')
+  // Article editor (src/components/admin/MaterialEditor.jsx):
+  // null | { mode:'new' } | { materialId } | { productId, focusOptionId }
+  const [matEditor, setMatEditor] = useState(null)
   const [catPage, setCatPage] = useState(0)
   const [catInput, setCatInput] = useState('')
   const [catError, setCatError] = useState('')
@@ -170,7 +159,7 @@ export default function AdminDashboard() {
   // scrolling underneath it. Freezing the page instead makes the modal feel
   // like the thing you're actually looking at, not a floating overlay.
   useEffect(() => {
-    const anyModalOpen = !!(dayModal || resaDetail || deleteModal || catModalOpen || contactModal || msgDetail || mobileNavOpen || matFormVisible)
+    const anyModalOpen = !!(dayModal || resaDetail || deleteModal || catModalOpen || contactModal || msgDetail || mobileNavOpen || matEditor)
     // html has an explicit overflow-x set (see style.css, for the horizontal-
     // scrollbar fix) which stops the browser from propagating body's overflow
     // to the viewport — so html itself must be locked too, or this silently
@@ -178,7 +167,7 @@ export default function AdminDashboard() {
     document.documentElement.style.overflowY = anyModalOpen ? 'hidden' : ''
     document.body.style.overflow = anyModalOpen ? 'hidden' : ''
     return () => { document.documentElement.style.overflowY = ''; document.body.style.overflow = '' }
-  }, [dayModal, resaDetail, deleteModal, catModalOpen, contactModal, msgDetail, mobileNavOpen, matFormVisible])
+  }, [dayModal, resaDetail, deleteModal, catModalOpen, contactModal, msgDetail, mobileNavOpen, matEditor])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -243,12 +232,14 @@ export default function AdminDashboard() {
     const hm = {}; (bh.data||[]).forEach(r => { if(!hm[r.date])hm[r.date]=[]; hm[r.date].push(r.hour) }); setBlockedHoursMap(hm)
   }
   async function loadMaterials() {
-    const [matRes, tierRes] = await Promise.all([
+    const [matRes, tierRes, prodRes] = await Promise.all([
       supabase.from('materials').select('*').order('category').order('name'),
       supabase.from('material_price_tiers').select('*'),
+      supabase.from('products').select('*'),
     ])
     setMaterials(matRes.data || [])
     setMaterialTiers(tierRes.data || [])
+    setProducts(prodRes.data || [])
   }
   async function loadSettings() {
     const [{ data }, { data: contentData }] = await Promise.all([
@@ -508,118 +499,7 @@ export default function AdminDashboard() {
     })
   }
 
-  function openAddMat() {
-    setEditingMat(null); setMatForm({ name:'', category:'', description:'', qty:1, tieredPricing:false, weekendDiffers:true, tiers:[{...EMPTY_TIER}] })
-    setMatImageUrl(''); setMatImageFile(null); setMatImagePreview(null); setMatQtyError(false); setMatPriceError(false); setMatTiersError(''); setMatFormTab('infos'); setMatFormVisible(true)
-  }
-  async function openEditMat(id) {
-    const [{ data: m }, { data: tiers }] = await Promise.all([
-      supabase.from('materials').select('*').eq('id', id).single(),
-      supabase.from('material_price_tiers').select('*').eq('material_id', id).order('min_qty'),
-    ])
-    if (!m) return
-    const loadedTiers = (tiers && tiers.length)
-      ? tiers.map(t => ({ minQty: t.min_qty, maxQty: t.max_qty ?? '', weekday: t.price_weekday_ht, weekend: t.price_weekend_ht }))
-      : [{...EMPTY_TIER}]
-    setEditingMat(m)
-    setMatForm({
-      name: m.name, category: m.category||'', description: m.description||'', qty: m.max_quantity,
-      tieredPricing: loadedTiers.length > 1,
-      weekendDiffers: loadedTiers.some(t => parseFloat(t.weekday) !== parseFloat(t.weekend)),
-      tiers: loadedTiers,
-    })
-    setMatImageUrl(m.image_url||''); setMatImageFile(null); setMatImagePreview(m.image_url||null); setMatQtyError(false); setMatPriceError(false); setMatTiersError(''); setMatFormTab('infos'); setMatFormVisible(true)
-  }
-  async function saveMaterial() {
-    const qtyNum = parseInt(String(matForm.qty))
-    let valid = true
-    // Errors can land on either popup tab (see MAT_FORM_TABS) — whichever
-    // is hit first when validating jumps the user there automatically, so
-    // a mistake on the tab they're not currently looking at is never silent.
-    let errorTab = null
-    if (!matForm.name.trim()) { valid = false; errorTab = errorTab || 'infos' }
-    if (!qtyNum || qtyNum < 1 || !/^\d+$/.test(String(matForm.qty))) { setMatQtyError(true); valid = false; errorTab = errorTab || 'infos' }
-
-    // Tiers are forced back to a single 1..∞ band when "paliers dégressifs"
-    // is off, and the weekend price is mirrored from the weekday one when
-    // "tarif différent le week-end" is off — regardless of whatever stale
-    // values are sitting in state, so the two toggles are the only source
-    // of truth for what actually gets saved.
-    const parsedTiers = matForm.tiers.map(t => {
-      const weekday = parseFloat(String(t.weekday).replace(',', '.'))
-      const weekend = matForm.weekendDiffers ? parseFloat(String(t.weekend).replace(',', '.')) : weekday
-      return {
-        minQty: matForm.tieredPricing ? parseInt(String(t.minQty)) : 1,
-        maxQty: matForm.tieredPricing ? (t.maxQty === '' ? null : parseInt(String(t.maxQty))) : null,
-        weekday, weekend,
-      }
-    })
-    setMatTiersError('')
-    if (!parsedTiers.length) { setMatTiersError('Au moins un palier de prix est requis.'); valid = false; errorTab = errorTab || 'tarification' }
-    for (const t of parsedTiers) {
-      if (!t.minQty || t.minQty < 1) { setMatTiersError('Quantité minimale invalide sur un palier.'); valid = false; errorTab = errorTab || 'tarification'; break }
-      if (t.maxQty != null && t.maxQty < t.minQty) { setMatTiersError('Quantité maximale doit être supérieure ou égale au minimum.'); valid = false; errorTab = errorTab || 'tarification'; break }
-      if (isNaN(t.weekday) || t.weekday < 0 || isNaN(t.weekend) || t.weekend < 0) { setMatPriceError(true); valid = false; errorTab = errorTab || 'tarification'; break }
-    }
-    if (!valid) { if (errorTab) setMatFormTab(errorTab); return }
-    setMatSaving(true)
-    try {
-      let imageUrl = matImageUrl || null
-      if (matImageFile) {
-        if (editingMat?.image_url) await removeStorageImg(editingMat.image_url)
-        const ext = matImageFile.name.split('.').pop().toLowerCase()
-        const path = Date.now()+'-'+Math.random().toString(36).slice(2)+'.'+ext
-        const { error: upErr } = await supabase.storage.from('materials').upload(path, matImageFile, { upsert: false })
-        if (upErr) throw upErr
-        imageUrl = supabase.storage.from('materials').getPublicUrl(path).data.publicUrl
-      } else if (!matImageUrl && editingMat?.image_url) {
-        await removeStorageImg(editingMat.image_url); imageUrl = null
-      }
-      const payload = { name: matForm.name.trim(), category: matForm.category||null, description: matForm.description.trim()||null, max_quantity: qtyNum, image_url: imageUrl, available: true }
-      let materialId = editingMat?.id
-      if (editingMat) await supabase.from('materials').update(payload).eq('id', editingMat.id)
-      else { const { data } = await supabase.from('materials').insert(payload); materialId = data.id }
-
-      // Tiers are replaced wholesale on every save rather than diffed —
-      // simplest correct approach for a small per-material row set.
-      await supabase.from('material_price_tiers').delete().eq('material_id', materialId)
-      await supabase.from('material_price_tiers').insert(parsedTiers.map(t => ({
-        material_id: materialId, min_qty: t.minQty, max_qty: t.maxQty, price_weekday_ht: t.weekday, price_weekend_ht: t.weekend,
-      })))
-
-      setMatFormVisible(false); await loadMaterials()
-    } catch (err) { alert('Erreur : '+(err.message||err)) } finally { setMatSaving(false) }
-  }
-  function toggleTieredPricing() {
-    setMatForm(f => {
-      const next = !f.tieredPricing
-      // Turning it off collapses back to one band covering everything,
-      // keeping whatever prices were on the first row.
-      if (!next) {
-        const first = f.tiers[0] || EMPTY_TIER
-        return { ...f, tieredPricing: next, tiers: [{ ...first, minQty:1, maxQty:'' }] }
-      }
-      return { ...f, tieredPricing: next }
-    })
-  }
-  function toggleWeekendDiffers() {
-    setMatForm(f => ({ ...f, weekendDiffers: !f.weekendDiffers }))
-  }
-  // The new row's "Qté min" defaults to (previous row's "Qté max" + 1) —
-  // tiers are meant to be contiguous, so this is almost always what's
-  // wanted and saves retyping it; left blank only when the previous row's
-  // max is itself blank (i.e. that row is the open-ended "∞" tier, so
-  // there's no sensible next value to suggest).
-  function addTierRow() {
-    setMatForm(f => {
-      const last = f.tiers[f.tiers.length - 1]
-      const lastMax = last && last.maxQty !== '' && last.maxQty != null ? parseInt(last.maxQty, 10) : NaN
-      const nextMin = !isNaN(lastMax) ? String(lastMax + 1) : ''
-      return {...f, tiers: [...f.tiers, {...EMPTY_TIER, minQty: nextMin}]}
-    })
-  }
-  function removeTierRow(i) { setMatForm(f => ({...f, tiers: f.tiers.filter((_,idx) => idx!==i)})) }
-  function updateTierRow(i, field, value) { setMatForm(f => ({...f, tiers: f.tiers.map((t,idx) => idx===i ? {...t,[field]:value} : t)})) }
+  function openAddMat() { setMatEditor({ mode: 'new' }) }
   async function removeStorageImg(url) {
     try { const m='/object/public/materials/'; const i=url.indexOf(m); if(i===-1)return; await supabase.storage.from('materials').remove([url.slice(i+m.length)]) } catch {}
   }
@@ -631,14 +511,35 @@ export default function AdminDashboard() {
       await supabase.from('material_price_tiers').delete().eq('material_id', id)
       await supabase.from('materials').delete().eq('id', id); await loadMaterials()
     })
+  }  // Article à options: deletes the article and every option (photos, rates).
+  function deleteProduct(productId) {
+    const options = materials.filter(m => m.product_id === productId)
+    confirmDelete(`Cet article, ses ${options.length} option${options.length > 1 ? 's' : ''} et leurs images seront définitivement supprimés.`, async () => {
+      for (const m of options) {
+        if (m.image_url) await removeStorageImg(m.image_url)
+        await supabase.from('material_price_tiers').delete().eq('material_id', m.id)
+        await supabase.from('materials').delete().eq('id', m.id)
+      }
+      await supabase.from('products').delete().eq('id', productId)
+      await loadMaterials()
+    })
   }
-  function handleImageFile(file) {
-    if (!file) return
-    if (file.size > 5*1024*1024) { alert('Image trop lourde (max 5 Mo).'); return }
-    setMatImageFile(file)
-    const reader = new FileReader(); reader.onload = e => setMatImagePreview(e.target.result); reader.readAsDataURL(file)
+  // "Dissocier": each option becomes an independent article simple, with
+  // its own name, prices, stock and photo unchanged; the article goes away.
+  function ungroupProduct(productId) {
+    const options = materials.filter(m => m.product_id === productId)
+    const product = products.find(p => p.id === productId)
+    if (!window.confirm(`Dissocier « ${product?.name || 'cet article'} » ? Ses ${options.length} options deviendront ${options.length} articles simples indépendants (mêmes noms, prix, stocks et photos).`)) return
+    ;(async () => {
+      for (const m of options) {
+        await supabase.from('materials').update({ product_id: null, variant_label: null, variant_order: null }).eq('id', m.id)
+      }
+      await supabase.from('products').delete().eq('id', productId)
+      await loadMaterials()
+    })()
   }
-  function removeImage() { setMatImageFile(null); setMatImageUrl(''); setMatImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = '' }
+
+
 
   async function saveCategory() {
     const name = catInput.trim().toUpperCase(); if (!name) return; setCatError('')
@@ -877,139 +778,44 @@ export default function AdminDashboard() {
                 <button className="adm-btn-primary" onClick={openAddMat}><i className="fas fa-plus" style={{marginRight:8}} />Ajouter un article</button>
               </div>
             </div>
-            {matFormVisible && (
-              <div className="modal-overlay" style={{display:'flex'}} onClick={e => { if (e.target === e.currentTarget) setMatFormVisible(false) }}>
-                <div className="modal-card detail-modal-card mat-edit-modal-card">
-                  <button className="modal-close" onClick={() => setMatFormVisible(false)}><i className="fas fa-times" /></button>
-                  <h3 className="modal-title"><i className={`fas ${editingMat ? 'fa-pen' : 'fa-plus'}`} style={{marginRight:8,color:'var(--rose-gold)'}} />{editingMat ? "Modifier l'article" : 'Nouvel article'}</h3>
-
-                  <div className="mat-form-tabs">
-                    {MAT_FORM_TABS.map(t => (
-                      <button key={t.key} className={`mat-form-tab${matFormTab===t.key?' active':''}`} onClick={() => setMatFormTab(t.key)}>{t.label}</button>
-                    ))}
-                  </div>
-
-                  {matFormTab === 'infos' && (
-                    <>
-                      <div className="mat-form-grid">
-                        <div className="adm-form-group">
-                          <label>Nom <span className="req">*</span></label>
-                          <input className="adm-input" value={matForm.name} onChange={e => setMatForm(f=>({...f,name:e.target.value}))} style={!matForm.name.trim()?{borderColor:'var(--danger)'}:{}} />
-                        </div>
-                        <div className="adm-form-group">
-                          <label>Catégorie</label>
-                          <select className="adm-input" value={matForm.category} onChange={e => setMatForm(f=>({...f,category:e.target.value}))}>
-                            <option value="">— Sans catégorie —</option>
-                            {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                          </select>
-                        </div>
-                        <div className="adm-form-group">
-                          <label>Description</label>
-                          <input className="adm-input" placeholder="Courte description" value={matForm.description} onChange={e => setMatForm(f=>({...f,description:e.target.value}))} />
-                        </div>
-                        <div className="adm-form-group">
-                          <label>Stock initial <span className="req">*</span></label>
-                          <input type="number" min={1} className="adm-input" value={matForm.qty} onChange={e => { setMatForm(f=>({...f,qty:e.target.value})); setMatQtyError(false) }} style={matQtyError?{borderColor:'var(--danger)'}:{}} />
-                          {matQtyError && <div style={{marginTop:6,color:'var(--danger)',fontSize:'.8rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />Veuillez entrer un nombre entier valide (≥ 1).</div>}
-                        </div>
-                      </div>
-                      <div className="adm-form-group" style={{marginTop:8}}>
-                        <label>Image <span className="adm-label-opt">(optionnel)</span></label>
-                        <div className="img-upload-area" onClick={() => fileInputRef.current?.click()}>
-                          {matImagePreview
-                            ? <img src={matImagePreview} alt="" className="img-preview-thumb" />
-                            : <div className="img-upload-placeholder"><i className="fas fa-image" /><p>Aucune image sélectionnée</p><span>JPG, PNG, WEBP — max 5 Mo</span></div>
-                          }
-                        </div>
-                        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{display:'none'}} onChange={e => handleImageFile(e.target.files[0])} />
-                        <div className="img-upload-btns">
-                          <button className="adm-btn-ghost btn-sm" onClick={() => fileInputRef.current?.click()}><i className="fas fa-upload" style={{marginRight:4}} />Choisir une image</button>
-                          {matImagePreview && <button className="adm-btn-delete btn-sm" onClick={removeImage}><i className="fas fa-times" style={{marginRight:4}} />Retirer</button>}
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {matFormTab === 'tarification' && (
-                    <div className="adm-form-group" style={{marginTop:8}}>
-                      <label style={{display:'flex',alignItems:'flex-start',gap:8,fontWeight:400,fontSize:'.9rem',marginBottom:8,cursor:'pointer'}}>
-                        <input type="checkbox" checked={matForm.tieredPricing} onChange={toggleTieredPricing} style={{marginTop:3,flexShrink:0}} />
-                        {/* min-width:0 is the actual fix — a flex item's default min-width is
-                            "auto" (its content's full width), so this text was refusing to
-                            wrap and pushing the row's later items (the checkbox below, its
-                            help icon) off past the edge on narrow mobile widths instead of
-                            just flowing onto a second line like normal text. */}
-                        <span style={{minWidth:0}}>Le tarif change selon la quantité louée</span>
-                        <HelpTip text="Permet de fixer un prix différent selon la quantité louée, via des paliers (ex : moins cher à partir de 10 unités)." />
-                      </label>
-                      <label style={{display:'flex',alignItems:'flex-start',gap:8,fontWeight:400,fontSize:'.9rem',marginBottom:6,cursor:'pointer'}}>
-                        <input type="checkbox" checked={matForm.weekendDiffers} onChange={toggleWeekendDiffers} style={{marginTop:3,flexShrink:0}} />
-                        <span style={{minWidth:0}}>Le tarif est différent le week-end / jours fériés</span>
-                        <HelpTip text="« Week-end » = vendredi à dimanche + jours fériés. « Semaine » = lundi à jeudi. Appliqué automatiquement selon la date choisie par le client." />
-                      </label>
-
-                      {matForm.tieredPricing && (
-                        <div style={{display:'flex',alignItems:'center',gap:6,margin:'14px 0 8px'}}>
-                          <span style={{fontSize:'.75rem',fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--dark-mid)'}}>Paliers de quantité</span>
-                          <HelpTip text={'Chaque ligne fixe un prix pour une tranche de quantité louée : par exemple 1 à 19 unités à un tarif, puis 20 unités et plus à un tarif dégressif. Le "Qté min" de la toute première ligne devient aussi la quantité minimale imposée au client pour cet article — ex : si la 1ère ligne commence à 20, il ne pourra jamais en louer moins de 20 (comme pour la Chaise Napoléon).'} />
-                        </div>
-                      )}
-
-                      {matForm.tiers.map((t, i) => (
-                        <div key={i} style={{display:'flex',gap:10,alignItems:'flex-start',marginBottom:10,flexWrap:'wrap'}}>
-                          {matForm.tieredPricing && (
-                            <>
-                              <div>
-                                <span style={{display:'block',fontSize:'.66rem',fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',color:'var(--gray)',marginBottom:3}}>Qté min</span>
-                                <input type="number" min={1} className="adm-input" style={{width:80}} placeholder="Qté min" value={t.minQty} onChange={e => updateTierRow(i,'minQty',e.target.value)} />
-                              </div>
-                              <span style={{color:'var(--gray)',lineHeight:'38px',marginTop:16}}>à</span>
-                              <div>
-                                <span style={{display:'block',fontSize:'.66rem',fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',color:'var(--gray)',marginBottom:3}}>Qté max</span>
-                                <input type="number" min={1} className="adm-input" style={{width:80}} placeholder="∞" value={t.maxQty} onChange={e => updateTierRow(i,'maxQty',e.target.value)} />
-                              </div>
-                            </>
-                          )}
-                          <div>
-                            {/* Persistent micro-label, unlike the placeholder alone — the
-                                placeholder disappears once a price is typed in, so there was
-                                no way left to tell which field was which at a glance. */}
-                            {matForm.weekendDiffers && (
-                              <span style={{display:'block',fontSize:'.66rem',fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',color:'var(--gray)',marginBottom:3}}>Semaine</span>
-                            )}
-                            <input type="number" min={0} step="0.01" className="adm-input" style={{width:130}} placeholder={matForm.weekendDiffers ? 'Prix semaine HT' : 'Prix HT'} value={t.weekday} onChange={e => updateTierRow(i,'weekday',e.target.value)} />
-                            {t.weekday !== '' && !isNaN(parseFloat(t.weekday)) && <div style={{fontSize:'.72rem',color:'var(--gray)',marginTop:2}}>= {(parseFloat(t.weekday)*1.2).toFixed(2)} € TTC</div>}
-                          </div>
-                          {matForm.weekendDiffers && (
-                            <div>
-                              <span style={{display:'block',fontSize:'.66rem',fontWeight:700,letterSpacing:'.4px',textTransform:'uppercase',color:'var(--gray)',marginBottom:3}}>Week-end / Férié</span>
-                              <input type="number" min={0} step="0.01" className="adm-input" style={{width:130}} placeholder="Prix week-end HT" value={t.weekend} onChange={e => updateTierRow(i,'weekend',e.target.value)} />
-                              {t.weekend !== '' && !isNaN(parseFloat(t.weekend)) && <div style={{fontSize:'.72rem',color:'var(--gray)',marginTop:2}}>= {(parseFloat(t.weekend)*1.2).toFixed(2)} € TTC</div>}
-                            </div>
-                          )}
-                          {matForm.tieredPricing && matForm.tiers.length > 1 && (
-                            <button className="adm-btn-delete btn-sm" onClick={() => removeTierRow(i)}><i className="fas fa-trash" /></button>
-                          )}
-                        </div>
-                      ))}
-                      {matForm.tieredPricing && (
-                        <button className="adm-btn-ghost btn-sm" onClick={addTierRow}><i className="fas fa-plus" style={{marginRight:4}} />Ajouter un palier</button>
-                      )}
-                      {matTiersError && <div style={{marginTop:6,color:'var(--danger)',fontSize:'.8rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />{matTiersError}</div>}
-                      {matPriceError && <div style={{marginTop:6,color:'var(--danger)',fontSize:'.8rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />Veuillez entrer des prix valides (≥ 0).</div>}
-                    </div>
-                  )}
-
-                  <div className="mat-form-actions">
-                    <button className="adm-btn-primary" onClick={saveMaterial} disabled={matSaving}>
-                      {matSaving ? <><i className="fas fa-circle-notch fa-spin" style={{marginRight:8}} />Enregistrement…</> : <><i className="fas fa-save" style={{marginRight:8}} />Enregistrer</>}
-                    </button>
-                    <button className="adm-btn-ghost" onClick={() => setMatFormVisible(false)}>Annuler</button>
-                  </div>
-                </div>
-              </div>
+            {matEditor && (
+              <MaterialEditor
+                target={matEditor}
+                categories={categories}
+                onClose={() => setMatEditor(null)}
+                onSaved={async () => { setMatEditor(null); await loadMaterials() }}
+              />
             )}
-            <MatTable materials={materials} tiersByMaterial={groupTiersByMaterial(materialTiers)} page={matPage} onPageChange={setMatPage} onEdit={openEditMat} onDelete={deleteMat} onToggle={toggleAvail} />
+            <div className="mat-search" style={{maxWidth:340,marginBottom:18}}>
+              <i className="fas fa-search" />
+              <input
+                type="text"
+                placeholder="Rechercher un article ou une option…"
+                aria-label="Rechercher un article"
+                value={matSearch}
+                onChange={e => { setMatSearch(e.target.value); setMatPage(0) }}
+              />
+              {matSearch && (
+                <button className="mat-search-clear" onClick={() => { setMatSearch(''); setMatPage(0) }} aria-label="Effacer la recherche">
+                  <i className="fas fa-times" />
+                </button>
+              )}
+            </div>
+            <MatTable
+              search={matSearch}
+              onClearSearch={() => { setMatSearch(''); setMatPage(0) }}
+              materials={materials}
+              products={products}
+              tiersByMaterial={groupTiersByMaterial(materialTiers)}
+              page={matPage}
+              onPageChange={setMatPage}
+              onEdit={id => setMatEditor({ materialId: id })}
+              onEditProduct={(productId, focusOptionId) => setMatEditor({ productId, focusOptionId })}
+              onDelete={deleteMat}
+              onDeleteProduct={deleteProduct}
+              onUngroup={ungroupProduct}
+              onToggle={toggleAvail}
+            />
           </div>
 
           {/* VISUEL SITE */}
@@ -1406,63 +1212,6 @@ export default function AdminDashboard() {
 }
 
 /* ── Sub-components ─────────────────────────────────── */
-
-// Small "ⓘ" trigger that reveals a short explanation on click — used in
-// place of permanent paragraphs of help text cluttering a form (e.g. the
-// Tarification tab). Click-to-toggle rather than hover so it works the same
-// on mobile (no hover state) and desktop, and closes on blur so it never
-// gets stuck open after clicking elsewhere.
-//
-// The bubble is centered on the icon by default (see .help-tip-bubble CSS),
-// but the icon itself can end up anywhere horizontally — after a short
-// label, or after text that's wrapped onto a new line right at the edge of
-// a narrow mobile modal — so plain centering still let it run off-screen
-// and get clipped. Once open, this measures the bubble's actual rendered
-// position and nudges it back inside the viewport with an extra transform
-// offset; the arrow (::after, via --arrow-shift) gets the opposite
-// correction so it still points back at the icon instead of drifting off
-// with the rest of the bubble.
-function HelpTip({ text }) {
-  const [open, setOpen] = useState(false)
-  const [shift, setShift] = useState(0)
-  const bubbleRef = useRef(null)
-
-  useEffect(() => {
-    if (!open) return
-    const bubble = bubbleRef.current
-    if (!bubble) return
-    const r = bubble.getBoundingClientRect()
-    const margin = 10
-    let delta = 0
-    if (r.left < margin) delta = margin - r.left
-    else if (r.right > window.innerWidth - margin) delta = (window.innerWidth - margin) - r.right
-    if (delta) setShift(delta)
-  }, [open])
-
-  return (
-    <span className="help-tip">
-      <button
-        type="button"
-        className="help-tip-btn"
-        onClick={() => { setShift(0); setOpen(o => !o) }}
-        onBlur={() => setOpen(false)}
-        aria-label="Aide"
-        aria-expanded={open}
-      >
-        <i className="fas fa-info" />
-      </button>
-      {open && (
-        <span
-          ref={bubbleRef}
-          className="help-tip-bubble"
-          style={{ transform: `translateX(calc(-50% + ${shift}px))`, '--arrow-shift': `${-shift}px` }}
-        >
-          {text}
-        </span>
-      )}
-    </span>
-  )
-}
 
 function InstallmentTierFields({ title, minAmount, onMinAmount, last }) {
   return (
@@ -2375,13 +2124,87 @@ function GalerieManager() {
   )
 }
 
-function MatTable({ materials, tiersByMaterial, page, onPageChange, onEdit, onDelete, onToggle }) {
+// Price cell shared by simple articles and options.
+function MatPrice({ tiers }) {
+  const baseTier = tiers[0]
+  if (!baseTier) return '—'
+  return (
+    <>
+      {tiers.length > 1
+        ? <>à partir de {ttcFromHt(baseTier.price_weekend_ht).toFixed(2)} € TTC<div style={{fontSize:'.75rem',color:'var(--gray)'}}>{tiers.length} paliers</div></>
+        : baseTier.price_weekday_ht === baseTier.price_weekend_ht
+          ? <>{ttcFromHt(baseTier.price_weekend_ht).toFixed(2)} € TTC</>
+          : <>{ttcFromHt(baseTier.price_weekday_ht).toFixed(2)} € / {ttcFromHt(baseTier.price_weekend_ht).toFixed(2)} € TTC<div style={{fontSize:'.75rem',color:'var(--gray)'}}>semaine / week-end</div></>}
+      {baseTier.min_qty > 1 && <div style={{fontSize:'.75rem',color:'var(--gray)'}}>min. {baseTier.min_qty} unités</div>}
+    </>
+  )
+}
+
+// Inventory list. One row per article: simple articles as before; an
+// article à options gets a header row (name, option count, price range,
+// how many options are available) whose options fold out underneath via
+// its "Options multiples" button, each with its own availability toggle.
+// Pagination counts articles, so an article's options are never split
+// across two pages.
+//
+// `search` filters by name, ignoring case and accents: an article à options
+// matches on its own name or any option's label/name, and opens by itself
+// when the match is one of its options, so the matching option shows.
+const normalizeSearch = str => String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+
+function MatTable({ search = '', onClearSearch, materials, products, tiersByMaterial, page, onPageChange, onEdit, onEditProduct, onDelete, onDeleteProduct, onUngroup, onToggle }) {
+  // Articles whose options are shown — folded by default to keep the list short.
+  const [expanded, setExpanded] = useState(() => new Set())
+  const query = normalizeSearch(search)
+  const toggleExpanded = id => setExpanded(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+  const productById = Object.fromEntries(products.map(p => [p.id, p]))
+  const optionsByProduct = {}
+  const articles = []
+  for (const m of materials) {
+    if (m.product_id && productById[m.product_id]) (optionsByProduct[m.product_id] ||= []).push(m)
+    else articles.push({ kind: 'single', key: m.id, sortName: m.name, category: m.category, material: m })
+  }
+  for (const p of products) {
+    const options = (optionsByProduct[p.id] || []).sort((a, b) => (a.variant_order ?? 0) - (b.variant_order ?? 0))
+    if (options.length) articles.push({ kind: 'multiple', key: p.id, sortName: p.name, category: p.category, product: p, options })
+  }
+  articles.sort((a, b) => (a.category || '').localeCompare(b.category || '') || a.sortName.localeCompare(b.sortName))
+
+  // Options match on their own label ("30 kg") — their full name repeats
+  // the article's, which would make every option match an article search.
+  const nameMatches = a => normalizeSearch(a.sortName).includes(query)
+  const optionMatches = a => a.kind === 'multiple' && a.options.some(o => normalizeSearch(o.variant_label || o.name).includes(query))
+  const shown = query ? articles.filter(a => nameMatches(a) || optionMatches(a)) : articles
+  const openedBySearch = new Set(query ? shown.filter(a => !nameMatches(a) && optionMatches(a)).map(a => a.key) : [])
+  // Open the articles found only through one of their options, so the
+  // matching option shows (once per search; they can still be folded by
+  // hand afterwards).
+  const openedKey = [...openedBySearch].join('|')
+  useEffect(() => {
+    if (openedBySearch.size) setExpanded(prev => new Set([...prev, ...openedBySearch]))
+  }, [openedKey])
+
+  // Early returns only after every hook above has run (rules of hooks).
   if (!materials.length) return (
     <div className="adm-empty"><i className="fas fa-boxes" /><p>Aucun article. Cliquez sur "Ajouter un article".</p></div>
   )
-  const totalPages = Math.ceil(materials.length/MAT_PAGE_SIZE)
+  if (!shown.length) return (
+    <div className="adm-empty">
+      <i className="fas fa-search" />
+      <p>Aucun article ne correspond à «&nbsp;{search.trim()}&nbsp;».</p>
+      <button type="button" className="adm-btn-ghost btn-sm" onClick={onClearSearch}>Effacer la recherche</button>
+    </div>
+  )
+
+  const totalPages = Math.ceil(shown.length/MAT_PAGE_SIZE)
   const p = Math.max(0, Math.min(page, totalPages-1))
-  const slice = materials.slice(p*MAT_PAGE_SIZE,(p+1)*MAT_PAGE_SIZE)
+  const slice = shown.slice(p*MAT_PAGE_SIZE,(p+1)*MAT_PAGE_SIZE)
+  const thumb = url => url ? <img src={url} alt="" className="mat-thumb" /> : <div className="mat-thumb-empty"><i className="fas fa-image" /></div>
+
   return (
     <div id="materials-table-wrap">
       <table className="adm-table">
@@ -2396,45 +2219,91 @@ function MatTable({ materials, tiersByMaterial, page, onPageChange, onEdit, onDe
           <th style={{textAlign:'center'}}>Actions</th>
         </tr></thead>
         <tbody>
-          {slice.map(m => {
-            const tiers = tiersByMaterial[String(m.id)] || []
-            const baseTier = tiers[0]
-            return (
-            <tr key={m.id}>
-              <td data-label="Photo">{m.image_url?<img src={m.image_url} alt="" className="mat-thumb" />:<div className="mat-thumb-empty"><i className="fas fa-image" /></div>}</td>
-              <td data-label="Nom" style={{textAlign:'center'}}><strong>{m.name}</strong></td>
-              <td data-label="Catégorie" style={{textAlign:'center'}}>{m.category||'—'}</td>
-              <td data-label="Description" style={{textAlign:'center'}}>{m.description||'—'}</td>
-              <td data-label="Qté max" style={{textAlign:'center'}}>{m.max_quantity}</td>
-              <td data-label="Prix" style={{textAlign:'center'}}>
-                {baseTier ? (
-                  <>
-                    {tiers.length > 1
-                      ? <>à partir de {ttcFromHt(baseTier.price_weekend_ht).toFixed(2)} € TTC<div style={{fontSize:'.75rem',color:'var(--gray)'}}>{tiers.length} paliers</div></>
-                      : baseTier.price_weekday_ht === baseTier.price_weekend_ht
-                        ? <>{ttcFromHt(baseTier.price_weekend_ht).toFixed(2)} € TTC</>
-                        : <>{ttcFromHt(baseTier.price_weekday_ht).toFixed(2)} € / {ttcFromHt(baseTier.price_weekend_ht).toFixed(2)} € TTC<div style={{fontSize:'.75rem',color:'var(--gray)'}}>semaine / week-end</div></>}
-                    {baseTier.min_qty > 1 && <div style={{fontSize:'.75rem',color:'var(--gray)'}}>min. {baseTier.min_qty} unités</div>}
-                  </>
-                ) : '—'}
-              </td>
-              <td data-label="Dispo" style={{textAlign:'center'}}>
-                <button className={`toggle-avail ${m.available?'avail-on':'avail-off'}`} onClick={() => onToggle(m.id, m.available)}>{m.available?'Oui':'Non'}</button>
-              </td>
-              <td data-label="Actions" style={{textAlign:'center'}}>
-                <div className="adm-table-actions">
-                  <button className="adm-btn-ghost btn-sm" onClick={() => onEdit(m.id)}><i className="fas fa-pen" /></button>
-                  <button className="adm-btn-delete btn-sm" onClick={() => onDelete(m.id)}><i className="fas fa-trash" /></button>
-                </div>
-              </td>
-            </tr>
-          )})}
+          {slice.map(a => {
+            if (a.kind === 'single') {
+              const m = a.material
+              return (
+                <tr key={a.key}>
+                  <td data-label="Photo">{thumb(m.image_url)}</td>
+                  <td data-label="Nom" style={{textAlign:'center'}}><strong>{m.name}</strong><div><span className="mat-type-badge">Article simple</span></div></td>
+                  <td data-label="Catégorie" style={{textAlign:'center'}}>{m.category||'—'}</td>
+                  <td data-label="Description" style={{textAlign:'center'}}>{m.description||'—'}</td>
+                  <td data-label="Qté max" style={{textAlign:'center'}}>{m.max_quantity}</td>
+                  <td data-label="Prix" style={{textAlign:'center'}}><MatPrice tiers={tiersByMaterial[String(m.id)] || []} /></td>
+                  <td data-label="Dispo" style={{textAlign:'center'}}>
+                    <button className={`toggle-avail ${m.available?'avail-on':'avail-off'}`} onClick={() => onToggle(m.id, m.available)}>{m.available?'Oui':'Non'}</button>
+                  </td>
+                  <td data-label="Actions" style={{textAlign:'center'}}>
+                    <div className="adm-table-actions">
+                      <button className="adm-btn-ghost btn-sm" onClick={() => onEdit(m.id)} aria-label={`Modifier ${m.name}`}><i className="fas fa-pen" /></button>
+                      <button className="adm-btn-delete btn-sm" onClick={() => onDelete(m.id)} aria-label={`Supprimer ${m.name}`}><i className="fas fa-trash" /></button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            }
+            const { product, options } = a
+            const isOpen = expanded.has(product.id)
+            const availableCount = options.filter(o => o.available).length
+            const lowest = Math.min(...options.map(o => (tiersByMaterial[String(o.id)] || []).map(t => ttcFromHt(t.price_weekday_ht))).flat())
+            return [
+              <tr key={a.key} className={`mat-row-product${isOpen ? ' is-open' : ''}`}>
+                <td data-label="Photo">{thumb(options.find(o => o.image_url)?.image_url)}</td>
+                <td data-label="Nom" style={{textAlign:'center'}}>
+                  <strong>{product.name}</strong>
+                  <div>
+                    <button
+                      type="button"
+                      className="mat-type-badge mat-type-badge-multi mat-options-toggle"
+                      onClick={() => toggleExpanded(product.id)}
+                      aria-expanded={isOpen}
+                      aria-controls={`mat-options-${product.id}`}
+                      title={isOpen ? 'Masquer les options' : 'Afficher les options'}
+                    >
+                      Options multiples · {options.length}
+                      <i className="fas fa-chevron-down" aria-hidden="true" />
+                    </button>
+                  </div>
+                </td>
+                <td data-label="Catégorie" style={{textAlign:'center'}}>{product.category||'—'}</td>
+                <td data-label="Description" style={{textAlign:'center'}}>{product.description||'—'}</td>
+                <td data-label="Qté max" style={{textAlign:'center'}}>—</td>
+                <td data-label="Prix" style={{textAlign:'center'}}>{Number.isFinite(lowest) ? <>dès {lowest.toFixed(2)} € TTC</> : '—'}</td>
+                <td data-label="Dispo" style={{textAlign:'center'}}><span className="mat-avail-count">{availableCount}/{options.length}</span></td>
+                <td data-label="Actions" style={{textAlign:'center'}}>
+                  <div className="adm-table-actions">
+                    <button className="adm-btn-ghost btn-sm" onClick={() => onEditProduct(product.id)} aria-label={`Modifier ${product.name}`} title="Modifier l'article et ses options"><i className="fas fa-pen" /></button>
+                    <button className="adm-btn-ghost btn-sm" onClick={() => onUngroup(product.id)} aria-label={`Dissocier ${product.name}`} title="Dissocier : chaque option devient un article simple"><i className="fas fa-object-ungroup" /></button>
+                    <button className="adm-btn-delete btn-sm" onClick={() => onDeleteProduct(product.id)} aria-label={`Supprimer ${product.name} et ses options`}><i className="fas fa-trash" /></button>
+                  </div>
+                </td>
+              </tr>,
+              ...(isOpen ? options : []).map((o, i) => (
+                <tr key={o.id} id={i === 0 ? `mat-options-${product.id}` : undefined} className="mat-row-option">
+                  <td data-label="Photo">{thumb(o.image_url)}</td>
+                  <td data-label="Option" style={{textAlign:'center'}}><span className="mat-option-label"><i className="fas fa-level-up-alt fa-rotate-90" aria-hidden="true" />{o.variant_label || o.name}</span></td>
+                  <td data-label="Catégorie" style={{textAlign:'center'}} className="mat-cell-muted">—</td>
+                  <td data-label="Description" style={{textAlign:'center'}}>{o.description||'—'}</td>
+                  <td data-label="Qté max" style={{textAlign:'center'}}>{o.max_quantity}</td>
+                  <td data-label="Prix" style={{textAlign:'center'}}><MatPrice tiers={tiersByMaterial[String(o.id)] || []} /></td>
+                  <td data-label="Dispo" style={{textAlign:'center'}}>
+                    <button className={`toggle-avail ${o.available?'avail-on':'avail-off'}`} onClick={() => onToggle(o.id, o.available)}>{o.available?'Oui':'Non'}</button>
+                  </td>
+                  <td data-label="Actions" style={{textAlign:'center'}}>
+                    <div className="adm-table-actions">
+                      <button className="adm-btn-ghost btn-sm" onClick={() => onEditProduct(product.id, o.id)} aria-label={`Modifier l'option ${o.variant_label || o.name}`}><i className="fas fa-pen" /></button>
+                    </div>
+                  </td>
+                </tr>
+              )),
+            ]
+          })}
         </tbody>
       </table>
       {totalPages>1&&(
         <div className="mat-pagination">
           <button className="cat-pg-btn" disabled={p===0} onClick={() => onPageChange(p-1)}><i className="fas fa-chevron-left" /></button>
-          <span className="cat-pg-info">{p+1} / {totalPages} <span className="mat-pg-total">({materials.length} articles)</span></span>
+          <span className="cat-pg-info">{p+1} / {totalPages} <span className="mat-pg-total">({shown.length} article{shown.length > 1 ? 's' : ''}{query ? ` sur ${articles.length}` : ''})</span></span>
           <button className="cat-pg-btn" disabled={p>=totalPages-1} onClick={() => onPageChange(p+1)}><i className="fas fa-chevron-right" /></button>
         </div>
       )}

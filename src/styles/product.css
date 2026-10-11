@@ -1,0 +1,315 @@
+/* ===== PRODUCT PAGES — /catalogue/[slug] (src/components/product/) =====
+   Layout, sizes and type taken from the options.fr product templates kept
+   at /example/product-single and /example/product-multiple: 50/50 picture
+   and product column, 36px Montserrat uppercase title with a small
+   "Location" line above it, 14px Lato text, 120 × 45 quantity pill, 44px
+   Montserrat button, variant table with 55px rows. Colours are OA's: the
+   title in the gold dark enough for large type, the button in the site's
+   gold with dark text (options.fr's white-on-pale-gold is unreadable). */
+
+.pdp { background: #fff; }
+
+/* "Retour" + breadcrumb */
+.pdp-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  max-width: 1460px;
+  margin: 0 auto;
+  padding: 28px 50px 0;
+  font-family: var(--oa-font-body);
+  font-size: .78rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: #656565;
+}
+.pdp-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  color: #7d7d7d;
+  font-size: .9rem;
+  font-weight: 900;
+  text-decoration: none;
+  transition: color .18s ease;
+}
+.pdp-back:hover { color: var(--oa-text); }
+.pdp-breadcrumbs ol { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0; padding: 0; list-style: none; }
+.pdp-breadcrumbs li { display: inline-flex; align-items: center; gap: 10px; }
+.pdp-breadcrumbs li + li::before { content: '›'; color: #b5b0a6; }
+.pdp-breadcrumbs a { color: inherit; text-decoration: none; }
+.pdp-breadcrumbs a:hover { color: var(--oa-text); }
+.pdp-breadcrumbs strong { color: var(--oa-text); font-weight: 700; }
+
+/* Picture | product column */
+.pdp-main {
+  display: grid;
+  grid-template-columns: minmax(0, 695fr) minmax(0, 665fr);
+  gap: 20px;
+  align-items: start;
+  max-width: 1460px;
+  margin: 0 auto;
+  padding: 30px 35px 90px;
+  font-family: var(--oa-font-body);
+  font-size: 14px;
+  line-height: 24.5px;
+  color: #656565;
+}
+.pdp-media {
+  position: relative;
+  aspect-ratio: 1;
+  margin-left: 15px;
+  background: #fff;
+}
+.pdp-media-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  animation: pdpFade .35s ease both;
+}
+@keyframes pdpFade { from { opacity: 0; } to { opacity: 1; } }
+.pdp-media-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  background: #f7f6f3;
+  color: #a39d91;
+  font-size: .85rem;
+}
+.pdp-media-caption {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, .9);
+  color: #7d7d7d;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.pdp-info { padding: 0 15px 0 5px; min-width: 0; }
+
+.pdp-name h1 {
+  margin: 0 0 8px;
+  font-family: var(--oa-font-heading);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 36px;
+  text-transform: uppercase;
+  color: var(--oa-accent-dark);
+  overflow-wrap: anywhere;
+}
+.pdp-name h1 span { display: block; font-size: 15px; line-height: 15px; }
+
+/* Reference-style facts (options.fr's "Réf. : 35864" line) */
+.pdp-facts { margin: 30px 0 10px; }
+.pdp-fact { display: block; }
+.pdp-fact dt { display: inline; margin-right: 6px; color: #000; font-weight: 700; }
+.pdp-fact dd { display: inline; margin: 0; color: #7d7d7d; }
+.pdp-fact dd a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.pdp-fact dd a:hover { color: var(--oa-text); }
+.pdp-stock-ok { color: #3c7a4a !important; }
+.pdp-stock-out { color: #b3261e !important; }
+
+.pdp-overview { margin-top: 30px; }
+.pdp-overview p { margin: 0; white-space: pre-line; }
+.pdp-overview-multi { margin-top: 24px; }
+
+/* Quantity pill + button */
+.pdp-tocart { display: flex; align-items: center; flex-wrap: wrap; gap: 20px 35px; margin-top: 40px; }
+.pdp-tocart-multi { margin-top: 30px; gap: 12px 20px; }
+.pdp-qty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 120px;
+  height: 45px;
+  padding: 0 12px;
+  background: #fff;
+  border: 1px solid #d7d7d7;
+  border-radius: 23px;
+  flex-shrink: 0;
+}
+.pdp-qty-row { width: 100px; padding: 0 8px; border-color: #000; }
+.pdp-qty.is-disabled { opacity: .45; }
+.pdp-qty-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 32px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  color: #ababab;
+  cursor: pointer;
+  transition: color .15s ease;
+}
+.pdp-qty-row .pdp-qty-btn { color: #000; }
+.pdp-qty-btn:hover:not(:disabled) { color: var(--oa-text); }
+.pdp-qty-btn:disabled { opacity: .35; cursor: default; }
+.pdp-qty-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  font-family: var(--oa-font-body);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  color: #000;
+  -moz-appearance: textfield;
+}
+.pdp-qty-input:focus { outline: none; }
+.pdp-qty:focus-within { box-shadow: 0 0 0 3px rgba(201, 161, 90, .35); }
+.pdp-qty-btn:focus-visible { outline: 2px solid var(--oa-accent-ink); outline-offset: 1px; }
+
+.pdp-add {
+  min-width: 184px;
+  height: 44px;
+  padding: 0 17px;
+  background: var(--oa-accent);
+  border: 1px solid var(--oa-accent);
+  color: var(--oa-text);
+  font-family: var(--oa-font-heading);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .26px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+}
+.pdp-add:hover:not(:disabled) { background: var(--oa-text); border-color: var(--oa-text); color: #fff; }
+.pdp-add:focus-visible { outline: 2px solid var(--oa-accent-ink); outline-offset: 3px; }
+.pdp-add:disabled { opacity: .5; cursor: not-allowed; }
+.pdp-hint { font-size: 13px; color: #7d7d7d; }
+
+.pdp-in-cart { margin: 14px 0 0; font-size: 13px; color: #7d7d7d; }
+.pdp-notice { min-height: 24.5px; margin: 10px 0 0; font-size: 13px; }
+.pdp-notice a { color: var(--oa-text); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.pdp-notice-ok { color: #3c7a4a; }
+.pdp-notice-warn { color: #8a5a00; }
+
+/* Variant table (options.fr's PRODUIT / RÉF. / QUANTITÉ) */
+.pdp-grouped { width: 100%; margin-top: 20px; border-collapse: collapse; font-family: var(--oa-font-heading); font-size: 14px; }
+.pdp-grouped th {
+  padding: 10px 15px;
+  color: #000;
+  font-weight: 700;
+  text-align: left;
+  text-transform: uppercase;
+}
+.pdp-grouped td { height: 55px; padding: 5px 10px; vertical-align: middle; }
+.pdp-grouped tbody tr { cursor: pointer; transition: background-color .18s ease, box-shadow .18s ease; }
+.pdp-grouped tbody tr:hover { background: rgba(22, 20, 15, .03); }
+.pdp-grouped tbody tr.is-active { background: rgba(201, 161, 90, .1); box-shadow: inset 3px 0 0 var(--oa-accent); }
+.pdp-num { text-align: right !important; white-space: nowrap; }
+.pdp-qty-col { width: 1%; text-align: right !important; white-space: nowrap; }
+.pdp-variant-btn {
+  display: block;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: #000;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.pdp-variant-btn:focus-visible { outline: 2px solid var(--oa-accent-ink); outline-offset: 3px; }
+.pdp-variant-meta { display: block; font-family: var(--oa-font-body); font-size: 12px; line-height: 1.3; color: #7d7d7d; }
+.pdp-grouped-price { color: #7d7d7d; }
+.pdp-grouped tr.is-unavailable .pdp-variant-btn,
+.pdp-grouped tr.is-unavailable .pdp-grouped-price { color: #a9a9a9; }
+
+.pdp-variant-detail { margin-top: 10px; padding-top: 6px; border-top: 1px solid rgba(22, 20, 15, .08); }
+.pdp-variant-detail .pdp-facts { margin-top: 20px; }
+
+/* Rates table */
+.pdp-tariffs { margin-top: 40px; }
+.pdp-tariffs-title {
+  margin: 0 0 6px;
+  color: #000;
+  font-family: var(--oa-font-heading);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.pdp-tariffs-title span { color: #7d7d7d; font-family: var(--oa-font-body); font-size: 13px; font-weight: 400; text-transform: none; }
+.pdp-table { width: 100%; max-width: 480px; border-collapse: collapse; font-size: 14px; }
+.pdp-table th,
+.pdp-table td { padding: 7px 10px 7px 0; border-bottom: 1px solid rgba(22, 20, 15, .08); text-align: left; }
+.pdp-table th { color: #000; font-family: var(--oa-font-heading); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.pdp-tariffs-note { margin: 10px 0 0; font-size: 12.5px; line-height: 1.5; color: #7d7d7d; }
+
+.pdp-related { padding-top: 0; }
+.oa-product-link { display: block; color: inherit; text-decoration: none; }
+
+/* Catalogue cards (pages/catalogue.jsx) open their product page: the
+   picture and name are links, and the rest of the card is clickable. */
+.mat-card-link { cursor: pointer; }
+.mat-card-link a.mat-card-img { color: inherit; }
+.mat-card-link a.mat-name { color: var(--dark); text-decoration: none; }
+/* Article à options card: "Choisir" is a link styled as the Ajouter
+   button, and the options line may take two lines. */
+.mat-card-link a.mat-choose-btn { text-decoration: none; }
+.mat-card-link a.mat-choose-btn:hover { color: #fff; }
+.mat-options-summary { -webkit-line-clamp: 2; }
+.mat-card-link:hover a.mat-name,
+.mat-card-link a.mat-name:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Homepage teaser + "Dans la même catégorie" cards link to product pages:
+   the media link fills the square so the picture keeps its sizing. */
+.oa-product-media-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: inherit;
+}
+.oa-product-name a { color: inherit; text-decoration: none; }
+a.oa-product-add { text-decoration: none; }
+.oa-product-name a:hover,
+.oa-product-link:hover .oa-product-name { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Tablet and phone: stacked, like options.fr below its desktop layout. */
+@media (max-width: 991px) {
+  .pdp-main { grid-template-columns: 1fr; padding: 24px 24px 60px; }
+  .pdp-media { width: 100%; max-width: 560px; margin: 0 auto; }
+  .pdp-info { padding: 15px 0 0; }
+}
+@media (max-width: 767px) {
+  .pdp-breadcrumbs { flex-direction: column; gap: 10px; padding: 26px 15px 0; text-align: center; }
+  .pdp-breadcrumbs ol { justify-content: center; }
+  .pdp-main { padding: 20px 0 50px; }
+  .pdp-media { max-height: 360px; padding: 0 30px; aspect-ratio: auto; height: 360px; }
+  .pdp-info { padding: 35px 20px; }
+  .pdp-name h1 { text-align: center; overflow-wrap: break-word; }
+  .pdp-tocart { gap: 25px; }
+  .pdp-add { width: 100%; }
+  /* Variant rows stack: name on top, price and quantity pill beneath. */
+  .pdp-grouped,
+  .pdp-grouped tbody { display: block; }
+  .pdp-grouped thead { display: none; }
+  .pdp-grouped tbody tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 14px 10px;
+    border-bottom: 1px solid rgba(22, 20, 15, .08);
+  }
+  .pdp-grouped td { display: block; height: auto; padding: 0; }
+  .pdp-grouped-name { grid-column: 1 / -1; }
+  .pdp-grouped-price { text-align: left !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pdp-media-img { animation: none; }
+}

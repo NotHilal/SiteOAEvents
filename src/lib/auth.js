@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import crypto from 'crypto';
 
 // Admin auth shared by every API route (was copy-pasted into db.js,
@@ -10,8 +12,23 @@ import crypto from 'crypto';
 // secret is generated per server start so local work needs no setup.
 
 const isProd = process.env.NODE_ENV === 'production';
-const devSecret = crypto.randomBytes(32).toString('hex');
 let warned = false;
+
+function getDevSecret() {
+  try {
+    const secretPath = path.join(process.cwd(), 'data', '.jwt_dev_secret');
+    if (fs.existsSync(secretPath)) {
+      const saved = fs.readFileSync(secretPath, 'utf8').trim();
+      if (saved.length >= 32) return saved;
+    }
+    const generated = crypto.randomBytes(32).toString('hex');
+    fs.mkdirSync(path.dirname(secretPath), { recursive: true });
+    fs.writeFileSync(secretPath, generated, 'utf8');
+    return generated;
+  } catch {
+    return globalThis.__OA_DEV_JWT_SECRET__ || (globalThis.__OA_DEV_JWT_SECRET__ = crypto.randomBytes(32).toString('hex'));
+  }
+}
 
 function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
@@ -21,7 +38,7 @@ function getJwtSecret() {
     console.warn('[auth] JWT_SECRET absent ou trop court (< 32 caractères) — secret temporaire utilisé en développement.');
     warned = true;
   }
-  return devSecret;
+  return getDevSecret();
 }
 
 function safeEqual(a, b) {

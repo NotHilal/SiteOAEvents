@@ -7,13 +7,46 @@ import { getUnitPriceTtc, groupTiersByMaterial, getMinOrderQty } from '../src/li
 import { getCatalogueCart, setCatalogueCart, sendCatalogueCartToReservation } from '../src/lib/cart.js'
 import { track } from '../src/lib/analytics.js'
 import InfoTooltip from '../src/components/InfoTooltip.jsx'
+import { slugify } from '../src/lib/slug.js'
 
 const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1478146059778-26028b07395a?w=1600&q=75&auto=format&fit=crop'
 const MAT_PER_PAGE = 9
 
+const productHref = slug => `/catalogue/${slug}`
+
+// One card per product: a simple article is its own card; the options of
+// an article à options (Poids de lestage 15 kg / 30 kg…) are folded into
+// a single card under the article's name, since they're chosen on its
+// product page. Only available items reach this page, so an option that's
+// switched off simply isn't counted.
+function buildCards(materials, products) {
+  const productById = Object.fromEntries((products || []).map(p => [String(p.id), p]))
+  const cards = []
+  const byProduct = {}
+  for (const m of materials) {
+    const product = m.product_id && productById[String(m.product_id)]
+    if (!product) {
+      cards.push({ key: `m:${m.id}`, kind: 'single', name: m.name, category: m.category || 'Autre', slug: m.slug || slugify(m.name), imageUrl: m.image_url, materials: [m] })
+      continue
+    }
+    let card = byProduct[product.id]
+    if (!card) {
+      card = byProduct[product.id] = { key: `p:${product.id}`, kind: 'multiple', name: product.name, category: product.category || m.category || 'Autre', slug: product.slug, imageUrl: null, materials: [] }
+      cards.push(card)
+    }
+    card.materials.push(m)
+  }
+  for (const card of Object.values(byProduct)) {
+    card.materials.sort((a, b) => (a.variant_order ?? 0) - (b.variant_order ?? 0))
+    card.imageUrl = card.materials.find(m => m.image_url)?.image_url || null
+  }
+  return cards
+}
+
 export default function Catalogue() {
   const router = useRouter()
   const [materialsData, setMaterialsData] = useState([])
+  const [productsData, setProductsData] = useState([])
   const [tiersByMaterial, setTiersByMaterial] = useState({})
   const [loaded, setLoaded] = useState(false)
   const [cart, setCart] = useState({})
@@ -26,14 +59,30 @@ export default function Catalogue() {
     Promise.all([
       supabase.from('materials').select('*').eq('available', true).order('category'),
       supabase.from('material_price_tiers').select('*'),
-    ]).then(([matRes, tierRes]) => {
+      supabase.from('products').select('*'),
+    ]).then(([matRes, tierRes, prodRes]) => {
       setMaterialsData(matRes.data || [])
+      setProductsData(prodRes.data || [])
       setTiersByMaterial(groupTiersByMaterial(tierRes.data || []))
       setLoaded(true)
     })
   }, [])
 
   useEffect(() => { setMatPage(1) }, [matFilter, matSearch])
+
+  // ?categorie=TABLES (breadcrumb/category links on product pages) opens
+  // the catalogue on that filter.
+  useEffect(() => {
+    const cat = router.query.categorie
+    if (loaded && typeof cat === 'string' && materialsData.some(m => (m.category || 'Autre') === cat)) setMatFilter(cat)
+  }, [loaded, router.query.categorie, materialsData])
+
+  // The whole card opens the product page, except clicks on its own
+  // controls (Ajouter, −/+, the info button and its popup).
+  function openCard(e, card) {
+    if (e.target.closest('button, a, input, .info-tip')) return
+    router.push(productHref(card.slug))
+  }
 
   function updateCart(next) {
     // Count only items going from 0 to >0 as an "add to cart" conversion.
@@ -52,17 +101,19 @@ export default function Catalogue() {
     return getUnitPriceTtc(tiers, 'weekday', qty)
   }
 
-  const matsByCategory = materialsData.reduce((acc, m) => {
-    const cat = m.category || 'Autre'
-    if (!acc[cat]) acc[cat] = []
-    acc[cat].push(m)
+  const cards = useMemo(() => buildCards(materialsData, productsData), [materialsData, productsData])
+  const cardsByCategory = cards.reduce((acc, c) => {
+    ;(acc[c.category] ||= []).push(c)
     return acc
   }, {})
-  const categoryList = Object.keys(matsByCategory)
+  const categoryList = Object.keys(cardsByCategory)
 
-  const filteredMats = materialsData.filter(m => {
-    if (matFilter !== 'all' && (m.category || 'Autre') !== matFilter) return false
-    if (matSearch.trim() && !m.name.toLowerCase().includes(matSearch.trim().toLowerCase())) return false
+  // Search matches the card's name, or one of its options' names
+  // ("30 kg" still finds Poids de lestage).
+  const filteredMats = cards.filter(c => {
+    if (matFilter !== 'all' && c.category !== matFilter) return false
+    const q = matSearch.trim().toLowerCase()
+    if (q && !c.name.toLowerCase().includes(q) && !c.materials.some(m => m.name.toLowerCase().includes(q))) return false
     return true
   })
   const matTotalPages = Math.max(1, Math.ceil(filteredMats.length / MAT_PER_PAGE))
@@ -134,11 +185,11 @@ export default function Catalogue() {
                   </div>
                   <div className="mat-filter-pills">
                     <button className={`mat-filter-pill${matFilter==='all'?' active':''}`} onClick={() => setMatFilter('all')}>
-                      Tous <span className="mat-filter-count">{materialsData.length}</span>
+                      Tous <span className="mat-filter-count">{cards.length}</span>
                     </button>
                     {categoryList.map(cat => (
                       <button key={cat} className={`mat-filter-pill${matFilter===cat?' active':''}`} onClick={() => setMatFilter(cat)}>
-                        {cat} <span className="mat-filter-count">{matsByCategory[cat].length}</span>
+                        {cat} <span className="mat-filter-count">{cardsByCategory[cat].length}</span>
                       </button>
                     ))}
                   </div>
@@ -148,7 +199,40 @@ export default function Catalogue() {
                   <p className="no-mat-msg"><i className="fas fa-info-circle me-2" />Aucun article ne correspond à votre recherche.</p>
                 ) : (
                   <div className="mat-grid" data-reveal>
-                    {pagedMats.map(m => {
+                    {pagedMats.map(card => {
+                      if (card.kind === 'multiple') {
+                        // Article à options: one card, "dès" the cheapest
+                        // option, and a "Choisir" button to its product
+                        // page where the option is picked.
+                        const prices = card.materials.map(m => startingPrice(m, getMinOrderQty(tiersByMaterial[String(m.id)]))).filter(p => p > 0)
+                        const fromPrice = prices.length ? Math.min(...prices) : 0
+                        const inCart = card.materials.reduce((n, m) => n + (cart[String(m.id)] || 0), 0)
+                        const labels = card.materials.map(m => m.variant_label || m.name)
+                        return (
+                          <div key={card.key} className={`mat-card mat-card-catalogue mat-card-link${inCart ? ' mat-card-checked' : ''}`} onClick={e => openCard(e, card)}>
+                            <Link href={productHref(card.slug)} className={`mat-card-img${!card.imageUrl?' mat-card-img-empty':''}`} tabIndex={-1} aria-hidden="true">
+                              {card.imageUrl ? <img src={card.imageUrl} alt="" loading="lazy" decoding="async" /> : <i className="fas fa-image" />}
+                            </Link>
+                            <div className="mat-card-body">
+                              <div className="mat-name-row">
+                                <Link href={productHref(card.slug)} className="mat-name">{card.name}</Link>
+                                <span className="mat-price">{fromPrice > 0 ? `dès ${fromPrice.toFixed(2)} €` : ''}</span>
+                              </div>
+                              <span className="mat-desc mat-options-summary">{labels.length} options : {labels.join(' · ')}</span>
+                              <div className="mat-card-footer">
+                                <span className="mat-stock-badge mat-stock-ok"><i className="fas fa-check-circle" /> {inCart ? `${inCart} dans votre sélection` : 'Disponible'}</span>
+                                <div className="mat-card-footer-right">
+                                  <span className="mat-info-slot" aria-hidden="true" />
+                                  <Link href={productHref(card.slug)} className="mat-add-btn mat-choose-btn" aria-label={`Choisir une option de ${card.name}`}>
+                                    Choisir <i className="fas fa-arrow-right" />
+                                  </Link>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      }
+                      const m = card.materials[0]
                       const tiers = tiersByMaterial[String(m.id)]
                       const minQty = getMinOrderQty(tiers)
                       const qty = cart[String(m.id)] || 0
@@ -156,13 +240,13 @@ export default function Catalogue() {
                       const unitPrice = startingPrice(m, qty || minQty)
                       const maxQty = m.max_quantity || 999
                       return (
-                        <div key={m.id} className={`mat-card mat-card-catalogue${selected?' mat-card-checked':''}`}>
-                          <div className={`mat-card-img${!m.image_url?' mat-card-img-empty':''}`}>
-                            {m.image_url ? <img src={m.image_url} alt={m.name} loading="lazy" decoding="async" /> : <i className="fas fa-image" />}
-                          </div>
+                        <div key={card.key} className={`mat-card mat-card-catalogue mat-card-link${selected?' mat-card-checked':''}`} onClick={e => openCard(e, card)}>
+                          <Link href={productHref(card.slug)} className={`mat-card-img${!m.image_url?' mat-card-img-empty':''}`} tabIndex={-1} aria-hidden="true">
+                            {m.image_url ? <img src={m.image_url} alt="" loading="lazy" decoding="async" /> : <i className="fas fa-image" />}
+                          </Link>
                           <div className="mat-card-body">
                             <div className="mat-name-row">
-                              <span className="mat-name">{m.name}</span>
+                              <Link href={productHref(card.slug)} className="mat-name">{m.name}</Link>
                               <span className="mat-price">{unitPrice > 0 ? `dès ${unitPrice.toFixed(2)} €` : ''}</span>
                             </div>
                             {minQty > 1 && <span className="mat-desc" style={{fontSize:'.75rem',color:'var(--gray)'}}>Minimum {minQty} unités</span>}

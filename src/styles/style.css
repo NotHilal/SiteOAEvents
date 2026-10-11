@@ -590,6 +590,93 @@ body { font-family: var(--oa-font-body); }
 .form-group textarea.form-control { resize: vertical; min-height: 140px; }
 .form-group select.form-control { appearance: none; cursor: pointer; }
 
+/* Contact form fields — options.fr's input style (pill, 1px near-black
+   border, white, 25px side padding; see /example/contact), scoped to the
+   contact form so the reservation/devis forms keep theirs. Specificity
+   beats reservation.css's `.form-group .form-control`, loaded later. */
+.contact-form .form-group .form-control {
+  height: 50px;
+  padding: 0 25px;
+  background: #fff;
+  border: 1px solid var(--oa-text);
+  border-radius: 9999px;
+  box-shadow: none;
+  font-family: var(--oa-font-body);
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--oa-text);
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.contact-form .form-control::placeholder { color: #a39d91; opacity: 1; }
+/* Same 1px border, no layout shift: an inner 1px shadow thickens it and a
+   soft gold ring makes keyboard focus easy to spot. */
+.contact-form .form-group .form-control:focus,
+.contact-form .iti:focus-within .iti__selected-country:focus-visible {
+  outline: none;
+}
+.contact-form .form-group .form-control:focus {
+  background: #fff;
+  border-color: #000;
+  box-shadow: 0 0 0 1px #000, 0 0 0 4px rgba(201, 161, 90, .32);
+}
+.contact-form .form-group select.form-control {
+  padding-right: 52px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%2316140f' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 24px center / 12px 8px;
+}
+.contact-form .form-group textarea.form-control {
+  height: auto;
+  min-height: 150px;
+  padding: 16px 25px;
+  border-radius: 24px;
+  resize: vertical;
+}
+
+/* Error state: red border + message under the field; the 1px border width
+   never changes, so nothing around it moves. */
+.contact-form .form-group .form-control[aria-invalid="true"] { border-color: #b3261e; }
+.contact-form .form-group .form-control[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 1px #b3261e, 0 0 0 4px rgba(179, 38, 30, .16);
+}
+.contact-form .field-error {
+  margin: 6px 0 0 25px;
+  font-size: .8rem;
+  line-height: 1.35;
+  color: #b3261e;
+}
+
+/* Phone (intl-tel-input): flag + dial code sit inside the same pill. */
+.contact-form .iti { display: block; width: 100%; }
+.contact-form .iti__country-container { padding: 1px; }
+.contact-form .iti__selected-country { border-radius: 9999px 0 0 9999px; }
+.contact-form .iti__selected-country-primary { padding: 0 8px 0 22px; border-radius: 9999px 0 0 9999px; }
+.contact-form .iti__selected-country:focus-visible .iti__selected-country-primary {
+  box-shadow: inset 0 0 0 2px rgba(201, 161, 90, .6);
+}
+.contact-form .iti__selected-dial-code { color: var(--oa-text); font-size: 15px; }
+.contact-form .iti__arrow { border-color: var(--oa-text); }
+.contact-form .iti--inline-country-selector .iti__country-selector {
+  margin-top: 6px;
+  border: 1px solid var(--oa-text);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .08);
+}
+/* The library's grey hover box is square on its right edge — inside a pill
+   it reads as a glitch, so keep only the arrow flip as feedback. */
+.contact-form .iti__country-container { --iti-hover-color: transparent; }
+.iti__search-input:focus { outline: none; }
+.iti__search-input-wrapper:focus-within { border-bottom-color: var(--oa-accent); }
+.iti__country-list { font-family: var(--oa-font-body); font-size: 14px; }
+
+@media (max-width: 767.98px) {
+  /* 16px stops iOS Safari zooming in on focus. */
+  .contact-form .form-group .form-control,
+  .contact-form .iti__selected-dial-code { font-size: 16px; }
+  .contact-form .form-group .form-control { padding-left: 20px; padding-right: 20px; }
+  .contact-form .form-group select.form-control { padding-right: 46px; background-position: right 20px center; }
+  .contact-form .field-error { margin-left: 20px; }
+}
+
 
 /* ===== MARBLE BACKGROUND ===== */
 /* overflow-x:hidden lives on html ONLY — adding it to body too (tried
@@ -935,7 +1022,7 @@ body { background-color: var(--oa-background); }
 .oah-left, .oah-center, .oah-right { flex: 1 1 0; display: flex; align-items: center; min-width: 0; }
 .oah-left { gap: 28px; }
 .oah-center { justify-content: center; }
-.oah-right { justify-content: flex-end; gap: clamp(4px, 1.4vw, 22px); }
+.oah-right { justify-content: flex-end; gap: clamp(0px, 1.1vw, 16px); }
 
 .oah a:focus-visible,
 .oah button:focus-visible {
@@ -1030,58 +1117,115 @@ body { background-color: var(--oa-background); }
 }
 .oah-scrolled .oah-logo-tagline { max-height: 0; opacity: 0; margin-top: 0; }
 
-/* Icon row with dark tooltips. */
+/* Icon row with dark tooltips — six options.fr glyphs (Icon `ion`) at
+   32px on a ~62px pitch, like the reference header. */
 .oah-icon {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
+  width: 46px;
   height: 48px;
+  padding: 0;
+  background: none;
+  border: 0;
   color: var(--oa-text);
   text-decoration: none;
-  transition: color .2s ease;
+  cursor: pointer;
+  transition: color .18s ease;
 }
 .oah-icon:hover,
 .oah-icon.is-current { color: var(--oa-accent-ink); }
 .oah-tooltip {
   position: absolute;
-  top: calc(100% + 8px);
   left: 50%;
-  transform: translate(-50%, -4px);
-  padding: 5px 10px;
+  min-width: 135px;
+  max-width: 200px;
+  text-align: center;
+  padding: 4px 8px;
   border-radius: 4px;
-  background: var(--oa-text);
+  background: #000;
   color: #fff;
-  font-family: var(--oa-font-body);
-  font-size: .75rem;
+  font-family: Lato, arial, tahoma;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 24.5px;
   white-space: nowrap;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transition: opacity .2s ease, transform .3s var(--oa-ease-out), visibility .2s;
+  transition: opacity .3s;
+  z-index: 1;
 }
 .oah-tooltip::before {
   content: '';
   position: absolute;
-  bottom: 100%;
   left: 50%;
   margin-left: -5px;
   border: 5px solid transparent;
-  border-bottom-color: var(--oa-text);
 }
-.oah-icon:hover .oah-tooltip,
-.oah-icon:focus-visible .oah-tooltip { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
-/* Last icon sits at the bar's right edge — anchor its tooltip right so it
-   never runs off-screen. */
-.oah-right .oah-icon:last-child .oah-tooltip { left: auto; right: 0; transform: translateY(-4px); }
-.oah-right .oah-icon:last-child .oah-tooltip::before { left: auto; right: 19px; }
-.oah-right .oah-icon:last-child:hover .oah-tooltip,
-.oah-right .oah-icon:last-child:focus-visible .oah-tooltip { transform: translateY(0); }
+
+/* Big header: every label uses the same /example anchor and top spacing. */
+.oah:not(.oah-scrolled) .oah-tooltip {
+  top: -31px;
+  right: auto;
+  bottom: auto;
+  left: -40px;
+  transform: none;
+}
+.oah:not(.oah-scrolled) .oah-tooltip::before {
+  top: 100%;
+  bottom: auto;
+  border-top-color: #000;
+  border-bottom-color: transparent;
+}
+.oah:not(.oah-scrolled) .oah-icon:hover .oah-tooltip,
+.oah:not(.oah-scrolled) .oah-icon:focus-visible .oah-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+
+/* Scrolled / compact header: tooltip appears below the icon */
+.oah-scrolled .oah-tooltip {
+  top: calc(100% + 8px);
+  bottom: auto;
+  transform: translate(-50%, -4px);
+}
+.oah-scrolled .oah-tooltip::before {
+  bottom: 100%;
+  top: auto;
+  border-bottom-color: #000;
+  border-top-color: transparent;
+}
+.oah-scrolled .oah-icon:hover .oah-tooltip,
+.oah-scrolled .oah-icon:focus-visible .oah-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+.oah-scrolled .oah-right > .oah-icon:last-child .oah-tooltip,
+.oah-scrolled .oah-right .oah-icon-cart .oah-tooltip {
+  left: auto;
+  right: 0;
+  transform: translateY(-4px);
+}
+.oah-scrolled .oah-right > .oah-icon:last-child .oah-tooltip::before,
+.oah-scrolled .oah-right .oah-icon-cart .oah-tooltip::before {
+  left: auto;
+  right: 18px;
+  margin-left: 0;
+}
+.oah-scrolled .oah-right > .oah-icon:last-child:hover .oah-tooltip,
+.oah-scrolled .oah-right > .oah-icon:last-child:focus-visible .oah-tooltip,
+.oah-scrolled .oah-right .oah-icon-cart:hover .oah-tooltip,
+.oah-scrolled .oah-right .oah-icon-cart:focus-visible .oah-tooltip {
+  transform: translateY(0);
+}
 .oah-cart-count {
   position: absolute;
-  top: 4px;
-  right: 2px;
+  top: 3px;
+  right: 0;
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
@@ -1093,6 +1237,77 @@ body { background-color: var(--oa-background); }
   font-weight: 700;
   line-height: 18px;
   text-align: center;
+}
+
+/* Phone + "Mon compte" dropdowns. The panel uses the same 20px vertical
+   drop, square white surface and soft blue-grey shadow as /example, while
+   retaining OA's own content and outline icons. */
+.oah-account { position: relative; display: flex; }
+.oah-account.is-open > .oah-icon { color: var(--oa-accent-ink); }
+.oah-account-menu {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  z-index: 10;
+  width: max-content;
+  min-width: 244px;
+  max-width: calc(100vw - 24px);
+  margin-top: 0;
+  padding: 10px 0;
+  background: #fff;
+  border: 0;
+  border-radius: 0;
+  box-shadow: 0 0 20px rgba(96, 109, 166, .3);
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 20px);
+  transition: opacity .1s ease-in, transform .1s ease-in, visibility 0s linear .1s;
+}
+.oah-account.is-open .oah-account-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+  transition: opacity .3s ease, transform .3s var(--oa-ease-out), visibility 0s;
+}
+.oah-account-list { margin: 0; padding: 0; list-style: none; }
+.oah-account-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 30px;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  color: #696969;
+  font-family: 'Lato', Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: normal;
+  line-height: 1.5;
+  text-align: left;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .2s ease;
+}
+.oah-account-item:hover,
+.oah-account-item:focus-visible { color: var(--oa-accent-ink); }
+.oah-account-item svg { flex-shrink: 0; color: currentColor; }
+.oah .oah-account-item:focus-visible { outline-offset: -2px; }
+.oah-account-sep { height: 1px; margin: 6px 30px; background: rgba(22, 20, 15, .08); }
+
+/* Keep the last account panel inside the viewport while retaining the same
+   vertical animation as the centred reference dropdown. */
+.oah-right > .oah-account:not(.oah-contact-menu) .oah-account-menu {
+  right: -8px;
+  left: auto;
+  transform: translateY(20px);
+}
+.oah-right > .oah-account:not(.oah-contact-menu).is-open .oah-account-menu {
+  transform: translateY(0);
 }
 
 /* Slide-in drawer from the left. */
@@ -1206,11 +1421,18 @@ body { background-color: var(--oa-background); }
 .oah-drawer-service:hover,
 .oah-drawer-service.is-current { color: var(--oa-text); }
 
-/* Tablet/phone: like options.fr — menu, logo, cart only. */
+/* Narrow desktop: six icons still on one line, packed tighter. */
+@media (min-width: 992px) and (max-width: 1199px) {
+  .oah-right { gap: 0; }
+  .oah-icon { width: 40px; }
+}
+
+/* Tablet/phone: menu, logo, then Mon compte + cart — phone, find us,
+   contact and catalogue move into the drawer. */
 @media (max-width: 991px) {
   :root { --oa-header-h: 76px; --oa-header-h-compact: 62px; }
   .oah-cta,
-  .oah-right .oah-icon:not(.oah-icon-cart) { display: none; }
+  .oah-icon-secondary { display: none; }
   .oah-logo-mark { height: 42px; }
   .oah-scrolled .oah-logo-mark { height: 34px; }
   .oah-logo-name { font-size: .95rem; letter-spacing: .16em; }
@@ -1223,8 +1445,32 @@ body { background-color: var(--oa-background); }
 }
 @media (max-width: 560px) {
   .oah-menu-label { display: none; }
+  /* Two icons on the right (Mon compte + cart) vs one on the left: the
+     left column takes the same 80px when there's room, so the logo stays
+     centred, and gives some back on the narrowest phones rather than
+     letting the logo overlap the menu button. */
+  .oah-icon { width: 40px; }
+  /* Shrink weights: the left column gives up its spare 32px first, only
+     then does the logo column narrow (as it always has on tiny screens). */
+  .oah-left { flex: 0 20 80px; min-width: 48px; }
+  .oah-right { flex: 0 0 auto; min-width: 0; }
+  .oah-center { flex: 1 1 auto; min-width: 0; }
   .oah-logo { gap: 10px; }
   .oah-logo-name { font-size: .8rem; letter-spacing: .12em; }
+}
+/* Small phones: the full-size wordmark plus two icons no longer fit, so
+   the logo scales down a touch (same lockup, smaller) and the icon hit
+   areas narrow to 36px — the 32px glyphs themselves stay. */
+@media (max-width: 400px) {
+  .oah-icon { width: 36px; }
+  .oah-right { gap: 2px; }
+  .oah-logo { gap: 8px; }
+  .oah-logo-mark { height: 36px; }
+  .oah-scrolled .oah-logo-mark { height: 32px; }
+  .oah-logo-name { font-size: clamp(.6rem, 3vw, .8rem); letter-spacing: .1em; }
+}
+@media (max-width: 374px) {
+  .oah-bar { padding: 0 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .oah *, .oah { transition-duration: .01ms !important; transition-delay: 0s !important; }
