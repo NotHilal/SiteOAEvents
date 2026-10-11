@@ -435,6 +435,16 @@ async function init() {
       await client.execute({ sql: 'UPDATE materials SET slug = ? WHERE id = ?', args: [slug, m.id] });
     }
   }
+
+  // Ensure default catalogue images are populated for materials that have missing images
+  for (const mat of REAL_MATERIALS) {
+    if (mat.image_url) {
+      await client.execute({
+        sql: "UPDATE materials SET image_url = ? WHERE id = ? AND (image_url IS NULL OR image_url = '')",
+        args: [mat.image_url, mat.id],
+      });
+    }
+  }
 }
 
 const DEMO_CATEGORY_IDS = ['c1', 'c2', 'c3', 'c4'];
@@ -458,61 +468,84 @@ const REAL_CATEGORIES = [
 const REAL_MATERIALS = [
   // Banquettes
   { id: 'mat-banq-2-beige', name: 'Banquette 2 places – Beige', category: 'BANQUETTES', max_quantity: 10,
+    image_url: '/uploads/materials/mat-banq-2-beige.webp',
     tiers: [[1, null, 70.00, 80.00]] },
   { id: 'mat-banq-2-taupe', name: 'Banquette 2 places – Taupe', category: 'BANQUETTES', max_quantity: 10,
+    image_url: '/uploads/materials/mat-banq-2-taupe.webp',
     tiers: [[1, null, 70.00, 80.00]] },
   { id: 'mat-banq-3-beige', name: 'Banquette 3 places – Beige', category: 'BANQUETTES', max_quantity: 10,
+    image_url: null,
     tiers: [[1, null, 130.00, 150.00]] },
 
   // Décorations
   { id: 'mat-deco-rideau-classique', name: 'Rideau classique 3 × 3 m', description: 'Structure incluse', category: 'DÉCORATIONS', max_quantity: 4,
+    image_url: '/uploads/materials/mat-deco-rideau-classique.webp',
     tiers: [[1, null, 45.00, 50.00]] },
   { id: 'mat-deco-rideau-tresse', name: 'Rideau tressé 3 × 4 m', description: 'Structure incluse', category: 'DÉCORATIONS', max_quantity: 4,
+    image_url: '/uploads/materials/mat-deco-rideau-tresse.webp',
     tiers: [[1, null, 90.00, 100.00]] },
   { id: 'mat-deco-arche-ronde', name: 'Arche de fleurs ronde', description: 'Structure + fleurs incluses', category: 'DÉCORATIONS', max_quantity: 4,
+    image_url: '/uploads/materials/mat-deco-arche-ronde.webp',
     tiers: [[1, null, 35.00, 40.00]] },
   { id: 'mat-deco-arche-carree', name: 'Arche de fleurs carrée', description: 'Structure + fleurs incluses', category: 'DÉCORATIONS', max_quantity: 4,
+    image_url: '/uploads/materials/mat-deco-arche-carree.webp',
     tiers: [[1, null, 35.00, 40.00]] },
   { id: 'mat-deco-tables-basses', name: 'Lot de 2 tables basses effet marbre', category: 'DÉCORATIONS', max_quantity: 6,
+    image_url: null,
     tiers: [[1, null, 35.00, 40.00]] },
 
   // Tables — real stock counts from the owners
   { id: 'mat-table-rect', name: 'Table rectangulaire', category: 'TABLES', max_quantity: 80,
+    image_url: '/uploads/materials/mat-table-rect.webp',
     tiers: [[1, 9, 10.20, 12.00], [10, 19, 9.18, 10.80], [20, null, 8.67, 10.20]] },
   { id: 'mat-table-ronde-152', name: 'Table ronde Ø152 cm', category: 'TABLES', max_quantity: 30,
+    image_url: '/uploads/materials/mat-table-ronde-152.webp',
     tiers: [[1, 9, 11.90, 14.00], [10, 19, 10.71, 12.60], [20, null, 10.12, 11.90]] },
   { id: 'mat-table-ronde-180', name: 'Table ronde Ø180 cm', category: 'TABLES', max_quantity: 15,
+    image_url: null,
     tiers: [[1, 9, 15.30, 18.00], [10, 19, 13.77, 16.20], [20, null, 13.01, 15.30]] },
 
   // Chaises
   { id: 'mat-chaise-napoleon', name: 'Chaise Napoléon', category: 'CHAISES', max_quantity: 500, min_order_qty: 20,
+    image_url: '/uploads/materials/mat-chaise-napoleon.webp',
     tiers: [[20, 79, 2.76, 3.33], [80, 150, 2.66, 3.20], [151, 250, 2.49, 3.00], [251, 500, 2.08, 2.50]] },
 
   // Tentes / Barnum
   { id: 'mat-tente-32', name: 'Tente de réception 32 m² (4 × 8 m)', description: 'Installation, désinstallation et lestage (150 kg) inclus. Hors frais kilométriques.', category: 'TENTES', max_quantity: 6,
+    image_url: '/uploads/materials/mat-tente-32.webp',
     tiers: [[1, 2, 199.50, 210.00], [3, null, 179.55, 189.00]] },
   { id: 'mat-tente-50', name: 'Tente de réception 50 m² (5 × 10 m)', description: 'Installation, désinstallation et lestage (200 kg) inclus. Hors frais kilométriques.', category: 'TENTES', max_quantity: 6,
+    image_url: '/uploads/materials/mat-tente-50.webp',
     tiers: [[1, 2, 247.00, 260.00], [3, null, 222.30, 234.00]] },
   { id: 'mat-tente-72', name: 'Tente de réception 72 m² (6 × 12 m)', description: 'Installation, désinstallation et lestage (250 kg) inclus. Hors frais kilométriques.', category: 'TENTES', max_quantity: 2,
+    image_url: '/uploads/materials/mat-tente-72.webp',
     tiers: [[1, null, 332.50, 350.00]] },
   { id: 'mat-tente-100', name: 'Tente de réception 100 m² (5 × 20 m)', description: 'Installation, désinstallation et lestage (300 kg) inclus. Hors frais kilométriques.', category: 'TENTES', max_quantity: 2,
+    image_url: '/uploads/materials/mat-tente-100.webp',
     tiers: [[1, null, 551.00, 580.00]] },
 
   // Options & Accessoires — no weekday/weekend split given, so weekday and
   // weekend HT are identical.
   { id: 'mat-opt-kit-led', name: 'Kit Lumière LED', description: '2 barres LED 6000 W', category: 'OPTIONS & ACCESSOIRES', max_quantity: 10,
+    image_url: '/uploads/materials/mat-opt-kit-led.webp',
     tiers: [[1, null, 40.00, 40.00]] },
   { id: 'mat-opt-parasol', name: 'Parasol chauffant électrique', category: 'OPTIONS & ACCESSOIRES', max_quantity: 6,
+    image_url: '/uploads/materials/mat-opt-parasol.webp',
     tiers: [[1, 3, 50.00, 50.00], [4, 6, 40.00, 40.00]] },
   { id: 'mat-opt-rallonge-5', name: 'Rallonge électrique 5 mètres', category: 'OPTIONS & ACCESSOIRES', max_quantity: 20,
+    image_url: '/uploads/materials/mat-opt-rallonge-5.webp',
     tiers: [[1, null, 3.00, 3.00]] },
   { id: 'mat-opt-rallonge-10', name: 'Rallonge électrique 10 mètres', category: 'OPTIONS & ACCESSOIRES', max_quantity: 20,
+    image_url: '/uploads/materials/mat-opt-rallonge-10.webp',
     tiers: [[1, null, 5.00, 5.00]] },
   { id: 'mat-opt-poids-15', name: 'Poids de lestage 15 kg', category: 'OPTIONS & ACCESSOIRES', max_quantity: 30,
+    image_url: null,
     tiers: [[1, null, 5.00, 5.00]] },
   { id: 'mat-opt-poids-30', name: 'Poids de lestage 30 kg', category: 'OPTIONS & ACCESSOIRES', max_quantity: 30,
+    image_url: '/uploads/materials/mat-opt-poids-30.webp',
     tiers: [[1, null, 10.00, 10.00]] },
   { id: 'mat-opt-galette', name: 'Option galette de chaise', description: 'Option pour Chaise Napoléon', category: 'OPTIONS & ACCESSOIRES', max_quantity: 500,
+    image_url: '/uploads/materials/mat-opt-galette.webp',
     tiers: [[1, null, 0.50, 0.50]] },
 ];
 
@@ -580,8 +613,8 @@ async function seedRealCatalog() {
   for (const mat of REAL_MATERIALS) {
     await client.execute({
       sql: `INSERT OR REPLACE INTO materials (id, name, description, category, max_quantity, min_order_qty, available, image_url, price, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, 1, NULL, 0, ?)`,
-      args: [mat.id, mat.name, mat.description || null, mat.category, mat.max_quantity, mat.min_order_qty || null, now],
+            VALUES (?, ?, ?, ?, ?, ?, 1, ?, 0, ?)`,
+      args: [mat.id, mat.name, mat.description || null, mat.category, mat.max_quantity, mat.min_order_qty || null, mat.image_url || null, now],
     });
     for (const [minQty, maxQty, weekdayHt, weekendHt] of mat.tiers) {
       await client.execute({

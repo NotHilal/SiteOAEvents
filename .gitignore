@@ -24,7 +24,6 @@ npm-debug.log*
 *.sqlite.bak
 *.sqlite-journal
 data/.jwt_dev_secret
-public/uploads/
 
 # ───── Serveur local ─────
 serveur-local.ps1
