@@ -193,6 +193,12 @@ async function init() {
 
   // Migrate existing databases created before new columns were added
   await ensureColumn('materials', 'price', 'REAL DEFAULT 0');
+  // The contact form (pages/contact.jsx) and the admin Messages tab both use
+  // these, but the table never had them — every contact insert failed.
+  await ensureColumn('contacts', 'prenom', 'TEXT');
+  await ensureColumn('contacts', 'nom', 'TEXT');
+  await ensureColumn('contacts', 'telephone', 'TEXT');
+  await ensureColumn('contacts', 'type_evenement', 'TEXT');
   await ensureColumn('reservations', 'prenom', 'TEXT');
   await ensureColumn('reservations', 'nom', 'TEXT');
   await ensureColumn('reservations', 'delivery_address', 'TEXT');

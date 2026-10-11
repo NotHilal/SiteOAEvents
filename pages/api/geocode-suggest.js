@@ -1,9 +1,11 @@
 import { suggestAddresses } from '../../src/lib/geo';
+import { rateLimit } from '../../src/lib/rate-limit.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
+  if (!rateLimit(req, res, { key: 'geocode', limit: 60, windowMs: 60 * 1000 })) return;
 
   const q = (req.query.q || '').toString().trim();
   if (q.length < 3) {

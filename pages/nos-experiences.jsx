@@ -1,9 +1,8 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
-import Head from 'next/head'
-import AOS from 'aos'
+import Seo from '../src/components/Seo.jsx'
 
-const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=1920&q=80'
+const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=1600&q=75&auto=format&fit=crop'
 
 // Curated "real event" stories rather than a plain photo grid — the point is
 // letting a visitor picture their own day, so each entry gets a short
@@ -17,7 +16,7 @@ const EXPERIENCES = [
   {
     title: 'Camille & Julien',
     tag: 'Mariage champêtre — Juin 2025',
-    img: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1000&q=80',
+    img: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1000&q=75&auto=format&fit=crop',
     video: null,
     text: "Un mariage en extérieur pensé comme une promenade : chapiteau ouvert sur le jardin, tables en bois brut et une scénographie florale du cocktail jusqu'au dernier slow. Chaque prestataire coordonné pour que les mariés n'aient rien à gérer le jour J.",
     highlights: ['180 invités', 'Chapiteau + jardin', 'Scénographie florale', 'Coordination jour J'],
@@ -25,7 +24,7 @@ const EXPERIENCES = [
   {
     title: 'Nadia & Rémi',
     tag: 'Mariage élégant — Septembre 2025',
-    img: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=1000&q=80',
+    img: 'https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=1000&q=75&auto=format&fit=crop',
     video: null,
     text: "Une réception en salle avec une direction artistique tout en tons neutres et dorés — art de la table complet, jeux de lumière et un plan de table pensé au millimètre pour 220 convives, sans un accroc.",
     highlights: ['220 invités', 'Salle de réception', 'Art de la table', 'Éclairage sur mesure'],
@@ -33,7 +32,7 @@ const EXPERIENCES = [
   {
     title: 'Camille R.',
     tag: 'Mariage intime — Mai 2025',
-    img: 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=1000&q=80',
+    img: 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=1000&q=75&auto=format&fit=crop',
     video: null,
     text: "Une cérémonie à taille humaine, 40 proches seulement, où chaque détail — du bouquet à la vaisselle — a été choisi avec les mariés pour raconter leur histoire plutôt que suivre une tendance.",
     highlights: ['40 invités', 'Cérémonie laïque', 'Décoration sur mesure'],
@@ -41,7 +40,7 @@ const EXPERIENCES = [
   {
     title: 'Isabelle M.',
     tag: 'Anniversaire — 50 ans',
-    img: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=1000&q=80',
+    img: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=1000&q=75&auto=format&fit=crop',
     video: null,
     text: "Une soirée surprise transformée en véritable événement : thème choisi avec la famille, animation, traiteur et une scénographie qui a surpris jusqu'à la fêtée elle-même.",
     highlights: ['80 invités', 'Soirée à thème', 'Animation & traiteur'],
@@ -49,7 +48,7 @@ const EXPERIENCES = [
   {
     title: 'Thomas R.',
     tag: "Séminaire d'entreprise — Corporate",
-    img: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1000&q=80',
+    img: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1000&q=75&auto=format&fit=crop',
     video: null,
     text: "Un séminaire de deux jours avec logistique complète — salle plénière, ateliers, restauration et soirée de clôture — livré clé en main pour que l'équipe organisatrice reste concentrée sur le contenu.",
     highlights: ['120 participants', 'Logistique complète', 'Soirée de clôture'],
@@ -57,17 +56,16 @@ const EXPERIENCES = [
 ]
 
 export default function NosExperiences() {
-  useEffect(() => {
-    AOS.init({ duration: 820, easing: 'ease-in-out', once: true, offset: 55 })
-    AOS.refresh()
-  }, [])
 
   return (
     <>
-      <Head>
-        <title>Nos Expériences — OA Événementiel</title>
-        <meta name="description" content="Découvrez plusieurs mariages, anniversaires et événements professionnels réalisés par OA Événementiel — histoires, ambiances et coulisses." />
-      </Head>
+      <Seo
+        title="Nos expériences : mariages et réceptions réalisés"
+        description="Mariages, anniversaires et événements professionnels réalisés par OA Événementiel : histoires, ambiances et coulisses de nos événements."
+        path="/nos-experiences"
+        breadcrumb={[{ name: 'Nos expériences', path: '/nos-experiences' }]}
+        preloadImage={PAGE_HEADER_DEFAULT}
+      />
 
       <div className="site-wrap">
         <div className="page-header" style={{ backgroundImage: `url(${PAGE_HEADER_DEFAULT})` }}>
@@ -85,7 +83,7 @@ export default function NosExperiences() {
 
         <section className="services-full-section">
           <div className="container">
-            <div className="oa-section-head" data-aos="fade-up" style={{ marginBottom: 50 }}>
+            <div className="oa-section-head" data-reveal style={{ marginBottom: 50 }}>
               <span className="oa-eyebrow">Ils nous ont fait confiance</span>
               <h2 className="oa-heading" style={{ fontSize: 'var(--oa-size-h1)' }}>Quelques-unes de leurs journées</h2>
               <p className="oa-text-muted" style={{ maxWidth: 620, margin: '10px auto 0' }}>
@@ -96,16 +94,16 @@ export default function NosExperiences() {
             {EXPERIENCES.map((e, i) => (
               <div key={e.title} className="service-block">
                 <div className={`row align-items-center${i % 2 === 1 ? ' flex-row-reverse' : ''}`}>
-                  <div className="col-lg-6 mb-4 mb-lg-0" data-aos={i % 2 === 1 ? 'fade-left' : 'fade-right'}>
+                  <div className="col-lg-6 mb-4 mb-lg-0" data-reveal>
                     <div className="oa-experience-media">
                       {e.video ? (
                         <video src={e.video} poster={e.img} controls playsInline className="service-block-image" />
                       ) : (
-                        <img src={e.img} alt={e.title} className="service-block-image" />
+                        <img src={e.img} alt={e.title} className="service-block-image" loading="lazy" decoding="async" />
                       )}
                     </div>
                   </div>
-                  <div className={`col-lg-6 ${i % 2 === 1 ? 'pe-lg-5' : 'ps-lg-5'}`} data-aos={i % 2 === 1 ? 'fade-right' : 'fade-left'} data-aos-delay="100">
+                  <div className={`col-lg-6 ${i % 2 === 1 ? 'pe-lg-5' : 'ps-lg-5'}`} data-reveal>
                     <span className="devis-tag">{e.tag}</span>
                     <h2>{e.title}</h2>
                     <p className="section-text">{e.text}</p>
@@ -118,7 +116,7 @@ export default function NosExperiences() {
               </div>
             ))}
 
-            <div className="oa-center-cta" data-aos="fade-up">
+            <div className="oa-center-cta" data-reveal>
               <Link href="/galerie" className="theme-button theme-button-outline w-inline-block">
                 <div className="theme-button-content"><div className="theme-button-text">Voir toute la galerie</div></div>
               </Link>

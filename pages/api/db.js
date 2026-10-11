@@ -1,28 +1,9 @@
 import crypto from 'crypto';
+import { isAuthorized } from '../../src/lib/auth';
 import db, { generateReservationReference } from '../../src/lib/sqlite-db';
+import { PUBLIC_SANITIZERS, isSpam } from '../../src/lib/public-submissions';
+import { rateLimit } from '../../src/lib/rate-limit';
 
-// Helper to check token authorization
-function isAuthorized(req) {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
-    
-    const token = authHeader.split(' ')[1];
-    const [payloadStr, signature] = token.split('.');
-    
-    const secret = process.env.JWT_SECRET || 'super_secret_local_key_for_jwt_tokens_12345';
-    const expectedSignature = crypto.createHmac('sha256', secret).update(payloadStr).digest('base64');
-    
-    if (signature !== expectedSignature) return false;
-    
-    const payload = JSON.parse(Buffer.from(payloadStr, 'base64').toString('utf8'));
-    if (Date.now() > payload.exp) return false; // Expired
-    
-    return payload.role === 'authenticated';
-  } catch(e) {
-    return false;
-  }
-}
 
 function deserializeRow(table, row) {
   if (!row) return null;
@@ -170,9 +151,27 @@ export default async function handler(req, res) {
     }
 
     if (method === 'POST') {
-      const payload = req.body;
+      let payload = req.body;
       if (!payload) {
         return res.status(400).json({ message: 'Missing body payload' });
+      }
+
+      // Anonymous insert (reservations / contacts only, per requiresAuth):
+      // one row, rate limited, honeypot-checked, and rebuilt server-side
+      // from an allowlist — see src/lib/public-submissions.js.
+      if (!isAuthorized(req)) {
+        const sanitize = PUBLIC_SANITIZERS[table];
+        if (!sanitize || Array.isArray(payload)) {
+          return res.status(401).json({ message: 'Unauthorized access' });
+        }
+        if (!rateLimit(req, res, { key: `insert:${table}`, limit: 6, windowMs: 10 * 60 * 1000 })) return;
+        if (isSpam(payload)) {
+          // Pretend success so bots don't learn to adapt.
+          return res.status(200).json({ data: { id: crypto.randomUUID() } });
+        }
+        const { record, error } = await sanitize(payload);
+        if (error) return res.status(400).json({ message: error });
+        payload = record;
       }
 
       const isArray = Array.isArray(payload);

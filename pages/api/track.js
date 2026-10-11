@@ -1,4 +1,5 @@
 import db from '../../src/lib/sqlite-db.js';
+import { rateLimit } from '../../src/lib/rate-limit.js';
 
 // Public lookup, deliberately requiring BOTH the reference and the email
 // used on the request — the reference alone (6 chars, ~1 billion
@@ -9,9 +10,10 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
+  if (!rateLimit(req, res, { key: 'track', limit: 10, windowMs: 10 * 60 * 1000 })) return;
 
   const { email, reference } = req.body || {};
-  if (!email || !reference) {
+  if (typeof email !== 'string' || typeof reference !== 'string' || !email.trim() || !reference.trim() || email.length > 254 || reference.length > 20) {
     return res.status(400).json({ message: 'Email et numéro de commande requis.' });
   }
 

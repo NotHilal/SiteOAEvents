@@ -836,7 +836,9 @@
 .mat-filter-pill.active {
   background: var(--rose-gold);
   border-color: var(--rose-gold);
-  color: #fff;
+  /* --rose-gold resolves to the light gold #ebc795 on public pages (admin.css
+     redefines it globally) — white text on it was 1.6:1. */
+  color: var(--oa-text);
 }
 .mat-filter-count {
   font-size: .66rem;
@@ -845,7 +847,7 @@
   padding: 1px 6px;
   border-radius: 0px;
 }
-.mat-filter-pill.active .mat-filter-count { background: rgba(255,255,255,.28); }
+.mat-filter-pill.active .mat-filter-count { background: rgba(255,255,255,.45); opacity: 1; }
 
 /* 2 wide columns of horizontal (thumb + info) cards, not 3 columns of
    stacked image-on-top cards — uses the wizard's width instead of height,
@@ -1081,7 +1083,7 @@
 }
 .mat-info-modal-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .mat-info-modal-title {
-  font-family: 'Playfair Display', serif;
+  font-family: 'Montserrat', sans-serif;
   font-size: 1.2rem;
   color: var(--dark);
   margin: 0 0 10px;
@@ -1284,4 +1286,76 @@
   .resa-stepper { padding: 0 4px; }
   .step-circle { width: 34px; height: 34px; font-size: .78rem; }
   .step-line { margin: 0 4px; margin-bottom: 20px; }
+}
+
+/* Keyboard focus on calendar days (role="button" cells). */
+.rcd:focus { outline: none; }
+.rcd:focus-visible { outline: 2px solid var(--oa-text, #16140f); outline-offset: 2px; position: relative; z-index: 1; }
+
+/* ===== CATALOGUE CARDS — stable alignment (/catalogue only) =====
+   Price in its own column at the top right; footer pinned to the bottom
+   with a fixed [info slot][Ajouter] group on the right — nothing moves
+   with the length of the name or the presence of an info icon. */
+.mat-card-catalogue .mat-name-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 12px;
+}
+.mat-card-catalogue .mat-price { justify-self: end; text-align: right; line-height: 1.5; }
+.mat-card-catalogue .mat-name { line-height: 1.4; }
+.mat-card-catalogue .mat-card-footer-right { margin-left: auto; gap: 10px; }
+.mat-info-slot { width: 24px; height: 24px; flex-shrink: 0; }
+
+/* ===== INFO TOOLTIP (src/components/InfoTooltip.jsx) ===== */
+.info-tip-btn:focus-visible { outline: 2px solid var(--oa-text, #16140f); outline-offset: 2px; }
+.info-tip {
+  position: fixed;
+  z-index: 1300;
+  width: max-content;
+  max-width: min(280px, calc(100vw - 24px));
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #e3ded4;
+  box-shadow: 0 6px 18px rgba(22, 20, 15, .08);
+  color: #3f3b33;
+  font-family: 'Lato', sans-serif;
+  font-size: .82rem;
+  line-height: 1.5;
+  text-align: left;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  /* Fade-out (when .is-open is removed): 160ms ease-in. */
+  transition: opacity .16s ease-in, transform .16s ease-in;
+}
+.info-tip.is-open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  /* Fade-in: 200ms ease-out. */
+  transition: opacity .2s ease-out, transform .2s ease-out;
+}
+.info-tip-bottom { transform: translateY(-4px); }
+.info-tip-bottom.is-open { transform: translateY(0); }
+.info-tip-title { margin: 0 0 4px; line-height: 1.4; color: var(--oa-text, #16140f); font-weight: 700; font-size: .84rem; }
+.info-tip-body p { margin: 0; font-size: inherit; line-height: inherit; color: inherit; }
+.info-tip-body p + p { margin-top: 6px; }
+.info-tip-meta { color: #6b6558; font-size: .78rem; }
+/* Small arrow pointing at the icon. */
+.info-tip::after {
+  content: '';
+  position: absolute;
+  left: var(--arrow-left, 50%);
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: #fff;
+  border: 1px solid #e3ded4;
+  transform: rotate(45deg);
+}
+.info-tip-top::after { bottom: -6px; border-top: 0; border-left: 0; }
+.info-tip-bottom::after { top: -6px; border-bottom: 0; border-right: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .info-tip, .info-tip.is-open, .info-tip-bottom { transform: none; transition-duration: .01s; }
 }

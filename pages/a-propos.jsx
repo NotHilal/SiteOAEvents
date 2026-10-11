@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import Head from 'next/head'
+import Seo from '../src/components/Seo.jsx'
 import { supabase } from '../src/lib/supabase.js'
 
 // Fixed icons for the "Nos valeurs" blocks — same 4 icons reused on the
@@ -9,7 +9,7 @@ const VALUE_ICONS = ['/return.avif', '/delivery-truck.avif', '/customer-service.
 
 // Matches the seed row in src/lib/sqlite-db.js — used as the initial state
 // so there's no flash of empty content before the fetch resolves.
-const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1920&q=80'
+const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1600&q=75&auto=format&fit=crop'
 
 const DEFAULT_CONTENT = {
   founderName: "[Prénom Nom], fondateur d'OA Événementiel",
@@ -44,10 +44,13 @@ export default function APropos() {
 
   return (
     <>
-      <Head>
-        <title>À Propos — OA Événementiel</title>
-        <meta name="description" content="Découvrez OA Événementiel, organisation et scénographie d'événements sur-mesure en Île-de-France." />
-      </Head>
+      <Seo
+        title="À propos : scénographie d'événements sur-mesure"
+        description="Découvrez OA Événementiel, spécialiste de l'organisation et de la scénographie d'événements sur-mesure en Île-de-France."
+        path="/a-propos"
+        breadcrumb={[{ name: 'À propos', path: '/a-propos' }]}
+        preloadImage={PAGE_HEADER_DEFAULT}
+      />
 
       <div className="site-wrap">
         <div
@@ -96,7 +99,7 @@ export default function APropos() {
 
                 <div className="why-us-image-box">
                   {content.photoUrl ? (
-                    <img src={content.photoUrl} alt={content.founderName} className="apropos-photo" />
+                    <img src={content.photoUrl} alt={content.founderName} className="apropos-photo" loading="lazy" decoding="async" />
                   ) : (
                     <div className="apropos-photo-placeholder">
                       <i className="fas fa-camera" />

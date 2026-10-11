@@ -1,21 +1,19 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import Head from 'next/head'
-import AOS from 'aos'
+import Seo from '../src/components/Seo.jsx'
 import { supabase } from '../src/lib/supabase.js'
+import { track } from '../src/lib/analytics.js'
 
 const WEB3FORMS_KEY = '380ad0e4-4abc-4a00-81d1-d81067d54129'
-const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1920&q=80'
+const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1600&q=75&auto=format&fit=crop'
 
 export default function Contact() {
-  const [form, setForm] = useState({ prenom: '', nom: '', email: '', telephone: '', typeEvenement: '', message: '' })
+  const EMPTY = { prenom: '', nom: '', email: '', telephone: '', typeEvenement: '', message: '', website: '' }
+  const [form, setForm] = useState(EMPTY)
+  const [errorMsg, setErrorMsg] = useState('')
   const [status, setStatus] = useState('idle') // idle | loading | success | error
   const [images, setImages] = useState({})
 
-  useEffect(() => {
-    AOS.init({ duration: 820, easing: 'ease-in-out', once: true, offset: 55 })
-    AOS.refresh()
-  }, [])
 
   useEffect(() => {
     supabase.from('site_content').select('*').eq('key', 'images_contact').then(({ data }) => {
@@ -27,53 +25,82 @@ export default function Contact() {
 
   const handleChange = (e) => setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
 
+  // Saved to our database first (the admin's Messages tab is the source of
+  // truth), then forwarded by email via Web3Forms. Success if at least one
+  // of the two went through; the form keeps what was typed on failure.
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (status === 'loading') return
     setStatus('loading')
+    setErrorMsg('')
 
+    let saved = false
+    let emailed = false
     try {
-      const payload = {
-        access_key: WEB3FORMS_KEY,
-        subject: '🌹 Nouvelle demande de devis — OA Événementiel',
-        from_name: 'OA Événementiel - Site Web',
-        'Prénom': form.prenom,
-        'Nom': form.nom,
-        'Email': form.email,
-        'Téléphone': form.telephone,
-        "Type d'événement": form.typeEvenement,
-        'Message': form.message,
-      }
-      const res = await fetch('https://api.web3forms.com/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const result = await res.json()
-      if (!result.success) throw new Error('Web3Forms failed')
-
-      await supabase.from('contacts').insert({
+      const { error } = await supabase.from('contacts').insert({
         prenom: form.prenom.trim() || null,
         nom: form.nom.trim() || null,
         email: form.email.trim(),
         telephone: form.telephone.trim() || null,
         type_evenement: form.typeEvenement || null,
         message: form.message.trim(),
-        read: false,
+        website: form.website,
       })
+      if (error) {
+        // Validation message from the server (e.g. invalid email): show it
+        // and stop — the email would fail the same way.
+        if (error.status === 400 || error.status === 429) {
+          setErrorMsg(error.message)
+          setStatus('error')
+          return
+        }
+      } else {
+        saved = true
+      }
+    } catch {}
 
+    if (!form.website) {
+      try {
+        const res = await fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({
+            access_key: WEB3FORMS_KEY,
+            subject: 'Nouvelle demande de contact — OA Événementiel',
+            from_name: 'OA Événementiel - Site Web',
+            botcheck: '',
+            'Prénom': form.prenom,
+            'Nom': form.nom,
+            'Email': form.email,
+            'Téléphone': form.telephone,
+            "Type d'événement": form.typeEvenement,
+            'Message': form.message,
+          }),
+        })
+        const result = await res.json()
+        emailed = !!result.success
+      } catch {}
+    }
+
+    if (saved || emailed) {
       setStatus('success')
-      setForm({ prenom: '', nom: '', email: '', telephone: '', typeEvenement: '', message: '' })
-    } catch {
+      setForm(EMPTY)
+      track('Contact envoyé', { type: form.typeEvenement || 'non précisé' })
+    } else {
+      setErrorMsg("Votre message n'a pas pu être envoyé. Vérifiez votre connexion et réessayez, ou écrivez-nous à contact@oa-evenementiel.fr.")
       setStatus('error')
     }
   }
 
   return (
     <>
-      <Head>
-        <title>Contact — OA Événementiel</title>
-        <meta name="description" content="Contactez-nous pour toute demande de devis ou d'information pour vos mariages, anniversaires et événements professionnels en Île-de-France." />
-      </Head>
+      <Seo
+        title="Contact et demande de devis"
+        description="Une question ou un projet ? Contactez OA Événementiel pour vos mariages, anniversaires et événements professionnels en Île-de-France."
+        path="/contact"
+        breadcrumb={[{ name: 'Contact', path: '/contact' }]}
+        preloadImage={PAGE_HEADER_DEFAULT}
+      />
 
       <div className="site-wrap">
         <div
@@ -95,7 +122,7 @@ export default function Contact() {
         <section className="contact-section">
           <div className="container">
             <div className="row">
-              <div className="col-lg-4 mb-5 mb-lg-0" data-aos="fade-right">
+              <div className="col-lg-4 mb-5 mb-lg-0" data-reveal>
                 <span className="section-subtitle">Parlons de votre projet</span>
                 <h2 className="section-title">Nous Sommes à Votre Écoute</h2>
                 <p className="section-text">N'hésitez pas à nous contacter pour toute demande de renseignements ou pour démarrer la planification de votre événement.</p>
@@ -103,68 +130,69 @@ export default function Contact() {
                 {[
                   { icon: 'fas fa-map-marker-alt', title: 'Localisation', text: 'Île-de-France, France' },
                   { icon: 'fas fa-phone', title: 'Téléphone', text: 'Sur demande' },
-                  { icon: 'fas fa-envelope', title: 'Email', text: 'contact@oa-evenementiel.fr' },
+                  { icon: 'fas fa-envelope', title: 'Email', text: 'contact@oa-evenementiel.fr', href: 'mailto:contact@oa-evenementiel.fr' },
                   { icon: 'fas fa-clock', title: 'Disponibilité', text: 'Lun – Dim : 9h – 20h', note: 'Livraison et prestations possibles 24h/24, 7j/7' },
                 ].map((item, i) => (
                   <div key={i} className="contact-info-item">
-                    <div className="contact-info-icon"><i className={item.icon} /></div>
+                    <div className="contact-info-icon"><i className={item.icon} aria-hidden="true" /></div>
                     <div className="contact-info-text">
-                      <h5>{item.title}</h5>
-                      <p>{item.text}</p>
+                      <h3>{item.title}</h3>
+                      <p>{item.href ? <a href={item.href}>{item.text}</a> : item.text}</p>
                       {item.note && <p className="contact-info-note">({item.note})</p>}
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="col-lg-8" data-aos="fade-left" data-aos-delay="100">
+              <div className="col-lg-8" data-reveal>
                 <div className="contact-form-wrap">
                   <h3>Demande de devis</h3>
                   <p className="lead-text">Remplissez ce formulaire et nous vous répondrons dans les 24h.</p>
 
                   {status === 'success' && (
                     <div className="alert alert-success" role="alert">
-                      <i className="fas fa-check-circle me-2" />Message envoyé ! Nous vous répondrons très vite.
+                      <i className="fas fa-check-circle me-2" aria-hidden="true" />Message envoyé ! Nous vous répondrons très vite.
                     </div>
                   )}
                   {status === 'error' && (
                     <div className="alert alert-danger" role="alert">
-                      <i className="fas fa-exclamation-triangle me-2" />Une erreur est survenue. Veuillez réessayer.
+                      <i className="fas fa-exclamation-triangle me-2" aria-hidden="true" />{errorMsg || 'Une erreur est survenue. Veuillez réessayer.'}
                     </div>
                   )}
 
-                  <form onSubmit={handleSubmit}>
+                  <p className="form-required-hint"><span aria-hidden="true">*</span> Champs obligatoires</p>
+                  <form onSubmit={handleSubmit} noValidate={false}>
                     <div className="row">
                       <div className="col-md-6">
                         <div className="form-group">
-                          <label>Prénom <span className="text-rose-gold">*</span></label>
-                          <input name="prenom" className="form-control" value={form.prenom} onChange={handleChange} required />
+                          <label htmlFor="contact-prenom">Prénom <span className="text-rose-gold" aria-hidden="true">*</span></label>
+                          <input id="contact-prenom" autoComplete="given-name" name="prenom" className="form-control" value={form.prenom} onChange={handleChange} required />
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="form-group">
-                          <label>Nom <span className="text-rose-gold">*</span></label>
-                          <input name="nom" className="form-control" value={form.nom} onChange={handleChange} required />
+                          <label htmlFor="contact-nom">Nom <span className="text-rose-gold" aria-hidden="true">*</span></label>
+                          <input id="contact-nom" autoComplete="family-name" name="nom" className="form-control" value={form.nom} onChange={handleChange} required />
                         </div>
                       </div>
                     </div>
                     <div className="row">
                       <div className="col-md-6">
                         <div className="form-group">
-                          <label>Email <span className="text-rose-gold">*</span></label>
-                          <input type="email" name="email" className="form-control" value={form.email} onChange={handleChange} required />
+                          <label htmlFor="contact-email">Email <span className="text-rose-gold" aria-hidden="true">*</span></label>
+                          <input id="contact-email" autoComplete="email" type="email" name="email" className="form-control" value={form.email} onChange={handleChange} required />
                         </div>
                       </div>
                       <div className="col-md-6">
                         <div className="form-group">
-                          <label>Téléphone</label>
-                          <input type="tel" name="telephone" className="form-control" value={form.telephone} onChange={handleChange} />
+                          <label htmlFor="contact-telephone">Téléphone</label>
+                          <input id="contact-telephone" autoComplete="tel" type="tel" name="telephone" className="form-control" value={form.telephone} onChange={handleChange} />
                         </div>
                       </div>
                     </div>
                     <div className="form-group">
-                      <label>Type d'événement <span className="text-rose-gold">*</span></label>
-                      <select name="typeEvenement" className="form-control" value={form.typeEvenement} onChange={handleChange} required>
+                      <label htmlFor="contact-type">Type d'événement <span className="text-rose-gold" aria-hidden="true">*</span></label>
+                      <select id="contact-type" name="typeEvenement" className="form-control" value={form.typeEvenement} onChange={handleChange} required>
                         <option value="">— Choisissez —</option>
                         <option value="mariage">Mariage</option>
                         <option value="anniversaire">Anniversaire</option>
@@ -174,10 +202,14 @@ export default function Contact() {
                       </select>
                     </div>
                     <div className="form-group">
-                      <label>Message <span className="text-rose-gold">*</span></label>
-                      <textarea name="message" className="form-control" rows={5} value={form.message} onChange={handleChange} required placeholder="Décrivez votre projet, la date souhaitée, le nombre de personnes…" />
+                      <label htmlFor="contact-message">Message <span className="text-rose-gold" aria-hidden="true">*</span></label>
+                      <textarea id="contact-message" maxLength={5000} name="message" className="form-control" rows={5} value={form.message} onChange={handleChange} required placeholder="Décrivez votre projet, la date souhaitée, le nombre de personnes…" />
                     </div>
-                    <input type="text" name="_honey" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+                    {/* Honeypot: invisible to people, filled in by bots. */}
+                    <div className="hp-field" aria-hidden="true">
+                      <label htmlFor="contact-website">Ne pas remplir</label>
+                      <input id="contact-website" type="text" name="website" tabIndex={-1} autoComplete="off" value={form.website} onChange={handleChange} />
+                    </div>
                     <button type="submit" className="btn btn-rose-gold w-100" disabled={status === 'loading'}>
                       {status === 'loading'
                         ? <><i className="fas fa-circle-notch fa-spin me-2" />Envoi en cours…</>

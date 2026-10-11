@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import db from '../../../src/lib/sqlite-db.js';
 import { computeInstallmentSchedule, getInstallmentTierEligibility } from '../../../src/lib/stripe.js';
+import { rateLimit } from '../../../src/lib/rate-limit.js';
 
 // Public on purpose, same trust model as create-intent.js: the reservation's
 // unguessable id is the capability. No Stripe involved at all here — this
@@ -12,6 +13,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
+  if (!rateLimit(req, res, { key: 'pay-virement', limit: 20, windowMs: 10 * 60 * 1000 })) return;
 
   const { reservationId } = req.body || {};
   const plan = req.body?.plan;

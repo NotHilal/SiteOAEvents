@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react'
-import { loadStripe } from '@stripe/stripe-js'
+// '/pure' does NOT inject stripe.js on import. The plain entry point did,
+// which loaded Stripe's 290 KB script (and its fraud-detection cookies) on
+// every page of the site — Next prefetches /suivi from the header links.
+import { loadStripe } from '@stripe/stripe-js/pure'
 import CardPaymentForm from './CardPaymentForm.jsx'
 
 // NEXT_PUBLIC_* vars are inlined at build time. Stays null (no crash) until
-// an admin adds a real Stripe publishable key to .env.
-const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
-  : null
+// an admin adds a real Stripe publishable key to .env. Created lazily, the
+// first time the card form is actually shown.
+let stripePromise = null
+function getStripePromise() {
+  if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) return null
+  if (!stripePromise) stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  return stripePromise
+}
 
 // Payment step for an already-confirmed reservation — used by /suivi once a
 // client looks up a request that's been accepted. Originally lived inline in
@@ -184,7 +191,7 @@ export default function PaymentFlow({ reservationId, grandTotal, onComplete }) {
           </p>
           <ScheduleList schedule={schedule} />
           <CardPaymentForm
-            stripePromise={stripePromise}
+            stripePromise={getStripePromise()}
             clientSecret={clientSecret}
             billingDetails={billingDetails}
             amount={schedule[0]?.amount || 0}

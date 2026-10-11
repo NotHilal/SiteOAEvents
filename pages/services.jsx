@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import Head from 'next/head'
-import AOS from 'aos'
+import Seo from '../src/components/Seo.jsx'
 import { supabase } from '../src/lib/supabase.js'
 
-const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1920&q=80'
+const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1600&q=75&auto=format&fit=crop'
 
 const SERVICES = [
   {
     slotKey: 'service_1',
-    icon: 'fas fa-rings-wedding',
-    img: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=900&q=80',
+    icon: 'fas fa-heart',
+    img: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=900&q=75&auto=format&fit=crop',
     title: 'Organisation de Mariage',
     desc: 'De la recherche de la salle à la coordination le jour J, nous gérons chaque détail de votre mariage pour que vous viviez pleinement ce moment unique.',
     items: [
@@ -24,7 +23,7 @@ const SERVICES = [
   {
     slotKey: 'service_2',
     icon: 'fas fa-birthday-cake',
-    img: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=900&q=80',
+    img: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=900&q=75&auto=format&fit=crop',
     title: 'Organisation d\'Anniversaire',
     desc: 'Qu\'il s\'agisse d\'un anniversaire intime ou d\'une grande fête, nous créons l\'ambiance parfaite pour célébrer vos moments de vie avec éclat.',
     items: [
@@ -37,7 +36,7 @@ const SERVICES = [
   {
     slotKey: 'service_3',
     icon: 'fas fa-briefcase',
-    img: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=900&q=80',
+    img: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=900&q=75&auto=format&fit=crop',
     title: 'Événements Professionnels',
     desc: 'Séminaires, galas d\'entreprise, inaugurations ou soirées de fin d\'année — nous organisons vos événements professionnels avec la même passion et le même soin.',
     items: [
@@ -52,7 +51,7 @@ const SERVICES = [
   {
     slotKey: 'service_4',
     icon: 'fas fa-star',
-    img: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=900&q=80',
+    img: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=900&q=75&auto=format&fit=crop',
     title: 'Location de Décoration',
     desc: 'Accédez à notre belle sélection d\'accessoires de décoration pour sublimer vos événements à moindre coût. Nous livrons et installons tout sur place.',
     items: [
@@ -69,10 +68,6 @@ const SERVICES = [
 export default function Services() {
   const [images, setImages] = useState({})
 
-  useEffect(() => {
-    AOS.init({ duration: 820, easing: 'ease-in-out', once: true, offset: 55 })
-    AOS.refresh()
-  }, [])
 
   useEffect(() => {
     supabase.from('site_content').select('*').eq('key', 'images_services').then(({ data }) => {
@@ -84,10 +79,13 @@ export default function Services() {
 
   return (
     <>
-      <Head>
-        <title>Prestations — OA Événementiel</title>
-        <meta name="description" content="Découvrez nos prestations d'organisation d'événements (mariages, anniversaires, événements professionnels) et location de décoration en Île-de-France." />
-      </Head>
+      <Seo
+        title="Prestations : mariages, anniversaires et événements professionnels"
+        description="Organisation de mariages, d'anniversaires et d'événements professionnels, et location de décoration en Île-de-France : découvrez nos prestations."
+        path="/services"
+        breadcrumb={[{ name: 'Prestations', path: '/services' }]}
+        preloadImage={PAGE_HEADER_DEFAULT}
+      />
 
       <div className="site-wrap">
         <div
@@ -111,10 +109,10 @@ export default function Services() {
             {SERVICES.map((s, i) => (
               <div key={i} className="service-block">
                 <div className={`row align-items-center${s.reverse ? ' flex-row-reverse' : ''}`}>
-                  <div className="col-lg-6 mb-4 mb-lg-0" data-aos={s.reverse ? 'fade-left' : 'fade-right'}>
-                    <img src={images[s.slotKey] || s.img} alt={s.title} className="service-block-image" />
+                  <div className="col-lg-6 mb-4 mb-lg-0" data-reveal>
+                    <img src={images[s.slotKey] || s.img} alt={s.title} className="service-block-image" loading="lazy" decoding="async" />
                   </div>
-                  <div className={`col-lg-6 ${s.reverse ? 'pe-lg-5' : 'ps-lg-5'}`} data-aos={s.reverse ? 'fade-right' : 'fade-left'} data-aos-delay="100">
+                  <div className={`col-lg-6 ${s.reverse ? 'pe-lg-5' : 'ps-lg-5'}`} data-reveal>
                     <div className="service-block-icon"><i className={s.icon} /></div>
                     <span className="devis-tag">Tarif sur devis</span>
                     <h2>{s.title}</h2>

@@ -3,11 +3,15 @@ import { useEffect, useState } from 'react'
 export default function Loader() {
   const [visible, setVisible] = useState(true)
 
+  // The overlay fades itself out in CSS (it used to wait for window "load"
+  // and then for React to hide it, covering a ready page for seconds).
   useEffect(() => {
-    const timer = setTimeout(() => setVisible(false), 2500)
-    const onLoad = () => { clearTimeout(timer); setTimeout(() => setVisible(false), 300) }
-    window.addEventListener('load', onLoad)
-    return () => { clearTimeout(timer); window.removeEventListener('load', onLoad) }
+    let done = false
+    const hide = () => { if (!done) { done = true; setVisible(false) } }
+    // The CSS fade (style.css #overlayer) finishes at ~0.8s; this just
+    // removes the nodes afterwards.
+    const timer = setTimeout(hide, 900)
+    return () => { done = true; clearTimeout(timer) }
   }, [])
 
   if (!visible) return null

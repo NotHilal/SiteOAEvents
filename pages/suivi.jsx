@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import Head from 'next/head'
-import PaymentFlow from '../src/components/PaymentFlow.jsx'
+import Seo from '../src/components/Seo.jsx'
+import dynamic from 'next/dynamic'
+// Loaded only when an order awaiting payment is displayed — keeps the
+// payment code (and Stripe) out of the page bundle.
+const PaymentFlow = dynamic(() => import('../src/components/PaymentFlow.jsx'), { ssr: false })
 
 const EVENT_LABELS = {
   'mariage':'Mariage','anniversaire':'Anniversaire',
@@ -84,29 +87,37 @@ export default function Suivi() {
 
   return (
     <>
-      <Head>
-        <title>Suivi de commande — OA Événementiel</title>
-        <meta name="description" content="Consultez les informations de votre demande ou commande d'événement : statut, détails et paiement en ligne." />
-      </Head>
+      <Seo
+        title="Suivi de commande"
+        description="Consultez le statut de votre demande ou commande OA Événementiel et réglez votre réservation en ligne."
+        path="/suivi"
+        noindex
+      />
 
       <div className="site-wrap">
-        <div
-          className="page-header"
-          style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1920&q=80)' }}
-        >
-          <div className="page-header-overlay" />
-          <div className="container">
-            <h1>Suivi de commande</h1>
-            <nav aria-label="breadcrumb">
-              <ol className="breadcrumb justify-content-center">
-                <li className="breadcrumb-item"><Link href="/">Accueil</Link></li>
-                <li className="breadcrumb-item active">Suivi de commande</li>
-              </ol>
-            </nav>
+        {/* Split-screen page: the photo fills the whole left side (sticky
+            while the right column scrolls), title + breadcrumb + form on
+            the right. Stacks on phones. */}
+        <div className="page-split">
+          <div className="page-split-media">
+            <img
+              src="https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1400&q=75&auto=format&fit=crop"
+              alt=""
+              fetchPriority="high"
+            />
           </div>
-        </div>
+          <div className="page-split-main">
+            <div className="page-split-head">
+              <h1>Suivi de commande</h1>
+              <nav aria-label="breadcrumb">
+                <ol className="breadcrumb">
+                  <li className="breadcrumb-item"><Link href="/">Accueil</Link></li>
+                  <li className="breadcrumb-item active" aria-current="page">Suivi de commande</li>
+                </ol>
+              </nav>
+            </div>
 
-        <section className="resa-section">
+        <section className="resa-section page-split-section">
           <div className="container" style={{maxWidth:640}}>
             {!order && (
               <form onSubmit={handleSearch}>
@@ -238,6 +249,8 @@ export default function Suivi() {
             )}
           </div>
         </section>
+          </div>
+        </div>
 
         {showPriceDetail && order && (
           <div className="modal-overlay" style={{display:'flex'}} onClick={e => { if (e.target === e.currentTarget) setShowPriceDetail(false) }}>

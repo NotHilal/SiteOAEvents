@@ -106,7 +106,12 @@ class QueryBuilder {
     const response = await fetch(`/api/db?${params.toString()}`, options);
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      return { data: null, error: new Error(errData.message || 'API Error') };
+      // Keep the HTTP status so forms can tell a validation error (400) or
+      // rate limit (429) — whose message is meant for the visitor — from an
+      // outage.
+      const err = new Error(errData.message || 'API Error');
+      err.status = response.status;
+      return { data: null, error: err };
     }
 
     const result = await response.json();
@@ -164,7 +169,9 @@ export const supabase = {
         // so atob()+JSON.parse() always threw, the catch below always fired,
         // and every reload silently looked like a fresh logout.
         const [payloadStr] = session.access_token.split('.');
-        const payload = JSON.parse(atob(payloadStr));
+        // base64url (see src/lib/auth.js) → base64 before atob().
+        const b64 = payloadStr.replace(/-/g, '+').replace(/_/g, '/')
+        const payload = JSON.parse(atob(b64 + '='.repeat((4 - b64.length % 4) % 4)));
         if (Date.now() > payload.exp) {
           sessionStorage.removeItem('oa_session');
           return { data: { session: null }, error: null };

@@ -1,4 +1,12 @@
 import Link from 'next/link'
+import { openCookieSettings } from '../lib/consent.js'
+import { SITE } from '../lib/site.js'
+
+const SOCIALS = [
+  { key: 'facebook', label: 'Facebook', icon: 'fab fa-facebook-f' },
+  { key: 'instagram', label: 'Instagram', icon: 'fab fa-instagram' },
+  { key: 'pinterest', label: 'Pinterest', icon: 'fab fa-pinterest-p' },
+].map(s => ({ ...s, url: SITE.social?.[s.key] })).filter(s => s.url)
 
 export default function Footer() {
   return (
@@ -12,32 +20,36 @@ export default function Footer() {
           <div className="footer-cols">
             <div className="footer-brand-col">
               <Link href="/" className="footer-logo-link w-inline-block">
+                {/* Transparent version of the logo — LogoOA.png has the marble
+                    background baked into the image. */}
                 <img
                   loading="lazy"
-                  src="/LogoOA.png"
-                  alt="OA Événementiel Logo"
+                  src="/logo-mark-h336.webp"
+                  alt="OA Événementiel — Événementiel, location"
                   className="footer-logo"
-                  style={{ maxHeight: '48px', objectFit: 'contain' }}
+                  width="313"
+                  height="336"
                 />
               </Link>
               <p className="footer-text">
                 Organisation et scénographie d'événements sur-mesure en Île-de-France.
               </p>
-              <div className="social-list">
-                <a href="#!" aria-label="Facebook" className="social-list-item w-inline-block">
-                  <i className="fab fa-facebook-f" />
-                </a>
-                <a href="#!" aria-label="Instagram" className="social-list-item w-inline-block">
-                  <i className="fab fa-instagram" />
-                </a>
-                <a href="#!" aria-label="Pinterest" className="social-list-item w-inline-block">
-                  <i className="fab fa-pinterest-p" />
-                </a>
-              </div>
+              {/* Social icons pointed to "#!" (dead links). They render again
+                  as soon as real profile URLs are filled in SITE.social
+                  (src/lib/site.js). */}
+              {SOCIALS.length > 0 && (
+                <div className="social-list">
+                  {SOCIALS.map(s => (
+                    <a key={s.key} href={s.url} target="_blank" rel="noopener noreferrer" aria-label={s.label} className="social-list-item w-inline-block">
+                      <i className={s.icon} aria-hidden="true" />
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="footer-widget footer-nav-widget">
-              <h5 className="footer-widget-title footer-nav-title">Navigation</h5>
+              <h2 className="footer-widget-title footer-nav-title">Navigation</h2>
               <div className="footer-nav-two-col">
                 <ul role="list" className="list-style-one">
                   <li className="list-item"><Link href="/" className="list-text-link">Accueil</Link></li>
@@ -54,18 +66,31 @@ export default function Footer() {
             </div>
 
             <div className="footer-widget">
-              <h5 className="footer-widget-title">Contact</h5>
+              <h2 className="footer-widget-title">Contact</h2>
               <ul role="list" className="list-style-one">
                 <li className="list-item footer-contact-line">
-                  <i className="fas fa-map-marker-alt" /> Île-de-France, France
+                  <i className="fas fa-map-marker-alt" aria-hidden="true" /> Île-de-France, France
                 </li>
                 <li className="list-item footer-contact-line">
-                  <i className="fas fa-envelope" /> contact@oa-evenementiel.fr
+                  <i className="fas fa-envelope" aria-hidden="true" /> <a href={`mailto:${SITE.email}`} className="list-text-link">{SITE.email}</a>
                 </li>
                 <li className="list-item">
                   <Link href="/reservation" className="list-text-link footer-cta-link">
                     Demander un devis →
                   </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div className="footer-widget footer-legal-widget">
+              <h2 className="footer-widget-title">Informations légales</h2>
+              <ul role="list" className="list-style-one">
+                <li className="list-item"><Link href="/mentions-legales" className="list-text-link">Mentions légales</Link></li>
+                <li className="list-item"><Link href="/confidentialite" className="list-text-link">Politique de confidentialité</Link></li>
+                <li className="list-item"><Link href="/cgu" className="list-text-link">Conditions d'utilisation (CGU)</Link></li>
+                <li className="list-item"><Link href="/cgv" className="list-text-link">Conditions de vente (CGV)</Link></li>
+                <li className="list-item">
+                  <button type="button" className="list-text-link footer-cookie-btn" onClick={openCookieSettings}>Gestion des cookies</button>
                 </li>
               </ul>
             </div>

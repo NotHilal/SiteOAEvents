@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { isAuthorized } from '../../src/lib/auth';
 import formidable from 'formidable';
 
 export const config = {
@@ -10,29 +11,8 @@ export const config = {
 };
 
 const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads');
+const ALLOWED_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.avif', '.gif']);
 
-// Helper to check token authorization
-function isAuthorized(req) {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
-    
-    const token = authHeader.split(' ')[1];
-    const [payloadStr, signature] = token.split('.');
-    
-    const secret = process.env.JWT_SECRET || 'super_secret_local_key_for_jwt_tokens_12345';
-    const expectedSignature = crypto.createHmac('sha256', secret).update(payloadStr).digest('base64');
-    
-    if (signature !== expectedSignature) return false;
-    
-    const payload = JSON.parse(Buffer.from(payloadStr, 'base64').toString('utf8'));
-    if (Date.now() > payload.exp) return false; // Expired
-    
-    return payload.role === 'authenticated';
-  } catch(e) {
-    return false;
-  }
-}
 
 export default async function handler(req, res) {
   if (!isAuthorized(req)) {
@@ -66,9 +46,26 @@ export default async function handler(req, res) {
         return res.status(400).json({ message: 'No file uploaded' });
       }
 
-      // Use the custom path provided by the frontend if available, otherwise original file name
-      const targetFilename = customPath || file.newFilename || `${Date.now()}-${file.originalFilename}`;
+      // Images only — anything else (e.g. an .html or .svg file) would be
+      // served from our own origin and could carry script.
+      const ext = path.extname(file.originalFilename || file.newFilename || '').toLowerCase();
+      if (!ALLOWED_EXT.has(ext) || !String(file.mimetype || '').startsWith('image/')) {
+        try { fs.unlinkSync(file.filepath); } catch {}
+        return res.status(400).json({ message: 'Format non autorisé (JPG, PNG, WebP, AVIF ou GIF uniquement).' });
+      }
+
+      // The admin UI may suggest a sub-path ("materials/<id>.jpg"); keep it
+      // only after stripping anything that could escape uploads/.
+      const safeCustom = customPath
+        ? String(customPath).split(/[\\/]+/).map(seg => seg.replace(/[^a-zA-Z0-9._-]/g, '')).filter(seg => seg && seg !== '.' && seg !== '..').join('/')
+        : '';
+      const base = safeCustom ? safeCustom.replace(/\.[^./]+$/, '') : `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+      const targetFilename = `${base}${ext}`;
       const targetFilePath = path.join(UPLOADS_DIR, targetFilename);
+      if (!targetFilePath.startsWith(UPLOADS_DIR + path.sep)) {
+        try { fs.unlinkSync(file.filepath); } catch {}
+        return res.status(400).json({ message: 'Chemin invalide' });
+      }
 
       // Ensure subdirectory in uploads exists if frontend requested it
       const fileDir = path.dirname(targetFilePath);
@@ -120,7 +117,7 @@ export default async function handler(req, res) {
         paths.forEach(p => {
           const filePath = path.join(UPLOADS_DIR, p);
           // Prevent directory traversal attacks
-          if (!filePath.startsWith(UPLOADS_DIR)) {
+          if (!filePath.startsWith(UPLOADS_DIR + path.sep)) {
             errors.push({ path: p, error: 'Access denied' });
             return;
           }

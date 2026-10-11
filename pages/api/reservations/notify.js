@@ -1,25 +1,7 @@
-import crypto from 'crypto';
+import { isAuthorized } from '../../../src/lib/auth';
 import db from '../../../src/lib/sqlite-db.js';
 import { sendEmail, awaitingPaymentEmail, confirmationEmail, refusalEmail } from '../../../src/lib/email.js';
 
-// Same HMAC bearer-token check duplicated across pages/api/db.js,
-// pages/api/upload.js — kept consistent with that existing pattern.
-function isAuthorized(req) {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
-    const token = authHeader.split(' ')[1];
-    const [payloadStr, signature] = token.split('.');
-    const secret = process.env.JWT_SECRET || 'super_secret_local_key_for_jwt_tokens_12345';
-    const expectedSignature = crypto.createHmac('sha256', secret).update(payloadStr).digest('base64');
-    if (signature !== expectedSignature) return false;
-    const payload = JSON.parse(Buffer.from(payloadStr, 'base64').toString('utf8'));
-    if (Date.now() > payload.exp) return false;
-    return payload.role === 'authenticated';
-  } catch (e) {
-    return false;
-  }
-}
 
 function getSiteUrl(req) {
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '');

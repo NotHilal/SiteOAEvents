@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import db from '../../../src/lib/sqlite-db.js';
 import { isStripeConfigured, getStripe, getOrCreateCustomer, computeInstallmentSchedule, createFirstInstallmentIntent, getInstallmentTierEligibility } from '../../../src/lib/stripe.js';
+import { rateLimit } from '../../../src/lib/rate-limit.js';
 
 // Public on purpose: the client calls this right after submitting their own
 // reservation, before ever logging in. The reservation's id (a
@@ -11,6 +12,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
+  if (!rateLimit(req, res, { key: 'pay-card', limit: 20, windowMs: 10 * 60 * 1000 })) return;
   if (!isStripeConfigured()) {
     return res.status(503).json({ message: "Le paiement en ligne n'est pas encore configuré (clés Stripe manquantes)." });
   }

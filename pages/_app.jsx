@@ -1,3 +1,19 @@
+// Self-hosted (was loaded from Google Fonts / cdnjs / jsDelivr in
+// _document): no render-blocking third-party requests, and visitors' IPs
+// are no longer sent to those CDNs. Same versions as the CDN links had.
+// Bootstrap first so the site's own CSS still overrides it.
+import 'bootstrap/dist/css/bootstrap.min.css'
+import '@fortawesome/fontawesome-free/css/all.min.css'
+import '@fontsource/lato/300.css'
+import '@fontsource/lato/400.css'
+import '@fontsource/lato/400-italic.css'
+import '@fontsource/lato/700.css'
+import '@fontsource/lato/900.css'
+import '@fontsource/montserrat/400.css'
+import '@fontsource/montserrat/500.css'
+import '@fontsource/montserrat/600.css'
+import '@fontsource/montserrat/700.css'
+import '@fontsource/montserrat/800.css'
 import '../src/index.css'
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/router'
@@ -5,12 +21,16 @@ import Lenis from 'lenis'
 import Loader from '../src/components/Loader.jsx'
 import Navbar from '../src/components/Navbar.jsx'
 import Footer from '../src/components/Footer.jsx'
+import CookieConsent from '../src/components/CookieConsent.jsx'
+import useScrollReveal from '../src/lib/useScrollReveal.js'
 
 export default function App({ Component, pageProps }) {
   const router = useRouter()
   // Espace OA is a standalone admin dashboard with its own layout/login gate —
   // it doesn't use the public site's Navbar/Footer.
-  const isAdmin = router.pathname === '/espace-oa'
+  // /example is a design-reference page (a saved third-party site in an
+  // iframe) and gets the same bare layout.
+  const isAdmin = router.pathname === '/espace-oa' || router.pathname === '/example'
 
   // 'idle' | 'loading' | 'done' — drives the top progress bar. 'loading'
   // creeps the bar toward 80% (client navigations are near-instant, so this
@@ -18,6 +38,11 @@ export default function App({ Component, pageProps }) {
   const [navState, setNavState] = useState('idle')
   const doneTimer = useRef(null)
   const lenisRef = useRef(null)
+  const pageRef = useRef(null)
+  // Fade-up-on-scroll for page content (not the navbar/footer, which live
+  // outside this wrapper). Re-runs for each page, since the wrapper below
+  // remounts on every navigation.
+  useScrollReveal(pageRef, isAdmin ? null : router.asPath)
 
   // Smooth, eased scrolling on the public site — plain mouse-wheel input has
   // no momentum by default (each tick moves a fixed amount and stops dead),
@@ -74,7 +99,6 @@ export default function App({ Component, pageProps }) {
   return (
     <>
       <div className={`oa-progress-bar oa-progress-${navState}`} aria-hidden="true" />
-      <div className="marble-layer" aria-hidden="true" />
       {/* Mounted once here (not per-page) so its intro animation plays only
           on true first load, not on every client-side route change. */}
       {!isAdmin && <Loader />}
@@ -92,15 +116,17 @@ export default function App({ Component, pageProps }) {
           this class, added directly to the DOM node, no re-render) so
           `transform` falls back to its real default of `none` and fixed
           descendants target the viewport again. e.target check excludes
-          animations bubbling up from descendants (AOS, etc). */}
+          animations bubbling up from descendants (scroll reveal, etc). */}
       <div
         key={router.asPath}
+        ref={pageRef}
         className="oa-page-transition"
         onAnimationEnd={e => { if (e.target === e.currentTarget) e.currentTarget.classList.add('oa-anim-done') }}
       >
         <Component {...pageProps} />
       </div>
       {!isAdmin && <Footer />}
+      {!isAdmin && <CookieConsent />}
     </>
   )
 }

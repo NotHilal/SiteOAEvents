@@ -1,9 +1,11 @@
 import { computeDeliveryQuote } from '../../src/lib/geo';
+import { rateLimit } from '../../src/lib/rate-limit.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
+  if (!rateLimit(req, res, { key: 'quote', limit: 30, windowMs: 10 * 60 * 1000 })) return;
 
   const { address } = req.body || {};
   if (!address || !address.trim()) {

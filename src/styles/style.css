@@ -32,12 +32,15 @@
   --oa-muted      : #6b6558;
   --oa-accent     : #c9a15a;
   --oa-accent-dark: #b38d47;
+  /* Gold dark enough for small text on white (5:1) — --oa-accent-dark is
+     only 3:1, fine for large type and strokes, not for labels. */
+  --oa-accent-ink : #8a6a2f;
   --oa-border     : rgba(22, 20, 15, 0.1);
   --oa-surface    : rgba(255, 255, 255, 0.55);
 
-  --oa-font-display: 'Playfair Display', serif;
+  --oa-font-display: 'Montserrat', sans-serif;
   --oa-font-heading: 'Montserrat', sans-serif;
-  --oa-font-body   : 'DM Sans', sans-serif;
+  --oa-font-body   : 'Lato', sans-serif;
 
   --oa-size-display: clamp(2.6rem, 4.4vw, 4.4rem);
   --oa-size-h1     : clamp(2.1rem, 3.2vw, 3rem);
@@ -46,10 +49,24 @@
   --oa-size-body   : 1.02rem;
   --oa-size-small  : .82rem;
 
+  /* Header (options.fr pattern): tall bar with the full logo lockup at the
+     top of the page, compacting once scrolled. */
+  --oa-header-h        : 112px;
+  --oa-header-h-compact: 68px;
+  --oa-ease-out        : cubic-bezier(.16, 1, .3, 1);
+
   --oa-container-max: 1360px;
   --oa-container-pad: clamp(20px, 4vw, 60px);
-  --oa-section-pad   : clamp(72px, 11vw, 150px);
+  /* Tightened (was clamp(72px, 11vw, 150px)) — sections sat 180-370px
+     apart; options.fr keeps blocks much closer. */
+  --oa-section-pad   : clamp(44px, 5.5vw, 80px);
 }
+
+/* Typography matches options.fr (see /example): Lato for text,
+   Montserrat for headings. The Webflow template's own text-font variable
+   pointed at DM Sans — repointed so furnish.css components follow too. */
+:root { --_font-family---secondary-font: 'Lato', sans-serif; }
+body { font-family: var(--oa-font-body); }
 
 .oa-container {
   width: 100%;
@@ -72,10 +89,11 @@
   font-weight: 700;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: var(--oa-accent-dark);
+  /* Black so it reads apart from the gold section titles below it. */
+  color: var(--oa-text);
   margin-bottom: 14px;
 }
-.oa-eyebrow::before { content: ''; width: 30px; height: 1px; background: var(--oa-accent); }
+.oa-eyebrow::before { content: ''; width: 30px; height: 1px; background: var(--oa-text); }
 
 .oa-heading {
   font-family: var(--oa-font-display);
@@ -83,50 +101,21 @@
   color: var(--oa-text);
   letter-spacing: .2px;
   line-height: 1.12;
+  text-wrap: balance;
 }
 .oa-text-muted { color: var(--oa-muted); }
 
-/* ===== HEADER LOGO ===== */
-/* Wordmark written as real text next to the icon instead of baked into the
-   logo image — the image's own tagline text became illegible once the
-   image was shrunk to navbar height, real text stays crisp at any size. */
-.header-logo-link {
-  align-items: center;
-  margin-left: -10px;
-}
-.header-logo-text {
-  font-family: 'Montserrat', sans-serif;
-  font-weight: 700;
-  font-size: 1.05rem;
-  letter-spacing: .02em;
-  color: var(--dark);
-  white-space: nowrap;
-}
-.header-logo-text em {
-  font-style: normal;
-  font-weight: 400;
-}
-.header-logo-accent { color: var(--oa-accent-dark); }
-
-/* Soft gold halo behind the logo mark — the icon itself is a flat PNG (not
-   recolorable), so the color comes from a glow sitting behind it instead. */
-.header-logo-glow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(201,161,90,.16) 0%, rgba(201,161,90,0) 72%);
-  transition: background .3s ease, transform .3s ease;
-}
-.header-logo-link:hover .header-logo-glow { transform: scale(1.08); }
-
 /* ===== PRELOADER (Utilisé par Loader.jsx) ===== */
+/* Fades itself out with CSS (no JS needed): it used to stay up until React
+   hydrated and hid it, which on a slow phone kept the whole page covered
+   for several seconds. Loader.jsx still unmounts it afterwards. */
 #overlayer {
   width: 100%; height: 100%;
   position: fixed;
   z-index: 9999;
   background: #ffffff;
   top: 0; left: 0;
+  animation: oaLoaderOut .35s ease .45s forwards;
 }
 
 .loader {
@@ -134,6 +123,11 @@
   position: fixed;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
+  animation: oaLoaderOut .25s ease .4s forwards;
+}
+@keyframes oaLoaderOut { to { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  #overlayer, .loader { animation-delay: 0s; animation-duration: .01s; }
 }
 
 .loader-ring {
@@ -199,6 +193,72 @@
 .breadcrumb-item.active { color: #ffffff; }
 .breadcrumb-item + .breadcrumb-item::before { color: rgba(255,255,255,.4); }
 
+/* Split-screen page (Suivi de commande): the photo fills the whole left
+   side, sticky under the header while the right column (title,
+   breadcrumb, form) scrolls. Same Montserrat 800 uppercase title as
+   .page-header, dark on white instead of white over a darkened photo. */
+.page-split {
+  display: grid;
+  grid-template-columns: 45fr 55fr;
+  min-height: calc(100vh - var(--oa-header-h));
+}
+.page-split-media {
+  position: sticky;
+  top: var(--oa-header-h-compact);
+  align-self: start;
+  height: calc(100vh - var(--oa-header-h-compact));
+  min-height: 100%;
+  overflow: hidden;
+}
+.page-split-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+.page-split-main { min-width: 0; background: var(--oa-background); }
+.page-split-head { padding: clamp(48px, 7vw, 96px) clamp(24px, 6vw, 96px) 8px; }
+.page-split-head h1 {
+  margin: 0 0 14px;
+  color: var(--oa-text);
+  font-family: 'Montserrat', sans-serif;
+  font-size: clamp(1.7rem, 3.2vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.page-split .breadcrumb { justify-content: flex-start; }
+.page-split .breadcrumb-item,
+.page-split .breadcrumb-item a { color: var(--oa-muted); }
+.page-split .breadcrumb-item a:hover { color: var(--oa-accent-ink); }
+.page-split .breadcrumb-item.active { color: var(--oa-text); }
+.page-split .breadcrumb-item + .breadcrumb-item::before { color: var(--oa-border); }
+/* Form aligns with the title instead of centering in the column. */
+/* Doubled class: reservation.css loads after this file and its
+   .resa-section padding/border would otherwise win. */
+.page-split .page-split-section { border-bottom: 0; padding: 32px clamp(24px, 6vw, 96px) 72px; }
+.page-split .page-split-section > .container { margin: 0; padding: 0; }
+
+/* The footer's 48px top margin left a white band under the photo — let
+   the photo run straight into the footer on split pages. */
+.oa-page-transition:has(.page-split) + .main-footer { margin-top: 0; }
+
+@media (max-width: 991px) {
+  .page-split { grid-template-columns: 40fr 60fr; }
+}
+/* Phones: stacked — photo band on top, everything else below. */
+@media (max-width: 640px) {
+  .page-split { grid-template-columns: 1fr; min-height: 0; }
+  .page-split-media { position: relative; top: auto; height: 240px; min-height: 0; }
+  .page-split-head { padding: 28px 20px 4px; }
+  .page-split-head h1 { font-size: clamp(1.45rem, 7vw, 1.9rem); margin-bottom: 10px; }
+  .page-split .breadcrumb-item,
+  .page-split .breadcrumb-item a { font-size: .74rem; }
+  .page-split .page-split-section { padding: 24px 20px 48px; }
+}
+
 
 /* ===== BUTTONS =====
    .btn / .btn-rose-gold only ever existed in public/css/style.css, the
@@ -223,15 +283,19 @@
   cursor: pointer;
 }
 .btn:focus { outline: none; box-shadow: none; }
+/* Keyboard focus stays visible (WCAG 2.4.7) — mouse clicks don't show it. */
+.btn:focus-visible { outline: 2px solid var(--oa-text); outline-offset: 3px; }
 
+/* Gold buttons: near-black text on the gold (7.6:1) — white on #c9a15a
+   was only 2.3:1, too faint for small uppercase labels (WCAG 1.4.3). */
 .btn-rose-gold {
   background: #c9a15a;
-  color: #ffffff;
+  color: var(--oa-text);
   border-color: #c9a15a;
 }
 .btn-rose-gold:hover {
-  background: #b38d47;
-  border-color: #b38d47;
+  background: var(--oa-text);
+  border-color: var(--oa-text);
   color: #ffffff;
   transform: translateY(-3px);
   box-shadow: 0 10px 25px rgba(201,161,90,.35);
@@ -286,17 +350,9 @@
 .service-block {
   padding: 60px 0;
   border-bottom: 1px solid var(--border);
-  /* The two alternating columns inside use data-aos="fade-left"/"fade-right"
-     (see services.jsx / nos-experiences.jsx), whose pre-animation state is a
-     ±100px horizontal translate (AOS's own default, see aos.css) — before
-     AOS's IntersectionObserver adds .aos-animate (or if it never does, e.g.
-     the block is already in view on load in some browsers), that transform
-     visually bleeds the column past the viewport edge. html's overflow-x:
-     hidden doesn't reliably contain that on every browser/device (unlike a
-     genuinely wider box, a transform-caused overflow is a rendering-only
-     effect some engines don't clip the same way at the document root),
-     which showed up as a real, touch-scrollable horizontal gap on mobile.
-     Clipped here instead, at the actual source of the bleed. */
+  /* Clips any horizontal bleed from the two-column layout inside (it
+     used to come from AOS's ±100px side slides) so mobile never gets a
+     touch-scrollable horizontal gap. */
   overflow-x: hidden;
 }
 
@@ -449,7 +505,10 @@
   color: #000000;
 }
 
+.contact-info-text h3,
 .contact-info-text h5 {
+  margin-top: 0;
+  line-height: 1.4;
   font-family: 'Montserrat', sans-serif;
   font-weight: 700;
   font-size: .9rem;
@@ -469,9 +528,10 @@
 .contact-info-text .contact-info-note {
   font-size: .8rem;
   font-style: italic;
-  opacity: .8;
   margin-top: 2px;
 }
+.contact-info-text a { color: var(--oa-text); text-decoration: underline; text-underline-offset: 3px; }
+.contact-info-text a:hover { color: var(--oa-accent-ink); }
 
 .contact-form-wrap {
   background: rgba(255, 255, 255, 0.4);
@@ -575,17 +635,9 @@ body {
    where a "washed" element meets an "unwashed" one — since the marble
    image itself is very pale, that edge reads as a visible bar even at
    small opacity differences. One layer, one wash, no edges anywhere. */
-.marble-layer {
-  position: absolute;
-  top: -24px; left: 0; right: 0; bottom: -24px;
-  z-index: -1;
-  pointer-events: none;
-  background-image: linear-gradient(rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.42)), url('/fondMarbre.jpg');
-  background-repeat: no-repeat, repeat;
-  background-size: cover, 2000px auto;
-  background-position: top, top center;
-  opacity: 0.9;
-}
+/* Plain white page background (options.fr look) — the old global
+   .marble-layer texture was removed from _app.jsx. */
+body { background-color: var(--oa-background); }
 
 /* No section or card below should set its own background-color — that's
    what caused the seams. Cards get their separation from a border/shadow,
@@ -665,9 +717,13 @@ body {
 .footer-corner-br { bottom: 0; right: 0; border-bottom: 2px solid var(--dark); border-right: 2px solid var(--dark); }
 .footer-cols {
   display: grid;
-  grid-template-columns: 1.3fr 1.1fr 1fr;
+  grid-template-columns: 1.15fr 1.25fr 1fr 1fr;
   column-gap: 40px;
   row-gap: 32px;
+}
+/* Tablet: 2 × 2 (brand + navigation, contact + legal). */
+@media (max-width: 991px) {
+  .footer-cols { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 767px) {
   .footer-cols { grid-template-columns: 1fr; }
@@ -678,6 +734,8 @@ body {
 }
 
 .footer-brand-col .footer-logo-link { margin-bottom: 16px; display: inline-block; }
+.footer-brand-col .footer-logo { display: block; width: auto; height: 168px; max-width: 100%; object-fit: contain; }
+@media (max-width: 767px) { .footer-brand-col .footer-logo { height: 136px; } }
 .footer-brand-col .footer-text {
   font-size: 14px; line-height: 1.7; color: var(--gray);
   max-width: 300px; margin-bottom: 18px;
@@ -686,7 +744,7 @@ body {
 /* Navigation is split into two short lists sitting close together under
    one shared, centered title rather than two separate columns each with
    their own (partly duplicated/hidden) heading. */
-.footer-nav-widget { text-align: center; transform: translateX(-100px); }
+.footer-nav-widget { text-align: center; }
 .footer-nav-title { text-align: center; }
 .footer-nav-two-col { display: inline-flex; gap: 28px; text-align: left; }
 .footer-nav-two-col ul { margin: 0; }
@@ -698,6 +756,8 @@ body {
   font-family: 'Montserrat', sans-serif;
   font-size: 11px; font-weight: 700; letter-spacing: 2px;
   text-transform: uppercase; color: var(--dark); margin-bottom: 14px;
+  /* h2 since the heading-order fix (was h5) — pin what h5 used to supply. */
+  margin-top: 0; line-height: var(--_line-height---large, 1.6);
 }
 .list-item { margin-bottom: 9px; }
 .list-text-link { font-size: 14px; color: var(--gray); transition: color .2s; }
@@ -752,7 +812,7 @@ body {
   border-radius: 20px;
 }
 
-.apropos-cta-section { padding: 90px 20px 110px; text-align: center; }
+.apropos-cta-section { padding: clamp(40px, 5vw, 64px) 20px clamp(56px, 6vw, 88px); text-align: center; }
 .apropos-cta-title { font-family: 'Montserrat', sans-serif; font-size: clamp(1.8rem, 3vw, 2.4rem); margin-bottom: 12px; color: #000; }
 .apropos-cta-text { color: var(--gray); margin-bottom: 28px; }
 
@@ -787,12 +847,14 @@ body {
    everywhere else on the site (.btn-rose-gold). */
 .theme-button {
   background-color: #c9a15a;
-  color: #ffffff;
+  color: var(--oa-text);
   border-radius: 0;
   transition: all .35s cubic-bezier(0.2, 1, 0.2, 1);
 }
+.theme-button:focus-visible { outline: 2px solid var(--oa-text); outline-offset: 3px; }
 .theme-button:hover {
-  background-color: #b38d47;
+  background-color: var(--oa-text);
+  color: #ffffff;
   transform: translateY(-3px);
   box-shadow: 0 10px 25px rgba(201,161,90,.35);
 }
@@ -800,17 +862,6 @@ body {
   background-color: #c9a15a !important;
   filter: none !important;
 }
-.header-menu-line {
-  background-color: #c9a15a !important;
-  border-color: #c9a15a !important;
-}
-/* Underline only, not a filled background — .header-menu-link.w--current
-   previously also got background-color here, which painted the whole nav
-   link as a solid gold pill instead of just tinting its border-bottom. */
-.header-menu-link.w--current {
-  border-color: #c9a15a !important;
-}
-
 /* Bold uppercase headings, matching .page-header h1 / .service-block h2
    already established elsewhere on the site. */
 .section-title,
@@ -855,98 +906,502 @@ body {
   margin: 14px auto;
 }
 
-/* ===== NAVBAR — ELEGANT REDESIGN =====
-   Thin sticky nav that gains a touch of definition once the page is
-   scrolled, plus a real slide-in mobile panel (previously the button/panel
-   here had zero React state and were entirely inert without Webflow's
-   runtime JS, which only ever loaded on "/" — see Navbar.jsx). */
-.oa-navbar {
-  /* No backdrop-filter here on purpose: it (like `filter`) makes this
-     element a containing block for fixed-position descendants, which broke
-     .mobile-menu's position:fixed — the slide-in panel sized itself to the
-     navbar's own ~70px height instead of the full viewport. */
-  background-color: rgba(255, 255, 255, .96) !important;
+/* ===== HEADER — options.fr pattern (Navbar.jsx) =====
+   Three equal columns: Menu toggle + CTA | centered logo | icon row.
+   Reference copy of the original lives at /example. No transform/filter on
+   .oah itself: either would make it the containing block for the
+   position:fixed drawer and overlay, shrinking them to the bar's height. */
+.oah {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255, 255, 255, .97);
   border-bottom: 1px solid transparent;
-  box-shadow: none;
-  transition: box-shadow .35s ease, border-color .35s ease;
+  transition: border-color .35s ease, box-shadow .35s ease;
 }
-.oa-navbar .header-main-box { padding-top: 14px; padding-bottom: 14px; }
-/* Thin gold accent line across the very top — same idiom as the mobile
-   drawer's own top bar, so the two feel like one designed piece instead of
-   a plain white bar vs. a branded panel. */
-.oa-navbar::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--oa-accent), var(--oa-accent-dark));
-}
-.oa-navbar-scrolled {
+.oah.is-menu-open { z-index: 1500; }
+.oah-scrolled {
   border-bottom-color: var(--oa-border);
-  box-shadow: 0 8px 24px rgba(201, 161, 90, .1);
+  box-shadow: 0 6px 20px rgba(22, 20, 15, .06);
 }
-.oa-navbar .header-menu-text {
-  font-size: .82rem;
-  letter-spacing: .3px;
-  transition: color .25s ease;
+.oah-bar {
+  display: flex;
+  align-items: center;
+  min-height: var(--oa-header-h);
+  padding: 0 var(--oa-container-pad);
+  transition: min-height .45s var(--oa-ease-out);
 }
-/* Text itself picks up the accent color on hover/current page, not just the
-   underline beneath it — reads as a warmer, more deliberate nav instead of
-   plain black links with a gold hairline. */
-.header-menu-link:hover .header-menu-text { color: var(--oa-accent-dark); }
-.header-menu-link.w--current .header-menu-text { color: var(--oa-accent-dark); font-weight: 600; }
+.oah-scrolled .oah-bar { min-height: var(--oa-header-h-compact); }
+.oah-left, .oah-center, .oah-right { flex: 1 1 0; display: flex; align-items: center; min-width: 0; }
+.oah-left { gap: 28px; }
+.oah-center { justify-content: center; }
+.oah-right { justify-content: flex-end; gap: clamp(4px, 1.4vw, 22px); }
 
-/* "Découvrir" dropdown — groups Catalogue/Galerie/Nos Expériences under one
-   top-level item instead of three separate links, so the bar reads as a
-   normal 6-7 item nav instead of a crowded 9-item row. Pure CSS hover (plus
-   :focus-within for keyboard use) rather than JS state — the panel is a DOM
-   child of the trigger, so :hover naturally holds while the pointer moves
-   from trigger down into the panel, no dead zone to manage. */
-.header-dropdown-wrap { position: relative; cursor: pointer; outline: none; }
-.header-dropdown-caret { font-size: .6rem; margin-left: 5px; transition: transform .25s ease; }
-.header-dropdown-wrap:hover .header-dropdown-caret,
-.header-dropdown-wrap:focus-within .header-dropdown-caret { transform: rotate(180deg); }
-.header-dropdown {
-  position: absolute;
-  top: 100%; left: 50%;
-  transform: translateX(-50%) translateY(6px);
-  min-width: 190px;
-  background: #fff;
-  border: 1px solid var(--oa-border);
-  box-shadow: 0 20px 45px rgba(22,20,15,.14);
-  padding: 8px;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity .22s ease, transform .22s ease, visibility .22s;
-  z-index: 20;
+.oah a:focus-visible,
+.oah button:focus-visible {
+  outline: 2px solid var(--oa-accent-ink);
+  outline-offset: 3px;
 }
-.header-dropdown-wrap:hover .header-dropdown,
-.header-dropdown-wrap:focus-within .header-dropdown {
-  opacity: 1; visibility: visible; pointer-events: auto; transform: translateX(-50%) translateY(0);
-}
-.header-dropdown-link {
-  display: block;
-  padding: 11px 16px;
-  font-family: var(--oa-font-heading);
-  font-size: .82rem;
-  font-weight: 600;
+
+/* Menu toggle — icon + uppercase label, like options.fr's "☰ MENU". */
+.oah-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 4px;
+  border: 0;
+  background: none;
   color: var(--oa-text);
+  cursor: pointer;
+  transition: color .2s ease;
+}
+.oah-menu-toggle:hover { color: var(--oa-accent-ink); }
+.oah-menu-label {
+  font-family: var(--oa-font-heading);
+  font-size: .95rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+/* Primary CTA — stands in for options.fr's "Créez votre table idéale":
+   outline icon + small uppercase label, no fill, so the logo stays the
+   loudest thing in the bar. */
+.oah-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  color: var(--oa-text);
+  font-family: var(--oa-font-heading);
+  font-size: .74rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
   text-decoration: none;
   white-space: nowrap;
-  transition: background .18s ease, color .18s ease;
+  transition: color .2s ease;
 }
-.header-dropdown-link:hover { background: rgba(201,161,90,.1); color: var(--oa-accent-dark); }
-.header-dropdown-link-current { color: var(--oa-accent-dark); }
+.oah-cta svg { color: var(--oa-accent-dark); }
+.oah-cta span {
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
+  padding-bottom: 2px;
+  transition: background-size .35s var(--oa-ease-out);
+}
+.oah-cta:hover { color: var(--oa-accent-ink); }
+.oah-cta:hover span { background-size: 100% 1px; }
 
-/* The underline-on-hover was previously driven by a Webflow IX2 interaction
-   (data-w-id), not CSS — furnish.css only sets the line's resting state
-   (transform: scaleX(0)). Now that IX2 is gone, hover has to animate it. */
-.header-menu-line {
-  transform-origin: left;
-  transition: transform .35s cubic-bezier(0.2, 1, 0.2, 1);
+/* Centered logo lockup — tagline folds away once scrolled, the way
+   options.fr drops the text under its logo in the sticky state. */
+.oah-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--oa-text);
+  text-decoration: none;
 }
-.header-menu-link:hover .header-menu-line {
-  transform: scaleX(1);
+.oah-logo-mark {
+  width: auto;
+  height: 62px;
+  transition: height .45s var(--oa-ease-out);
+}
+.oah-scrolled .oah-logo-mark { height: 40px; }
+.oah-logo-words { display: flex; flex-direction: column; }
+.oah-logo-name {
+  font-family: var(--oa-font-heading);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.oah-logo-tagline {
+  font-family: var(--oa-font-heading);
+  font-size: .68rem;
+  font-weight: 500;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--oa-muted);
+  white-space: nowrap;
+  max-height: 1.6em;
+  margin-top: 4px;
+  overflow: hidden;
+  transition: max-height .35s var(--oa-ease-out), opacity .25s ease, margin-top .35s var(--oa-ease-out);
+}
+.oah-scrolled .oah-logo-tagline { max-height: 0; opacity: 0; margin-top: 0; }
+
+/* Icon row with dark tooltips. */
+.oah-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  color: var(--oa-text);
+  text-decoration: none;
+  transition: color .2s ease;
+}
+.oah-icon:hover,
+.oah-icon.is-current { color: var(--oa-accent-ink); }
+.oah-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translate(-50%, -4px);
+  padding: 5px 10px;
+  border-radius: 4px;
+  background: var(--oa-text);
+  color: #fff;
+  font-family: var(--oa-font-body);
+  font-size: .75rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .2s ease, transform .3s var(--oa-ease-out), visibility .2s;
+}
+.oah-tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border: 5px solid transparent;
+  border-bottom-color: var(--oa-text);
+}
+.oah-icon:hover .oah-tooltip,
+.oah-icon:focus-visible .oah-tooltip { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+/* Last icon sits at the bar's right edge — anchor its tooltip right so it
+   never runs off-screen. */
+.oah-right .oah-icon:last-child .oah-tooltip { left: auto; right: 0; transform: translateY(-4px); }
+.oah-right .oah-icon:last-child .oah-tooltip::before { left: auto; right: 19px; }
+.oah-right .oah-icon:last-child:hover .oah-tooltip,
+.oah-right .oah-icon:last-child:focus-visible .oah-tooltip { transform: translateY(0); }
+.oah-cart-count {
+  position: absolute;
+  top: 4px;
+  right: 2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--oa-accent);
+  color: var(--oa-text);
+  font-family: var(--oa-font-heading);
+  font-size: .66rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* Slide-in drawer from the left. */
+.oah-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 20, 15, .5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .4s ease;
+}
+.oah-overlay.is-open { opacity: 1; pointer-events: auto; }
+.oah-drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(420px, 88vw);
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  padding: 104px 34px 48px;
+  background: #fff;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-shadow: 12px 0 40px rgba(22, 20, 15, .18);
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition: transform .55s var(--oa-ease-out), visibility 0s .55s;
+}
+.oah-drawer.is-open {
+  transform: translateX(0);
+  visibility: visible;
+  transition: transform .55s var(--oa-ease-out), visibility 0s;
+}
+.oah-drawer-close {
+  position: absolute;
+  top: 30px;
+  left: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 4px;
+  border: 0;
+  background: none;
+  color: var(--oa-text);
+  font-family: var(--oa-font-heading);
+  font-size: .75rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.oah-drawer-close svg { transition: transform .4s var(--oa-ease-out); }
+.oah-drawer-close:hover svg { transform: rotate(180deg); }
+
+.oah-drawer-main { display: flex; flex-direction: column; }
+.oah-drawer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  color: var(--oa-text);
+  font-family: var(--oa-font-heading);
+  font-size: clamp(1.3rem, 5vw, 1.65rem);
+  font-weight: 400;
+  line-height: 1.1;
+  text-transform: uppercase;
+  text-decoration: none;
+  opacity: 0;
+  transform: translateX(-16px);
+  transition: color .2s ease, opacity .5s var(--oa-ease-out), transform .5s var(--oa-ease-out);
+}
+.oah-drawer.is-open .oah-drawer-link {
+  opacity: 1;
+  transform: translateX(0);
+  transition-delay: 0s, calc(.12s + var(--i) * .045s), calc(.12s + var(--i) * .045s);
+}
+.oah-drawer-link:hover,
+.oah-drawer-link.is-current { color: var(--oa-accent-ink); }
+.oah-drawer-badge {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--oa-accent);
+  color: var(--oa-text);
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
+}
+.oah-drawer-services {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 28px;
+  border-top: 1px solid var(--oa-border);
+}
+.oah-drawer-service {
+  padding: 7px 0;
+  color: var(--oa-accent-ink);
+  font-family: var(--oa-font-heading);
+  font-size: .88rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: color .2s ease;
+}
+.oah-drawer-service:hover,
+.oah-drawer-service.is-current { color: var(--oa-text); }
+
+/* Tablet/phone: like options.fr — menu, logo, cart only. */
+@media (max-width: 991px) {
+  :root { --oa-header-h: 76px; --oa-header-h-compact: 62px; }
+  .oah-cta,
+  .oah-right .oah-icon:not(.oah-icon-cart) { display: none; }
+  .oah-logo-mark { height: 42px; }
+  .oah-scrolled .oah-logo-mark { height: 34px; }
+  .oah-logo-name { font-size: .95rem; letter-spacing: .16em; }
+  .oah-logo-tagline { display: none; }
+  .oah-tooltip { display: none; }
+  /* Side columns shrink to their content so the logo centers on the
+     viewport instead of being squeezed into a third of it. */
+  .oah-left, .oah-right { flex: 0 0 auto; min-width: 48px; }
+  .oah-center { flex: 1 1 auto; }
+}
+@media (max-width: 560px) {
+  .oah-menu-label { display: none; }
+  .oah-logo { gap: 10px; }
+  .oah-logo-name { font-size: .8rem; letter-spacing: .12em; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oah *, .oah { transition-duration: .01ms !important; transition-delay: 0s !important; }
+}
+
+/* ===== REASSURANCE STRIP — options.fr "Louez tout le matériel" =====
+   Gold uppercase title, four icon + text columns (title over a short gold
+   rule, gold uppercase tag, one muted line), then a centered intro. */
+/* Shared homepage section title (options.fr style): gold, uppercase,
+   Montserrat 700, centered. */
+.oa-section-title {
+  margin: 0 0 clamp(36px, 5vw, 56px);
+  color: var(--oa-accent-dark);
+  font-family: var(--oa-font-heading);
+  font-size: clamp(1.35rem, 2.4vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: .06em;
+  line-height: 1.25;
+  text-transform: uppercase;
+  text-align: center;
+  text-wrap: balance;
+}
+.oa-assurance-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(28px, 3vw, 44px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.oa-assurance-item {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.oa-assurance-icon { color: var(--oa-text); margin-top: 18px; }
+.oa-assurance-item-title {
+  position: relative;
+  margin: 0 0 6px;
+  padding-top: 18px;
+  color: var(--oa-text);
+  font-family: var(--oa-font-heading);
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.oa-assurance-item-title::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50px;
+  height: 2px;
+  background: var(--oa-accent);
+}
+.oa-assurance-tag {
+  margin: 0 0 12px;
+  color: var(--oa-accent-ink);
+  font-family: var(--oa-font-heading);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+.oa-assurance-text {
+  margin: 0;
+  color: var(--oa-muted);
+  font-size: .95rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+/* Intro text — options.fr style: light gray, regular weight, centered,
+   spread across the full container width in two short blocks. #737373 is
+   the options.fr gray (#787878) nudged to pass 4.5:1 on white. */
+.oa-assurance-intro {
+  margin: clamp(36px, 5vw, 56px) auto 0;
+  text-align: center;
+}
+.oa-assurance-intro p {
+  margin: 0 0 8px;
+  color: #737373;
+  font-family: var(--oa-font-body);
+  font-size: .94rem;
+  font-weight: 400;
+  line-height: 1.6;
+}
+.oa-assurance-intro p:last-child { margin-bottom: 0; }
+/* ~45px from the intro to "Nos univers / Un événement, une histoire". */
+.oa-section-tight.oa-assurance { padding-bottom: 0; }
+.oa-assurance + .oa-section.oa-univers { padding-top: 46px; }
+
+@media (max-width: 991px) {
+  .oa-assurance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 40px; }
+}
+/* Phones: centered stack, as options.fr does on mobile. */
+@media (max-width: 560px) {
+  .oa-assurance-grid { grid-template-columns: 1fr; row-gap: 36px; }
+  .oa-assurance-item { grid-template-columns: 1fr; justify-items: center; text-align: center; gap: 4px; }
+  .oa-assurance-icon { margin-top: 0; }
+  .oa-assurance-item-title::before { left: 50%; margin-left: -25px; }
+}
+
+/* ===== LOUEZ EN 4 ÉTAPES — options.fr step strip =====
+   Big gray numeral beside each step, short gold rule, bold title, one
+   muted line. Title uses .oa-section-title. */
+.oa-steps-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(24px, 3vw, 44px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.oa-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 18px;
+  align-items: start;
+}
+.oa-step-num {
+  color: #8c877c;
+  font-family: var(--oa-font-heading);
+  font-size: clamp(3rem, 4.4vw, 4rem);
+  font-weight: 700;
+  line-height: .9;
+  font-variant-numeric: lining-nums tabular-nums;
+  /* Same width for every digit so the text columns line up. */
+  width: .72em;
+  text-align: center;
+}
+.oa-step-body { padding-top: 4px; }
+.oa-step-body::before {
+  content: '';
+  display: block;
+  width: 44px;
+  height: 2px;
+  margin-bottom: 14px;
+  background: var(--oa-accent);
+}
+.oa-step-title {
+  margin: 0 0 6px;
+  color: var(--oa-text);
+  font-family: var(--oa-font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.oa-step-text {
+  margin: 0;
+  color: #737373;
+  font-size: .94rem;
+  line-height: 1.55;
+}
+@media (max-width: 991px) {
+  .oa-steps-list { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 36px; }
+}
+@media (max-width: 560px) {
+  .oa-steps-list { grid-template-columns: 1fr; row-gap: 28px; }
+}
+
+/* ===== SCROLL REVEAL (src/lib/useScrollReveal.js) =====
+   Fade in while rising from below. `translate` (not `transform`) so it
+   composes with any transform the element already has. Hidden state only
+   applies under html.reveal-on, which the hook sets — no JS, no hiding. */
+html.reveal-on [data-reveal-state="hidden"] {
+  opacity: 0;
+  translate: 0 28px;
+}
+html.reveal-on [data-reveal-state="shown"] {
+  opacity: 1;
+  translate: 0 0;
+  transition: opacity .7s cubic-bezier(.22, 1, .36, 1), translate .7s cubic-bezier(.22, 1, .36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  html.reveal-on [data-reveal-state] { opacity: 1; translate: none; transition: none; }
 }
 
 /* Page-level transition — the wrapper in _app.jsx is remounted (key=asPath)
@@ -992,25 +1447,6 @@ body {
   transition: opacity .2s ease, width 0s .2s;
 }
 
-/* Animated hamburger-to-X (3 lines morphing into a cross) instead of a
-   static FontAwesome bars icon that just got swapped for a different
-   static icon inside the panel — a smoother, more considered open/close
-   moment on mobile. Circular button, gold on hover/open instead of
-   furnish.css's plain dark square. */
-.mobile-menu-btn {
-  border: none;
-  padding: 0;
-  border-radius: 50%;
-  position: relative;
-  transition: background-color .3s ease, box-shadow .3s ease, transform .2s ease;
-}
-.mobile-menu-btn:hover { background-color: var(--oa-accent-dark); }
-.mobile-menu-btn:active { transform: scale(.93); }
-.mobile-menu-btn.is-open {
-  background-color: var(--oa-accent);
-  box-shadow: 0 6px 18px rgba(201,161,90,.35);
-}
-
 .hamburger-line {
   position: absolute;
   top: 50%; left: 50%;
@@ -1023,156 +1459,6 @@ body {
 .hamburger-line:nth-child(1) { transform: translateY(-6px); }
 .hamburger-line:nth-child(2) { transform: translateY(0); }
 .hamburger-line:nth-child(3) { transform: translateY(6px); }
-.mobile-menu-btn.is-open .hamburger-line:nth-child(1) { transform: translateY(0) rotate(45deg); }
-.mobile-menu-btn.is-open .hamburger-line:nth-child(2) { opacity: 0; transform: translateY(0) scaleX(0); }
-.mobile-menu-btn.is-open .hamburger-line:nth-child(3) { transform: translateY(0) rotate(-45deg); }
-
-.mobile-menu-overlay {
-  position: fixed; inset: 0;
-  z-index: 998;
-  background: rgba(22, 20, 15, .5);
-  backdrop-filter: blur(3px);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .4s ease;
-}
-.mobile-menu-overlay.is-open { opacity: 1; pointer-events: auto; }
-
-/* Warmer off-white than the stark furnish.css default, with a thin gold
-   top accent so it reads as this site's own panel, not a generic template
-   drawer — plus a touch longer/softer transition for a less abrupt slide. */
-/* Flex column so the logo header and the two CTA buttons stay fixed while
-   only the link list in between scrolls — previously the whole panel had no
-   overflow rule at all, so on a short screen (or as more links get added)
-   the bottom of the list, and the Réserver button after it, could end up
-   past the visible height with no way to scroll to them (body scroll is
-   deliberately locked while the drawer is open). */
-.mobile-menu {
-  display: flex;
-  flex-direction: column;
-  background-color: #fdfcfa !important;
-  box-shadow: -18px 0 50px rgba(22, 20, 15, .18);
-  transition: transform .48s cubic-bezier(0.16, 1, 0.3, 1);
-  overflow: hidden;
-}
-.mobile-menu::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--oa-accent), var(--oa-accent-dark));
-}
-.mobile-menu.is-open { transform: translate(0); }
-
-.mobile-logo-box { border-bottom: 1px solid var(--oa-border); flex-shrink: 0; }
-.mobile-menu-box { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-
-/* Pinned CTA footer — always visible, never scrolls away with the list. */
-.mobile-menu-footer {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px 24px calc(16px + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid var(--oa-border);
-  box-shadow: 0 -8px 20px rgba(22, 20, 15, .05);
-}
-
-.mobile-menu-close-btn {
-  width: 36px; height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--oa-border);
-  background: transparent;
-  color: var(--dark);
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: .95rem;
-  transition: border-color .25s ease, color .25s ease, transform .25s ease;
-}
-.mobile-menu-close-btn:hover { border-color: var(--oa-accent); color: var(--oa-accent); transform: rotate(90deg); }
-
-/* Refined link rows: smaller/elegant type than furnish.css's oversized
-   default, a gold left-bar that grows in on hover/active instead of a bare
-   color swap, and a soft stagger so the list reads as arriving one row at
-   a time rather than popping in as a block. */
-.mobile-dropdown-link {
-  position: relative;
-  display: block;
-  padding: 20px 24px !important;
-  border-bottom: 1px solid var(--oa-border);
-  transition: background-color .25s ease, padding-left .25s ease, opacity .45s ease, transform .45s ease;
-  opacity: 0;
-  transform: translateX(14px);
-}
-.mobile-menu.is-open .mobile-dropdown-link { opacity: 1; transform: translateX(0); }
-.mobile-menu-box .mobile-dropdown-link:nth-child(1) { transition-delay: .06s; }
-.mobile-menu-box .mobile-dropdown-link:nth-child(2) { transition-delay: .10s; }
-.mobile-menu-box .mobile-dropdown-link:nth-child(3) { transition-delay: .14s; }
-.mobile-menu-box .mobile-dropdown-link:nth-child(4) { transition-delay: .18s; }
-.mobile-menu-box .mobile-dropdown-link:nth-child(5) { transition-delay: .22s; }
-.mobile-menu-box .mobile-dropdown-link:nth-child(6) { transition-delay: .26s; }
-.mobile-menu-box .mobile-dropdown-link:nth-child(7) { transition-delay: .30s; }
-.mobile-dropdown-link::before {
-  content: '';
-  position: absolute; left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: var(--oa-accent);
-  transform: scaleY(0);
-  transition: transform .25s ease;
-}
-.mobile-dropdown-link:hover { background-color: rgba(201,161,90,.06); padding-left: 30px !important; }
-.mobile-dropdown-link:hover::before,
-.mobile-dropdown-link.w--current::before { transform: scaleY(1); }
-.mobile-dropdown-title {
-  font-family: var(--oa-font-display);
-  font-size: 1.35rem;
-  font-weight: 600;
-  letter-spacing: .2px;
-}
-.mobile-dropdown-link.w--current .mobile-dropdown-title { color: var(--oa-accent-dark); }
-
-.mobile-menu-box { grid-row-gap: 0 !important; }
-.mobile-menu-footer > a.theme-button,
-.mobile-menu-footer > a.theme-button-outline { width: 100% !important; margin: 0 !important; }
-
-/* Compact mobile nav — the sticky bar and the drawer both inherited desktop
-   sizing (44px logo, 1.35rem/20px-padding link rows sized for a handful of
-   items) which read as oversized and generic once the drawer actually had 9
-   rows in it. Tightened top bar + drawer typography/spacing here rather
-   than touching the >991px desktop styles above, which are unaffected. */
-@media (max-width: 991px) {
-  .oa-navbar .header-main-box { padding-top: 10px; padding-bottom: 10px; }
-  .oa-navbar .header-logo { height: 34px !important; }
-  .oa-navbar .header-logo-text { font-size: .92rem; }
-  .mobile-menu { max-width: 300px; }
-  .mobile-logo-box { padding: 10px 18px; margin-bottom: 0; }
-  .mobile-logo-box .header-logo { height: 26px !important; }
-  .mobile-logo-box .header-logo-text { font-size: .86rem; }
-  .mobile-menu-close-btn { width: 28px; height: 28px; font-size: .74rem; }
-  .mobile-dropdown-link { padding: 9px 20px !important; }
-  .mobile-dropdown-link:hover { padding-left: 26px !important; }
-  .mobile-dropdown-title { font-size: .88rem; letter-spacing: 0; }
-  .mobile-menu-footer { padding: 10px 20px calc(10px + env(safe-area-inset-bottom, 0px)); gap: 6px; }
-  .mobile-menu-footer > a.theme-button,
-  .mobile-menu-footer > a.theme-button-outline { padding: 8px 20px; font-size: .66rem; }
-}
-
-/* Shorter phones (SE-class, ~568-660px tall) still couldn't fit all 9 links
-   + footer without scrolling even after the tightening above — verified by
-   rendering the drawer at 320x568 and measuring: logo box + 9 rows + footer
-   summed to ~694px against a 568px-tall viewport. Shrink further, keyed off
-   height (not width) since this is a vertical-fit problem, not a narrow-
-   screen one — a wide-but-short window has the exact same issue. */
-@media (max-width: 991px) and (max-height: 700px) {
-  .mobile-logo-box { padding: 7px 18px; }
-  .mobile-logo-box .header-logo { height: 22px !important; }
-  .mobile-dropdown-link { padding: 6px 20px !important; }
-  .mobile-dropdown-title { font-size: .82rem; }
-  .mobile-menu-footer { padding: 7px 20px calc(7px + env(safe-area-inset-bottom, 0px)); gap: 5px; }
-  .mobile-menu-footer > a.theme-button,
-  .mobile-menu-footer > a.theme-button-outline { padding: 7px 20px; font-size: .62rem; }
-}
 
 /* ===== HOMEPAGE — EDITORIAL RECONSTRUCTION =====
    New sections added to pages/index.jsx (Nos Univers, Nos Prestations,
@@ -1181,17 +1467,16 @@ body {
    .oa-container / .oa-section / .oa-eyebrow / .oa-heading tokens defined
    near the top of this file. */
 
-.oa-section-head { max-width: 640px; margin: 0 auto 56px; text-align: center; }
+.oa-section-head { max-width: 900px; margin: 0 auto 36px; text-align: center; }
+.oa-section-head .oa-section-title { margin-bottom: 0; }
+/* Heads with a "Voir…" link: centered like the others, link beneath. */
 .oa-section-head-split {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
-  max-width: none;
-  text-align: left;
-  margin-bottom: 40px;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
 }
-.oa-section-head-split .oa-eyebrow, .oa-section-head-split .oa-heading { margin-bottom: 0; }
+.apropos-cta-title.oa-section-title { margin-bottom: 14px; }
 
 .oa-center-cta { text-align: center; margin-top: 44px; }
 
@@ -1228,23 +1513,41 @@ body {
   letter-spacing: 1px;
   text-transform: uppercase;
   text-decoration: none;
+  /* Hover highlight: soft gold wash behind the label. Padding is offset by
+     negative margin so the highlight grows around the text without moving
+     anything. Slower fade-out than fade-in so it lingers a beat. */
+  position: relative;
+  padding: 7px 12px;
+  margin: -7px -12px;
+  border-radius: 2px;
+  background-color: rgba(201, 161, 90, 0);
+  transition: background-color .5s ease-out, color .5s ease-out;
 }
+.oa-univers-link i { transition: transform .5s var(--oa-ease-out); }
+a.oa-univers-link:hover,
+a.oa-univers-link:focus-visible,
+.oa-univers-card:hover .oa-univers-link,
+.oa-univers-card:focus-visible .oa-univers-link {
+  background-color: rgba(201, 161, 90, .16);
+  color: var(--oa-accent-ink);
+  transition-duration: .25s;
+}
+a.oa-univers-link:hover i,
+a.oa-univers-link:focus-visible i,
+.oa-univers-card:hover .oa-univers-link i,
+.oa-univers-card:focus-visible .oa-univers-link i { transform: translateX(4px); transition-duration: .3s; }
+a.oa-univers-link:focus-visible { outline: 2px solid var(--oa-accent-ink); outline-offset: 2px; }
 
 /* Nos Prestations */
-.oa-prestations-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
-}
-.oa-prestation-card {
-  border: 1px solid var(--oa-border);
-  padding: 32px 24px;
-  text-align: center;
-  background: var(--oa-surface);
-}
+/* Prestation cards reuse .oa-product-card (see "Product card" below);
+   only the link reset and the gold icon above the title are specific. */
+.oa-prestation-card { color: inherit; text-decoration: none; }
+.oa-prestation-card:hover { color: inherit; }
+.oa-prestation-card:focus-visible { outline: 2px solid var(--oa-text); outline-offset: 3px; }
+.oa-prestation-card .oa-product-add i { font-size: .75rem; }
 .oa-prestation-icon {
   width: 56px; height: 56px;
-  margin: 0 auto 18px;
+  margin: 0 auto 14px;
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   background: rgba(201,161,90,.12);
@@ -1252,7 +1555,6 @@ body {
   color: var(--oa-accent-dark);
   font-size: 1.1rem;
 }
-.oa-prestation-card h3 { margin-bottom: 8px; }
 
 /* Catalogue teaser (homepage) — quick "add to cart" preview of a few
    materials, one per category; the real browsing/filtering happens on
@@ -1263,34 +1565,84 @@ body {
   grid-template-columns: repeat(4, 1fr);
   gap: 24px;
 }
-.oa-catalogue-teaser-card {
-  border: 1px solid var(--oa-border);
-  background: var(--oa-surface);
+/* Product card — options.fr "Notre sélection du moment" pattern. */
+.oa-product-card {
+  position: relative;
   display: flex;
   flex-direction: column;
+  background: #fff;
+  box-shadow: 0 0 40px rgba(22, 20, 15, 0);
+  transition: box-shadow .35s ease;
 }
-.oa-catalogue-teaser-img {
-  height: 180px;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(22,20,15,.04);
-  color: var(--oa-muted);
-  font-size: 1.6rem;
+.oa-product-card:hover,
+.oa-product-card:focus-within { box-shadow: 0 10px 40px rgba(22, 20, 15, .12); }
+.oa-product-media {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f6f5f2;
   overflow: hidden;
 }
-.oa-catalogue-teaser-img img { width: 100%; height: 100%; object-fit: cover; }
-.oa-catalogue-teaser-body { padding: 18px 20px 22px; display: flex; flex-direction: column; gap: 8px; }
-.oa-catalogue-teaser-body h3 { margin: 0; }
-.oa-catalogue-teaser-price { color: var(--oa-accent-dark); font-family: var(--oa-font-heading); font-weight: 700; font-size: .85rem; }
-.oa-catalogue-teaser-add {
-  margin-top: 6px;
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  border: 1px solid var(--oa-accent); background: transparent; color: var(--oa-accent-dark);
-  padding: 9px 14px;
-  font-family: var(--oa-font-heading); font-weight: 700; font-size: .74rem; letter-spacing: .8px; text-transform: uppercase;
-  cursor: pointer; transition: background .2s ease, color .2s ease;
+.oa-product-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .8s var(--oa-ease-out);
 }
-.oa-catalogue-teaser-add:hover { background: var(--oa-accent); color: #fff; }
-.oa-catalogue-teaser-add.is-added { border-color: #4caf50; color: #4caf50; cursor: default; }
+.oa-product-card:hover .oa-product-media img { transform: scale(1.04); }
+.oa-product-placeholder { color: #b9b4a9; }
+/* "Ajouter au panier" — hidden until hover/focus, rises in at the bottom
+   of the image. */
+.oa-product-add {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 20px;
+  border: 0;
+  background: var(--oa-accent);
+  color: var(--oa-text);
+  font-family: var(--oa-font-heading);
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 12px);
+  transition: opacity .3s ease, transform .4s var(--oa-ease-out), visibility .3s, background-color .2s ease, color .2s ease;
+}
+.oa-product-card:hover .oa-product-add,
+.oa-product-card:focus-within .oa-product-add,
+.oa-product-card.is-added .oa-product-add {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+.oa-product-add:hover { background: var(--oa-text); color: #fff; }
+.oa-product-add:focus-visible { outline: 2px solid var(--oa-text); outline-offset: 2px; }
+.oa-product-card.is-added .oa-product-add { background: var(--oa-text); color: #fff; cursor: default; }
+.oa-product-details { padding: 22px 18px 24px; text-align: center; }
+.oa-product-name {
+  margin: 0 0 6px;
+  color: var(--oa-text);
+  font-family: var(--oa-font-body);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.oa-product-price { margin: 0; color: #737373; font-size: .92rem; }
+/* Touch screens have no hover: keep the button visible. */
+@media (hover: none) {
+  .oa-product-add { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+}
 @media (max-width: 991px) { .oa-catalogue-teaser-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 560px) { .oa-catalogue-teaser-grid { grid-template-columns: 1fr; } }
 
@@ -1322,34 +1674,6 @@ body {
   .oa-catalogue-cartbar-actions { justify-content: center; }
 }
 
-/* Navbar cart icon — desktop-only icon+badge next to the Espace OA/Réserver
-   buttons; on mobile the count shows inline next to the "Catalogue" link in
-   the drawer instead (see .header-cart-badge-inline), keeping the mobile
-   menu from gaining yet another standalone icon row. */
-.header-cart-link {
-  position: relative;
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  color: var(--oa-text);
-  font-size: 1.05rem;
-  text-decoration: none;
-  transition: color .2s ease, background .2s ease;
-}
-.header-cart-link:hover { color: var(--oa-accent-dark); background: rgba(201,161,90,.12); }
-.header-cart-badge {
-  position: absolute; top: 2px; right: 0;
-  min-width: 16px; height: 16px; padding: 0 4px;
-  border-radius: 999px;
-  background: var(--oa-accent);
-  color: #fff;
-  font-family: var(--oa-font-heading); font-weight: 700; font-size: .62rem;
-  display: flex; align-items: center; justify-content: center;
-  line-height: 1;
-}
-.header-cart-badge-inline { position: static; margin-left: 8px; display: inline-flex; }
-@media (max-width: 991px) { .header-cart-link { display: none; } }
-
 /* Réalisations — arrows sit in reserved side padding on the carousel
    itself (not the outer .oa-container's gutter, which varies by viewport),
    so they never overlap the photos regardless of screen width. */
@@ -1371,7 +1695,7 @@ body {
   box-shadow: 0 6px 18px rgba(22,20,15,.14);
   transition: background .25s ease, color .25s ease, border-color .25s ease;
 }
-.oa-carousel-arrow:hover { background: var(--oa-accent); border-color: var(--oa-accent); color: #fff; }
+.oa-carousel-arrow:hover { background: var(--oa-accent); border-color: var(--oa-accent); color: var(--oa-text); }
 .oa-carousel-arrow-left { left: 0; }
 .oa-carousel-arrow-right { right: 0; }
 @media (max-width: 640px) {
@@ -1465,13 +1789,228 @@ body {
 .oa-temoignage-tag { font-size: .82rem; margin-top: 2px; }
 
 @media (max-width: 991px) {
-  .oa-univers-grid, .oa-prestations-grid { grid-template-columns: repeat(2, 1fr); }
+  .oa-univers-grid { grid-template-columns: repeat(2, 1fr); }
   .oa-temoignages-grid { grid-template-columns: 1fr; }
   .oa-stats-grid { grid-template-columns: repeat(2, 1fr); row-gap: 32px; }
 }
 @media (max-width: 640px) {
-  .oa-univers-grid, .oa-prestations-grid { grid-template-columns: 1fr; }
+  .oa-univers-grid { grid-template-columns: 1fr; }
   .oa-section-head-split { flex-direction: column; align-items: flex-start; }
   .oa-prestation-card { padding: 24px 20px; }
   .oa-prestation-icon { width: 46px; height: 46px; font-size: .95rem; margin-bottom: 14px; }
 }
+
+/* ===== LEGAL PAGES (src/components/LegalPage.jsx) ===== */
+.legal-head {
+  padding: clamp(40px, 6vw, 72px) 0 clamp(24px, 3vw, 36px);
+  border-bottom: 1px solid var(--oa-border);
+}
+.legal-breadcrumb { justify-content: flex-start; margin-bottom: 16px; }
+.legal-breadcrumb .breadcrumb-item,
+.legal-breadcrumb .breadcrumb-item a { color: var(--oa-muted); }
+.legal-breadcrumb .breadcrumb-item.active { color: var(--oa-text); }
+.legal-breadcrumb .breadcrumb-item + .breadcrumb-item::before { color: var(--oa-border); }
+.legal-head h1 {
+  margin: 0;
+  color: var(--oa-text);
+  font-family: var(--oa-font-heading);
+  font-size: clamp(1.6rem, 3.4vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: 1px;
+  line-height: 1.1;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.legal-updated { margin: 12px 0 0; color: var(--oa-muted); font-size: .9rem; }
+.legal-body { padding: clamp(32px, 5vw, 56px) 0 clamp(56px, 7vw, 96px); }
+.legal-content { max-width: 72ch; color: #3f3b33; font-size: 1rem; line-height: 1.7; }
+.legal-content h2 {
+  margin: 2.2em 0 .7em;
+  color: var(--oa-text);
+  font-family: var(--oa-font-heading);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+.legal-content h2:first-of-type { margin-top: 1.2em; }
+.legal-content p, .legal-content ul, .legal-content ol { margin: 0 0 1em; }
+.legal-content ul, .legal-content ol { padding-left: 1.3em; }
+.legal-content li { margin-bottom: .35em; }
+.legal-content a { color: var(--oa-accent-ink); text-underline-offset: 3px; }
+.legal-tofill {
+  background: #fff3cd;
+  color: #6b4f00;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: .92em;
+}
+.legal-note {
+  margin: 0 0 1.4em;
+  padding: 14px 18px;
+  border: 1px solid #ecd9a8;
+  background: #fffaf0;
+  color: #5f4a1c;
+  font-size: .92rem;
+  line-height: 1.55;
+}
+.legal-table-wrap { overflow-x: auto; }
+.legal-table { width: 100%; border-collapse: collapse; margin: 0 0 1.4em; font-size: .9rem; line-height: 1.5; }
+.legal-table th, .legal-table td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--oa-border); }
+.legal-table th { color: var(--oa-text); font-family: var(--oa-font-heading); font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; }
+.legal-inline-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--oa-accent-ink);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.legal-see-also { margin-top: 2.4em; color: var(--oa-muted); font-size: .92rem; }
+@media (max-width: 640px) {
+  .legal-table thead { display: none; }
+  .legal-table, .legal-table tbody, .legal-table tr, .legal-table td { display: block; width: 100%; }
+  .legal-table tr { padding: 10px 0; border-bottom: 1px solid var(--oa-border); }
+  .legal-table td { padding: 3px 0; border: 0; }
+  .legal-table td:first-child { color: var(--oa-text); font-weight: 700; }
+}
+
+/* Footer "Informations légales" column — the cookie settings entry is a
+   button (it opens a dialog, not a page) styled like the links. */
+.footer-cookie-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.footer-legal-widget .list-text-link:focus-visible { outline: 2px solid var(--oa-accent-ink); outline-offset: 2px; }
+/* Email link sits on the same line as its icon. */
+.footer-contact-line .list-text-link { display: inline; width: auto; }
+
+/* ===== COOKIE CONSENT (src/components/CookieConsent.jsx) ===== */
+.cc-banner {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1400;
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 20px;
+  padding: 18px 20px;
+  background: #fff;
+  border: 1px solid var(--oa-border);
+  box-shadow: 0 12px 40px rgba(22, 20, 15, .16);
+}
+.cc-text { flex: 1 1 320px; margin: 0; color: #3f3b33; font-size: .9rem; line-height: 1.5; }
+.cc-text a { color: var(--oa-accent-ink); text-underline-offset: 3px; }
+.cc-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cc-btn {
+  padding: 10px 16px;
+  border: 1px solid var(--oa-text);
+  background: #fff;
+  color: var(--oa-text);
+  font-family: var(--oa-font-heading);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color .2s ease, color .2s ease;
+}
+.cc-btn:hover, .cc-btn-strong { background: var(--oa-text); color: #fff; }
+.cc-btn-strong:hover { background: #000; }
+.cc-btn:focus-visible { outline: 2px solid var(--oa-accent-ink); outline-offset: 2px; }
+.cc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1450;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(22, 20, 15, .5);
+}
+.cc-dialog {
+  width: min(520px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 26px 24px 22px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(22, 20, 15, .25);
+}
+.cc-title {
+  margin: 0 0 18px;
+  color: var(--oa-text);
+  font-family: var(--oa-font-heading);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.cc-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--oa-border);
+}
+.cc-row-title { margin: 0 0 4px; color: var(--oa-text); font-weight: 700; font-size: .95rem; }
+.cc-row-text { margin: 0; color: #5d584e; font-size: .88rem; line-height: 1.5; }
+.cc-note { padding: 14px 0; border-top: 1px solid var(--oa-border); }
+.cc-always { flex-shrink: 0; color: var(--oa-accent-ink); font-size: .8rem; font-weight: 700; white-space: nowrap; }
+.cc-switch {
+  flex-shrink: 0;
+  appearance: none;
+  width: 44px;
+  height: 24px;
+  margin-top: 2px;
+  border-radius: 999px;
+  background: #cfcabf;
+  position: relative;
+  cursor: pointer;
+  transition: background-color .2s ease;
+}
+.cc-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform .2s ease;
+}
+.cc-switch:checked { background: var(--oa-text); }
+.cc-switch:checked::after { transform: translateX(20px); }
+.cc-switch:focus-visible { outline: 2px solid var(--oa-accent-ink); outline-offset: 2px; }
+.cc-dialog .cc-actions { justify-content: flex-end; margin-top: 18px; }
+
+/* ===== 404 (pages/404.jsx) ===== */
+.nf-section { padding: clamp(64px, 10vw, 128px) 0; text-align: center; }
+.nf-inner { max-width: 640px; }
+.nf-code {
+  margin: 0 0 8px;
+  color: #d9d3c6;
+  font-family: var(--oa-font-heading);
+  font-size: clamp(5rem, 16vw, 9rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.02em;
+}
+.nf-title { margin-bottom: 16px; }
+.nf-text { margin: 0 auto 32px; max-width: 46ch; color: #5d584e; line-height: 1.6; }
+.nf-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 28px; }
+
+/* Forms: honeypot field kept in the DOM but out of sight and out of the
+   tab order (display:none is skipped by some bots). */
+.hp-field { position: absolute !important; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.form-required-hint { margin: 0 0 14px; color: #5d584e; font-size: .85rem; }

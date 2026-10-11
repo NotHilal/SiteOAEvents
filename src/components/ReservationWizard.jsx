@@ -5,6 +5,8 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { supabase } from '../lib/supabase.js'
 import { getDayType, getUnitPriceTtc, groupTiersByMaterial, getMinOrderQty } from '../lib/pricing.js'
+import Seo from './Seo.jsx'
+import { track } from '../lib/analytics.js'
 
 const HOURS =['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
@@ -27,7 +29,7 @@ function addDays(dateStr, n) {
 }
 function capitalise(s) { return s.charAt(0).toUpperCase() + s.slice(1) }
 
-const EMPTY_FORM = { prenom:'', nom:'', email:'', phone:'', address:'', type:'', nb:'', message:'' }
+const EMPTY_FORM = { prenom:'', nom:'', email:'', phone:'', address:'', type:'', nb:'', message:'', website:'' }
 const DEFAULT_MAX_CONSECUTIVE_DAYS = 7
 
 // Shared by pages/reservation.jsx (simulation=false, submits a real request)
@@ -84,6 +86,10 @@ export default function ReservationWizard({ simulation = false }) {
   // confirmed (payment happens there, not here — see PaymentFlow.jsx).
   // Stays null in simulation mode since nothing is ever created.
   const [orderReference, setOrderReference] = useState(null)
+
+  useEffect(() => {
+    if (!simulation) track('Début réservation')
+  }, [simulation])
 
   useEffect(() => {
     loadBlockedData()
@@ -461,6 +467,7 @@ export default function ReservationWizard({ simulation = false }) {
   // a confirmation + order reference.
   function finishSimulation() {
     setSuccess(true)
+    track('Simulation terminée')
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -493,6 +500,7 @@ export default function ReservationWizard({ simulation = false }) {
   }
 
   async function submitForm() {
+    if (submitting) return
     setSubmitting(true)
     setSubmitError(false)
     let message = form.message
@@ -527,10 +535,14 @@ export default function ReservationWizard({ simulation = false }) {
         delivery_fee: quote?.fee ?? null,
         quote_base_fee: quote?.baseFee ?? null,
         quote_per_km: quote?.perKm ?? null,
+        // Totals are indicative only: the server recomputes every price
+        // from the database (src/lib/public-submissions.js).
         materials_total: Math.round(materialsTotal * 100) / 100,
         grand_total: Math.round(grandTotal * 100) / 100,
+        website: form.website,
       })
       if (error) throw error
+      track('Demande envoyée', { articles: mats.length })
 
       setOrderReference(data.reference || null)
       setSuccess(true)
@@ -727,17 +739,19 @@ export default function ReservationWizard({ simulation = false }) {
 
   return (
     <>
-      <Head>
-        <title>{pageTitle + ' — OA Événementiel'}</title>
-        <meta name="description" content={simulation
-          ? "Simulez gratuitement le devis de votre événement : dates, matériaux et frais de livraison, sans envoyer de demande."
-          : "Réservez vos dates et louez votre matériel de décoration pour vos mariages, anniversaires et réceptions en Île-de-France."} />
-      </Head>
+      <Seo
+        title={simulation ? 'Simulation de devis en ligne' : 'Réserver votre événement'}
+        description={simulation
+          ? 'Estimez en ligne le coût de la location de votre mobilier et de votre décoration, livraison comprise, en quelques étapes.'
+          : 'Réservez en ligne le mobilier et la décoration de votre événement : choisissez vos dates, votre matériel et votre adresse de livraison.'}
+        path={simulation ? '/devis' : '/reservation'}
+        breadcrumb={[{ name: simulation ? 'Simulation de devis' : 'Réservation', path: simulation ? '/devis' : '/reservation' }]}
+      />
 
       <div className="site-wrap">
         <div
           className="page-header page-header-compact"
-          style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=1920&q=80)' }}
+          style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=1600&q=75&auto=format&fit=crop)' }}
         >
           <div className="page-header-overlay" />
           <div className="container">
@@ -819,14 +833,26 @@ export default function ReservationWizard({ simulation = false }) {
                         if (cell.isBusy) cls += ' rcd-booked'
                         if (cell.isSel) cls += ' rcd-selected'
                         if (cell.isAdj) cls += ' rcd-adjacent'
+                        // Keyboard-operable (Enter/Space) with a spoken date — the
+                        // cells were mouse-only, so keyboard users couldn't book.
+                        const dayLabel = new Date(cell.ds + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                        const stateLabel = cell.disabled ? 'indisponible' : cell.isSel ? 'sélectionné' : 'disponible'
                         return (
                           <div
                             key={i}
                             className={cls}
+                            role="button"
+                            tabIndex={cell.disabled ? -1 : 0}
+                            aria-disabled={cell.disabled || undefined}
+                            aria-pressed={cell.isSel || false}
+                            aria-label={`${dayLabel}, ${stateLabel}`}
                             onClick={() => !cell.disabled && handleDayClick(cell.ds)}
+                            onKeyDown={e => {
+                              if ((e.key === 'Enter' || e.key === ' ') && !cell.disabled) { e.preventDefault(); handleDayClick(cell.ds) }
+                            }}
                           >
-                            <span>{cell.dayNum}</span>
-                            {cell.isSel && <i className="fas fa-check rcd-check" />}
+                            <span aria-hidden="true">{cell.dayNum}</span>
+                            {cell.isSel && <i className="fas fa-check rcd-check" aria-hidden="true" />}
                           </div>
                         )
                       })}
@@ -1108,7 +1134,7 @@ export default function ReservationWizard({ simulation = false }) {
                               <div key={m.id} className={`mat-card${selected?' mat-card-checked':''}${unavail?' mat-card-unavail':''}`}>
                                 <div className={`mat-card-img${!m.image_url?' mat-card-img-empty':''}`}>
                                   {m.image_url
-                                    ? <img src={m.image_url} alt={m.name} />
+                                    ? <img src={m.image_url} alt={m.name} loading="lazy" decoding="async" />
                                     : <i className="fas fa-image" />
                                   }
                                   {unavail && (
@@ -1170,11 +1196,11 @@ export default function ReservationWizard({ simulation = false }) {
 
                       {matTotalPages > 1 && (
                         <div className="mat-pagination">
-                          <button className="mat-page-nav" disabled={matPageSafe<=1} onClick={() => setMatPage(p => Math.max(1, p-1))}>
+                          <button className="mat-page-nav" aria-label="Page précédente" disabled={matPageSafe<=1} onClick={() => setMatPage(p => Math.max(1, p-1))}>
                             <i className="fas fa-chevron-left" />
                           </button>
                           <span className="mat-page-info">Page {matPageSafe} / {matTotalPages}</span>
-                          <button className="mat-page-nav" disabled={matPageSafe>=matTotalPages} onClick={() => setMatPage(p => Math.min(matTotalPages, p+1))}>
+                          <button className="mat-page-nav" aria-label="Page suivante" disabled={matPageSafe>=matTotalPages} onClick={() => setMatPage(p => Math.min(matTotalPages, p+1))}>
                             <i className="fas fa-chevron-right" />
                           </button>
                         </div>
@@ -1312,8 +1338,13 @@ export default function ReservationWizard({ simulation = false }) {
                       <p className="resa-privacy">
                         {simulation
                           ? "Simulation uniquement — aucune donnée n'est enregistrée ni envoyée."
-                          : 'En envoyant ce formulaire, vous acceptez que vos données soient utilisées pour traiter votre demande.'}
+                          : <>En envoyant ce formulaire, vous acceptez que vos données soient utilisées pour traiter votre demande (voir notre <Link href="/confidentialite">politique de confidentialité</Link>) et vous reconnaissez avoir pris connaissance des <Link href="/cgv">conditions générales de vente</Link>.</>}
                       </p>
+                      {/* Honeypot: invisible to people, filled in by bots. */}
+                      <div className="hp-field" aria-hidden="true">
+                        <label htmlFor="resa-website">Ne pas remplir</label>
+                        <input id="resa-website" type="text" tabIndex={-1} autoComplete="off" value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} />
+                      </div>
 
                       <div className="step-nav">
                         <button className="step-prev-btn" onClick={goPrev}><i className="fas fa-arrow-left me-1" />Retour</button>

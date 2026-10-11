@@ -1,0 +1,40 @@
+// PostCSS plugin: removes the Bootstrap and Font Awesome rules the site
+// never uses (~50 KB of render-blocking CSS, gzipped). It ONLY touches
+// those two vendor stylesheets — the site's own CSS (furnish.css,
+// style.css, …) is never purged.
+//
+// Class names are collected from every .js/.jsx file under pages/ and src/,
+// including plain strings like icon: 'fas fa-heart'. If a Bootstrap or Font
+// Awesome class ever has to be built dynamically (e.g. `fa-${name}`), add it
+// to SAFELIST below.
+const path = require('path')
+const { purgeCSSPlugin } = require('@fullhuman/postcss-purgecss')
+
+const VENDOR = /node_modules[\\/](bootstrap|@fortawesome)[\\/]/
+const root = path.resolve(__dirname, '..')
+const SAFELIST = {
+  standard: ['html', 'body', 'show', 'fade', 'active', 'disabled', 'visually-hidden'],
+  deep: [],
+  greedy: [],
+}
+
+const purge = purgeCSSPlugin({
+  content: [path.join(root, 'pages/**/*.{js,jsx}'), path.join(root, 'src/**/*.{js,jsx}')],
+  safelist: SAFELIST,
+  // Keep every @font-face / @keyframes / CSS variable — cheap, and avoids
+  // breaking icon fonts or animations referenced indirectly.
+  fontFace: false,
+  keyframes: false,
+  variables: false,
+})
+
+module.exports = () => ({
+  postcssPlugin: 'vendor-purge',
+  OnceExit(cssRoot, helpers) {
+    const file = (cssRoot.source && cssRoot.source.input && cssRoot.source.input.file) || ''
+    if (process.env.PURGE_DEBUG) console.log('[vendor-purge]', file)
+    if (!VENDOR.test(file) || process.env.NO_VENDOR_PURGE) return
+    return purge.OnceExit(cssRoot, helpers)
+  },
+})
+module.exports.postcss = true
