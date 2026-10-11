@@ -12,6 +12,7 @@
 @import './styles/reservation.css';
 @import './styles/product.css';
 @import './styles/admin.css';
+@import './styles/account.css';
 
 /* Swiper hero overrides */
 .hero-swiper,

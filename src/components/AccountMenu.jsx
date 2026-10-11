@@ -1,33 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { supabase } from '../lib/supabase.js'
 import Icon from './Icon.jsx'
 
 // Header "Mon compte" icon + dropdown. Opens on mouse hover and on click/tap;
 // allows a small grace period on mouse leave, then closes on outside click,
 // Escape, focus leaving, or navigation.
 //
-// The only login the site has is the Espace OA (admin) one, so that's what
-// "Se connecter" leads to and what "Se déconnecter" ends — read from the
-// real session (supabase.auth shim over /api/auth/login), never faked.
 const CLOSE_DELAY = 120
 
 export default function AccountMenu() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [signedIn, setSignedIn] = useState(false)
   const wrapRef = useRef(null)
   const buttonRef = useRef(null)
   const closeTimer = useRef(null)
   // 'hover' | 'click': a click on a hover-opened menu keeps it open
   // instead of toggling it shut under the cursor.
   const openedBy = useRef(null)
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => setSignedIn(!!session))
-    return () => subscription.unsubscribe()
-  }, [])
 
   useEffect(() => {
     const close = () => setOpen(false)
@@ -72,12 +62,6 @@ export default function AccountMenu() {
   const onBlur = e => {
     if (open && !wrapRef.current?.contains(e.relatedTarget)) setOpen(false)
   }
-  const signOut = async () => {
-    await supabase.auth.signOut()
-    setOpen(false)
-    buttonRef.current?.focus()
-  }
-
   return (
     <div
       ref={wrapRef}
@@ -102,30 +86,29 @@ export default function AccountMenu() {
       <div id="oah-account-menu" className="oah-account-menu" inert={open ? undefined : ''}>
         <ul className="oah-account-list">
           <li>
-            <Link href="/suivi" className="oah-account-item">
-              <Icon name="truck" size={18} strokeWidth={1.5} />
-              Suivi de commande
+            <Link href="/mon-compte" className="oah-account-item">
+              <Icon name="person" size={18} strokeWidth={1.5} />
+              Mon compte
             </Link>
           </li>
           <li>
             <Link href="/devis" className="oah-account-item">
               <Icon name="calculator" size={18} strokeWidth={1.5} />
-              Demander un devis
+              Devis
+            </Link>
+          </li>
+          <li>
+            <Link href="/suivi" className="oah-account-item">
+              <Icon name="truck" size={18} strokeWidth={1.5} />
+              Suivre commande
             </Link>
           </li>
         </ul>
         <div className="oah-account-sep" role="presentation" />
-        {signedIn ? (
-          <button type="button" className="oah-account-item" onClick={signOut}>
-            <Icon name="logOut" size={18} strokeWidth={1.5} />
-            Se déconnecter
-          </button>
-        ) : (
-          <Link href="/espace-oa" className="oah-account-item">
-            <Icon name="logIn" size={18} strokeWidth={1.5} />
-            Se connecter
-          </Link>
-        )}
+        <Link href="/mon-compte/deconnexion" className="oah-account-item">
+          <Icon name="logOut" size={18} strokeWidth={1.5} />
+          Déconnecter
+        </Link>
       </div>
     </div>
   )
