@@ -595,7 +595,7 @@ export default function AdminDashboard() {
     { key:'blocages',   icon:'fas fa-ban',          label:'Blocages',   badge:0,             blink:false },
     { key:'messagerie', icon:'fas fa-envelope',     label:'Messagerie', badge:unreadCount,   blink:unreadCount>0 },
     { key:'comptes',    icon:'fas fa-users',        label:'Comptes',    badge:customerAccounts.length, blink:false },
-    { key:'catalogue',  icon:'fas fa-th-large',     label:'Catalogue',  badge:0,             blink:false },
+    { key:'catalogue',  icon:'fas fa-box',          label:'Catalogue',  badge:0,             blink:false },
     { key:'materiaux',  icon:'fas fa-boxes',        label:'Matériel',   badge:0,             blink:false },
     { key:'visuel',     icon:'fas fa-images',       label:'Visuel Site', badge:0,            blink:false },
     { key:'reglages',   icon:'fas fa-cog',          label:'Réglages',   badge:0,             blink:false },
