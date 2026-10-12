@@ -739,7 +739,6 @@ body { background-color: var(--oa-background); }
    seams" bug. Neutralized here so the whole homepage relies on the single
    global wash from .marble-layer, same as the sections that were already
    transparent (feature/product/project/testimonial/subscribe sections). */
-.hero-wrapper,
 .category-section,
 .marquee-secton,
 .why-us-outer,
@@ -1729,6 +1728,113 @@ a.oah-cart-item-name:hover { color: var(--oa-accent-ink); }
 }
 @media (prefers-reduced-motion: reduce) {
   .oah *, .oah { transition-duration: .01ms !important; transition-delay: 0s !important; }
+}
+
+/* ===== HOMEPAGE HERO — full-bleed background video (HeroVideo.jsx) =====
+   Fills the viewport under the sticky header. The clip is a very light
+   table scene, so a two-way ink scrim (bottom + left, where the copy sits)
+   keeps white text above 4.5:1. The dark section background shows through
+   until the poster loads. */
+.oa-hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: flex-end;
+  min-height: calc(100vh - var(--oa-header-h));
+  min-height: calc(100svh - var(--oa-header-h));
+  overflow: hidden;
+  background: var(--oa-text);
+  color: #fff;
+}
+.oa-hero-video {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.oa-hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(to top, rgba(22, 20, 15, .82) 0%, rgba(22, 20, 15, .5) 42%, rgba(22, 20, 15, .16) 78%, rgba(22, 20, 15, .1) 100%),
+    linear-gradient(90deg, rgba(22, 20, 15, .5) 0%, rgba(22, 20, 15, .16) 55%, rgba(22, 20, 15, 0) 80%);
+}
+.oa-hero-inner {
+  padding-top: clamp(48px, 8vh, 96px);
+  padding-bottom: clamp(56px, 9vh, 104px);
+}
+.oa-hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  font-family: var(--oa-font-heading);
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .28em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, .9);
+}
+.oa-hero-eyebrow::before {
+  content: '';
+  width: 36px;
+  height: 1px;
+  background: var(--oa-accent);
+}
+.oa-hero-title {
+  max-width: 20em;
+  margin: 22px 0 0;
+  font-family: var(--oa-font-display);
+  font-size: clamp(2.1rem, 4.8vw, 4.6rem);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -.02em;
+  color: #fff;
+  text-wrap: balance;
+}
+.oa-hero-text {
+  max-width: 34em;
+  margin: 24px 0 0;
+  font-family: var(--oa-font-body);
+  font-size: clamp(1.02rem, 1.25vw, 1.2rem);
+  line-height: 1.6;
+  color: rgba(255, 255, 255, .86);
+}
+.oa-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 36px;
+}
+.oa-hero .theme-button {
+  padding: 16px 38px;
+  font-size: 1rem;
+}
+.oa-hero .theme-button:active { transform: translateY(0) scale(.98); }
+.oa-hero .theme-button:focus-visible { outline-color: #fff; }
+.oa-hero .theme-button.theme-button-outline {
+  color: #fff;
+  border-color: rgba(255, 255, 255, .6);
+}
+.oa-hero .theme-button:hover,
+.oa-hero .theme-button.theme-button-outline:hover {
+  background-color: #fff;
+  border-color: #fff;
+  color: var(--oa-text);
+  box-shadow: 0 10px 25px rgba(22, 20, 15, .25);
+}
+@media (max-width: 767px) {
+  .oa-hero-scrim {
+    background: linear-gradient(to top, rgba(22, 20, 15, .86) 0%, rgba(22, 20, 15, .58) 55%, rgba(22, 20, 15, .26) 100%);
+  }
+  .oa-hero-inner { padding-bottom: 40px; }
+  .oa-hero-title { margin-top: 18px; }
+  .oa-hero-text { margin-top: 18px; }
+  .oa-hero-actions { margin-top: 28px; }
+  .oa-hero .theme-button { padding: 14px 28px; }
 }
 
 /* ===== REASSURANCE STRIP — options.fr "Louez tout le matériel" =====

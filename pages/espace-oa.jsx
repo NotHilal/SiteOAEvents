@@ -21,8 +21,6 @@ const ABOUT_VALUE_ICONS = ['/return.avif', '/delivery-truck.avif', '/customer-se
 // swappable photo on the corresponding public page. Keys must match what
 // each page's DEFAULT_IMAGES/useEffect fallback logic reads.
 const HOME_SLOTS = [
-  { key:'hero_left', label:'Hero — photo gauche' },
-  { key:'hero_right', label:'Hero — photo droite' },
   { key:'univers_1', label:'Mariages & Réceptions' },
   { key:'univers_2', label:'Anniversaires & Fêtes' },
   { key:'univers_3', label:'Location de Décoration' },

@@ -7,9 +7,8 @@ import { getUnitPriceTtc, groupTiersByMaterial, getMinOrderQty } from '../src/li
 import { addToCatalogueCart } from '../src/lib/cart.js'
 import { slugify } from '../src/lib/slug.js'
 import Icon from '../src/components/Icon.jsx'
+import HeroVideo from '../src/components/HeroVideo.jsx'
 import { track } from '../src/lib/analytics.js'
-
-const HERO_DEFAULTS = { hero_left: '/Minimalist_Living_Room.avif', hero_right: '/Modern_Minimalist_Living_Room.avif' }
 
 const UNIVERS = [
   {
@@ -229,61 +228,29 @@ export default function Home() {
 
       <div className="page-wrapper">
         {/* HERO */}
-        <section id="Hero-Section" className="hero-section">
-          <div className="hero-wrapper">
-            <img
-              className="hero-shape hero-reveal"
-              src="/grey-layer-vector-file.avif"
-              alt=""
-              sizes="(max-width: 3160px) 100vw, 3160px"
-              loading="lazy"
-            />
-            <div className="w-layout-blockcontainer container w-container">
-              <div className="w-layout-grid hero-grid">
-                <div className="hero-content">
-                  <div className="section-subtitle-box hero-reveal hero-reveal-1">
-                    <div className="section-subtitle-icon"></div>
-                    <p className="section-subtitle">Créateur d'Émotions</p>
-                  </div>
-                  <h1 className="hero-title hero-reveal hero-reveal-2">
-                    Organisation & Scénographie d'Événements
-                  </h1>
-                  <p className="hero-text hero-reveal hero-reveal-3">
-                    Mariages, anniversaires, réceptions privées ou professionnelles... Nous concevons et décorons vos plus beaux moments en Île-de-France.
-                  </p>
-                  <div className="hero-btn-box hero-reveal hero-reveal-4">
-                    <Link href="/reservation" className="theme-button w-inline-block">
-                      <div className="theme-button-content">
-                        <div className="theme-button-text">Réserver</div>
-                        <div className="theme-button-hover-text">Réserver</div>
-                      </div>
-                    </Link>
-                    <Link href="/services" className="theme-button theme-button-outline w-inline-block">
-                      <div className="theme-button-content">
-                        <div className="theme-button-text">Prestations</div>
-                        <div className="theme-button-hover-text">Prestations</div>
-                      </div>
-                    </Link>
-                  </div>
+        <section id="Hero-Section" className="oa-hero" aria-labelledby="oa-hero-title">
+          <HeroVideo />
+          <div className="oa-container oa-hero-inner">
+            <p className="oa-hero-eyebrow hero-reveal hero-reveal-1">Créateur d'Émotions</p>
+            <h1 id="oa-hero-title" className="oa-hero-title hero-reveal hero-reveal-2">
+              Organisation & Scénographie d'Événements
+            </h1>
+            <p className="oa-hero-text hero-reveal hero-reveal-3">
+              Mariages, anniversaires, réceptions privées ou professionnelles... Nous concevons et décorons vos plus beaux moments en Île-de-France.
+            </p>
+            <div className="oa-hero-actions hero-reveal hero-reveal-4">
+              <Link href="/reservation" className="theme-button w-inline-block">
+                <div className="theme-button-content">
+                  <div className="theme-button-text">Réserver</div>
+                  <div className="theme-button-hover-text">Réserver</div>
                 </div>
-                <div className="hero-image-box">
-                  <div className="animated-image-wrapper hero-reveal-img hero-reveal-img-1">
-                    <img
-                      fetchPriority="high"
-                      alt="Décoration de mariage raffinée"
-                      src={images.hero_left || HERO_DEFAULTS.hero_left}
-                      className="animated-image"
-                    />
-                  </div>
-                  <div className="animated-image-wrapper two hero-reveal-img hero-reveal-img-2">
-                    <img
-                      alt="Mise en scène évènementielle"
-                      src={images.hero_right || HERO_DEFAULTS.hero_right}
-                      className="animated-image"
-                    />
-                  </div>
+              </Link>
+              <Link href="/services" className="theme-button theme-button-outline w-inline-block">
+                <div className="theme-button-content">
+                  <div className="theme-button-text">Prestations</div>
+                  <div className="theme-button-hover-text">Prestations</div>
                 </div>
-              </div>
+              </Link>
             </div>
           </div>
         </section>

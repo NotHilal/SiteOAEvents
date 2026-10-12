@@ -110,22 +110,14 @@
   from { opacity: 0; transform: translateY(22px); }
   to   { opacity: 1; transform: none; }
 }
-@keyframes heroRevealImg {
-  from { opacity: 0; transform: translateY(18px) scale(.94); }
-  to   { opacity: 1; transform: none; }
-}
 .hero-reveal { animation: heroRevealText .7s cubic-bezier(.16,.84,.44,1) both; }
 .hero-reveal-1 { animation-delay: .05s; }
 .hero-reveal-2 { animation-delay: .15s; }
 .hero-reveal-3 { animation-delay: .25s; }
 .hero-reveal-4 { animation-delay: .35s; }
 
-.hero-reveal-img { animation: heroRevealImg .8s cubic-bezier(.16,.84,.44,1) both; }
-.hero-reveal-img-1 { animation-delay: .2s; }
-.hero-reveal-img-2 { animation-delay: .35s; }
-
 @media (prefers-reduced-motion: reduce) {
-  .hero-reveal, .hero-reveal-img { animation: none; }
+  .hero-reveal { animation: none; }
 }
 
 /* General Layout Tweaks */
