@@ -76,12 +76,6 @@ const STATS = [
   { count: '99%', label: 'Satisfaction Client' },
 ]
 
-const TEMOIGNAGES = [
-  { name: 'Camille & Julien', tag: 'Mariage — Juin 2025', quote: "Chaque détail était à sa place. Nous avons vécu notre journée sans aucun stress, tout était pensé d'avance." },
-  { name: 'Isabelle M.', tag: 'Anniversaire — 50 ans', quote: "Une équipe à l'écoute qui a su transformer une simple idée en une soirée mémorable pour tous nos invités." },
-  { name: 'Thomas R.', tag: 'Séminaire d\'entreprise', quote: 'Organisation impeccable du premier rendez-vous jusqu\'au rangement. Nous referons appel à eux.' },
-]
-
 export default function Home() {
   const router = useRouter()
   // The hero's entrance animation is pure CSS (see .hero-reveal in
@@ -517,26 +511,6 @@ export default function Home() {
                 <span className="oa-stat-label">{s.label}</span>
               </div>
             ))}
-          </div>
-        </section>
-
-        {/* TÉMOIGNAGES */}
-        <section className="oa-section oa-temoignages">
-          <div className="oa-container">
-            <div className="oa-section-head" data-reveal>
-              <span className="oa-eyebrow">Témoignages</span>
-              <h2 className="oa-section-title">Ils nous ont fait confiance</h2>
-            </div>
-            <div className="oa-temoignages-grid" data-reveal>
-              {TEMOIGNAGES.map((t, i) => (
-                <div className="oa-temoignage-card" key={t.name}>
-                  <i className="fas fa-quote-left oa-quote-icon" />
-                  <p className="oa-temoignage-quote">{t.quote}</p>
-                  <div className="oa-temoignage-name">{t.name}</div>
-                  <div className="oa-temoignage-tag oa-text-muted">{t.tag}</div>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 
