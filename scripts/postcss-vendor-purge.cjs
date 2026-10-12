@@ -18,8 +18,13 @@ const SAFELIST = {
   greedy: [],
 }
 
+// Globs need forward slashes: on Windows path.join() yields backslashes,
+// which the glob library reads as escapes — it then matches no file at all
+// and every Bootstrap / Font Awesome class gets purged.
+const toGlob = (p) => p.split(path.sep).join('/')
+
 const purge = purgeCSSPlugin({
-  content: [path.join(root, 'pages/**/*.{js,jsx}'), path.join(root, 'src/**/*.{js,jsx}')],
+  content: [toGlob(path.join(root, 'pages/**/*.{js,jsx}')), toGlob(path.join(root, 'src/**/*.{js,jsx}'))],
   safelist: SAFELIST,
   // Keep every @font-face / @keyframes / CSS variable — cheap, and avoids
   // breaking icon fonts or animations referenced indirectly.

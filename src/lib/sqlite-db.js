@@ -447,6 +447,20 @@ async function init() {
     });
   }
 
+  const imagesFlag = await client.execute("SELECT value FROM settings WHERE key = 'catalog_images_v1'");
+  if (!imagesFlag.rows.length || imagesFlag.rows[0].value !== '1') {
+    for (const [id, url] of Object.entries(CATALOG_IMAGES)) {
+      await client.execute({
+        sql: 'UPDATE materials SET image_url = ? WHERE id = ? AND image_url IS NULL',
+        args: [url, id],
+      });
+    }
+    await client.execute({
+      sql: "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('catalog_images_v1', '1', ?)",
+      args: [new Date().toISOString()],
+    });
+  }
+
   // One-time: group the real catalogue's size/length/weight/colour variants
   // into products (see PRODUCT_FAMILIES). Flag-guarded like the seed above,
   // so later edits made in Espace OA are never overwritten.
@@ -670,6 +684,30 @@ async function seedProductFamilies() {
     }
   }
 }
+
+// Photos of the real catalog (files in public/catalogue_images/, listed in
+// catalogue_images/manifest.json). Applied once per DB, only where no photo
+// was set yet — an image uploaded from Espace OA is never overwritten.
+const CATALOG_IMAGES = {
+  'mat-banq-2-beige': '/catalogue_images/01_banquette-2-places-beige.jpg',
+  'mat-banq-2-taupe': '/catalogue_images/02_banquette-2-places-taupe.jpg',
+  'mat-deco-rideau-tresse': '/catalogue_images/05_rideau-tresse-3x4m.jpg',
+  'mat-deco-arche-ronde': '/catalogue_images/06_arche-de-fleurs-ronde.jpg',
+  'mat-deco-arche-carree': '/catalogue_images/07_arche-de-fleurs-carree.jpg',
+  'mat-table-rect': '/catalogue_images/09_table-rectangulaire.jpg',
+  'mat-table-ronde-152': '/catalogue_images/10_table-ronde-diam152cm.jpg',
+  'mat-chaise-napoleon': '/catalogue_images/12_chaise-napoleon.jpg',
+  'mat-tente-32': '/catalogue_images/13_tente-de-reception-32m2-4x8m.jpg',
+  'mat-tente-50': '/catalogue_images/14_tente-de-reception-50m2-5x10m.jpg',
+  'mat-tente-72': '/catalogue_images/15_tente-de-reception-72m2-6x12m.jpg',
+  'mat-tente-100': '/catalogue_images/16_tente-de-reception-100m2-5x20m.jpg',
+  'mat-opt-kit-led': '/catalogue_images/17_kit-lumiere-led.jpg',
+  'mat-opt-parasol': '/catalogue_images/18_parasol-chauffant-electrique.jpg',
+  'mat-opt-rallonge-5': '/catalogue_images/19_rallonge-electrique-5m.jpg',
+  'mat-opt-rallonge-10': '/catalogue_images/20_rallonge-electrique-10m.jpg',
+  'mat-opt-poids-30': '/catalogue_images/22_poids-de-lestage-30kg.jpg',
+  'mat-opt-galette': '/catalogue_images/23_option-galette-de-chaise.jpg',
+};
 
 async function seedRealCatalog() {
   const now = new Date().toISOString();

@@ -1,0 +1,341 @@
+/* ===== PRODUCT LISTING (/catalogue/complet) =====
+   options.fr category page (Mgs "hebes" theme, .products-grid
+   .product-item-info.effect): gold uppercase title + breadcrumb, toolbar,
+   4-column grid. Each cell reserves the photo (square) plus room for the
+   details; the card itself is absolutely positioned inside it, so on hover
+   it can grow (the "voir la fiche" action unfolds above the name) over the
+   row below without moving the grid, wrapped in one soft shadow, while
+   "Ajouter au panier" scales up from .6 over the photo. */
+
+.oa-pl { padding-bottom: clamp(48px, 7vw, 90px); }
+
+.oa-pl-title { padding-top: 40px; margin-bottom: 35px; text-align: center; }
+.oa-pl-title h1 {
+  margin: 0 0 6px;
+  padding: 0 20px;
+  color: var(--oa-accent);
+  font-family: var(--oa-font-heading);
+  font-size: clamp(1.9rem, 3.4vw, 3rem);
+  font-weight: 700;
+  letter-spacing: .02em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+.oa-pl-breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0;
+  padding: 5px 20px;
+  list-style: none;
+}
+.oa-pl-breadcrumbs li { display: inline-flex; align-items: center; }
+.oa-pl-breadcrumbs li + li::before {
+  content: '\f0da';
+  margin: 0 11px;
+  color: #888;
+  font-family: 'Font Awesome 6 Free';
+  font-size: 11px;
+  font-weight: 900;
+}
+.oa-pl-breadcrumbs a,
+.oa-pl-breadcrumbs strong {
+  font-family: var(--oa-font-heading);
+  font-size: .95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.oa-pl-breadcrumbs a { color: #7d7d7d; text-decoration: none; transition: color .2s; }
+.oa-pl-breadcrumbs a:hover { color: var(--oa-text); }
+.oa-pl-breadcrumbs strong { color: var(--oa-text); }
+
+.oa-pl-container {
+  max-width: var(--oa-container-max);
+  margin: 0 auto;
+  padding: 0 var(--oa-container-pad);
+}
+.oa-pl-intro {
+  max-width: 900px;
+  margin: 0 auto 30px;
+  color: var(--oa-muted);
+  line-height: 2;
+  text-align: center;
+}
+
+/* Toolbar: amount · pages · limiter */
+.oa-pl-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 24px;
+  margin-bottom: 20px;
+}
+.oa-pl-toolbar-bottom { justify-content: center; margin: 30px 0 0; }
+.oa-pl-toolbar-bottom .oa-pl-amount { display: none; }
+.oa-pl-amount {
+  margin: 0;
+  color: #000;
+  font-family: var(--oa-font-heading);
+  font-size: .875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.oa-pl-pages ol { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; margin: 0; padding: 0; list-style: none; }
+.oa-pl-page {
+  display: inline-block;
+  width: 39px;
+  height: 39px;
+  margin: 0 5px;
+  border-radius: 50%;
+  color: #000;
+  font-family: var(--oa-font-heading);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 39px;
+  text-align: center;
+  text-decoration: none;
+  transition: background .2s, color .2s;
+}
+a.oa-pl-page:hover { background: #f2ede4; color: #000; }
+.oa-pl-page.is-current { background: var(--oa-accent); color: #fff; }
+.oa-pl-page-arrow { font-size: 20px; }
+.oa-pl-limiter { margin: 0; }
+.oa-pl-limiter select {
+  height: 45px;
+  padding: 0 40px 0 22px;
+  border: 1px solid #000;
+  border-radius: 23px;
+  appearance: none;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23000'/%3E%3C/svg%3E") no-repeat right 18px center;
+  color: #656565;
+  font-size: .9rem;
+  cursor: pointer;
+}
+
+/* Grid: 4 / 3 / 2 / 1 columns like the reference's col-xl-3 … col-12. */
+.oa-pl-grid {
+  --oa-pl-details: 170px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px 30px;
+  margin: 0;
+  padding: 20px 0 0;
+  list-style: none;
+}
+@media (max-width: 1199px) { .oa-pl-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 991px)  { .oa-pl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; } }
+@media (max-width: 575px)  { .oa-pl-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.oa-pl-cell {
+  position: relative;
+  /* square photo + room for the details */
+  padding-bottom: calc(100% + var(--oa-pl-details));
+}
+.oa-pl-cell:hover,
+.oa-pl-cell:focus-within { z-index: 5; }
+
+.oa-pl-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  box-shadow: 0 0 35px 0 rgba(96, 109, 166, 0);
+  transition: box-shadow .3s;
+}
+
+.oa-pl-image { position: relative; aspect-ratio: 1 / 1; background: #fff; }
+.oa-pl-photo { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.oa-pl-photo img { width: 100%; height: 100%; object-fit: contain; }
+.oa-pl-photo-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: #f6f4ef;
+  color: #cfc7b6;
+  font-size: 2.4rem;
+}
+.oa-pl-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  padding: 6px 10px;
+  background: var(--oa-text);
+  color: #fff;
+  font-family: var(--oa-font-heading);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+/* "Ajouter au panier": hidden, scaled to .6, at 36% of the photo. */
+.oa-pl-primary {
+  position: absolute;
+  top: 36%;
+  left: 50%;
+  z-index: 3;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -50%) scale(.6);
+  transition: all .3s linear;
+}
+.oa-pl-tocart {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border: 1px solid var(--oa-accent);
+  border-radius: 0;
+  background: var(--oa-accent);
+  color: #fff;
+  font-family: var(--oa-font-heading);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  line-height: 1;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .2s, border-color .2s, color .2s;
+}
+.oa-pl-tocart::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='1.6' stroke-linejoin='round'%3E%3Cpath d='M5 8h14l-1 13H6L5 8z'/%3E%3Cpath d='M9 8V6a3 3 0 0 1 6 0v2'/%3E%3C/svg%3E");
+}
+.oa-pl-tocart:hover,
+.oa-pl-tocart:focus-visible { background: var(--oa-text); border-color: var(--oa-text); color: #fff; }
+.oa-pl-tocart.is-added { background: var(--oa-text); border-color: var(--oa-text); }
+
+/* Details under the photo */
+.oa-pl-details { position: relative; padding: 18px 25px 22px; background: #fff; text-align: center; }
+
+/* Round "voir la fiche" action: folded (max-height 0) until hover. */
+.oa-pl-actions { max-width: 220px; margin: 0 auto; }
+.oa-pl-view {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  max-height: 0;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 0 solid #000;
+  border-radius: 40px;
+  color: #000;
+  font-size: 18px;
+  opacity: 0;
+  visibility: hidden;
+  text-decoration: none;
+  transition: all 500ms;
+}
+.oa-pl-view:hover { background: var(--oa-accent); border-color: var(--oa-accent) !important; color: #fff; }
+
+.oa-pl-swatches { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; }
+.oa-pl-swatch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #bbb;
+  border-radius: 50%;
+  color: #000;
+  font-size: 15px;
+  font-weight: 300;
+  text-decoration: none;
+  transition: border-color .2s;
+}
+.oa-pl-swatch:hover { border-color: #000; color: #000; }
+.oa-pl-swatch-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #f4efe6 center / cover no-repeat;
+}
+.oa-pl-swatch-more { border-color: #000; }
+.oa-pl-swatch-tip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  z-index: 20;
+  margin-bottom: 6px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, .85);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-50%);
+  transition: opacity .2s;
+  pointer-events: none;
+}
+.oa-pl-swatch-tip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  border: 5px solid transparent;
+  border-top-color: rgba(0, 0, 0, .85);
+  transform: translateX(-50%);
+}
+.oa-pl-swatch:hover .oa-pl-swatch-tip,
+.oa-pl-swatch:focus-visible .oa-pl-swatch-tip { opacity: 1; visibility: visible; }
+
+.oa-pl-name {
+  display: -webkit-box;
+  margin: 0 0 5px;
+  overflow: hidden;
+  font-family: var(--oa-font-heading);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 25px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.oa-pl-name a { color: #000; text-decoration: none; }
+.oa-pl-name a:hover { color: var(--oa-accent-ink); }
+.oa-pl-price { margin: 0; color: var(--oa-muted); font-size: .9rem; }
+.oa-pl-price strong { color: #000; font-weight: 700; }
+
+.oa-pl-empty { padding: 60px 0; color: var(--oa-muted); text-align: center; }
+
+/* The hover state (also on keyboard focus inside the card). */
+@media (hover: hover) {
+  .oa-pl-cell:hover .oa-pl-card { box-shadow: 0 0 40px 0 rgba(96, 109, 166, .2); }
+  .oa-pl-cell:hover .oa-pl-primary { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
+  .oa-pl-cell:hover .oa-pl-view { max-height: 60px; margin-bottom: 12px; opacity: 1; visibility: visible; border-width: 1px; }
+}
+.oa-pl-cell:focus-within .oa-pl-card { box-shadow: 0 0 40px 0 rgba(96, 109, 166, .2); }
+.oa-pl-cell:focus-within .oa-pl-primary { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
+.oa-pl-cell:focus-within .oa-pl-view { max-height: 60px; margin-bottom: 12px; opacity: 1; visibility: visible; border-width: 1px; }
+
+/* Touch screens have no hover: the button sits at the foot of the photo. */
+@media (hover: none) {
+  .oa-pl-primary { top: auto; bottom: 12px; opacity: 1; visibility: visible; transform: translateX(-50%); }
+}
+
+@media (max-width: 767px) {
+  .oa-pl-toolbar { justify-content: center; }
+  .oa-pl-toolbar:not(.oa-pl-toolbar-bottom) .oa-pl-pages { display: none; }
+  .oa-pl-page { margin: 0 2px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oa-pl-card, .oa-pl-primary, .oa-pl-view { transition: none; }
+}
