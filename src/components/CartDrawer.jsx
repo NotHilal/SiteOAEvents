@@ -109,7 +109,7 @@ export default function CartDrawer({ cart, closeRef, onClose, open }) {
         <div className="oah-cart-empty">
           <Icon name="cart" ion size={48} />
           <p>Votre panier est vide.</p>
-          <Link href="/catalogue/complet" onClick={onClose}>Découvrir le catalogue complet</Link>
+          <Link href="/catalogue" onClick={onClose}>Découvrir le catalogue</Link>
         </div>
       ) : (
         <>
