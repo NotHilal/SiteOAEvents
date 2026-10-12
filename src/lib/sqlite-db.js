@@ -190,6 +190,22 @@ async function init() {
       sort_order INTEGER DEFAULT 0,
       created_at TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS customer_accounts (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL COLLATE NOCASE UNIQUE,
+      password_hash TEXT NOT NULL,
+      first_name TEXT NOT NULL,
+      last_name TEXT NOT NULL,
+      phone TEXT,
+      civility TEXT,
+      account_type TEXT NOT NULL DEFAULT 'particulier',
+      company_name TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      last_login_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
 
   // Migrate existing databases created before new columns were added
@@ -244,10 +260,31 @@ async function init() {
       created_at TEXT
     )
   `);
+  // Photos uploaded from Espace OA, stored in the database rather than in
+  // public/uploads/ — so they follow the database (Turso) to every machine
+  // and to production, where the filesystem is read-only or not shared.
+  // Served at the same /uploads/<path> URLs as before by
+  // pages/api/files/[...path].js (see the rewrite in next.config.js).
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS files (
+      path TEXT PRIMARY KEY,
+      mime TEXT NOT NULL,
+      data BLOB NOT NULL,
+      size INTEGER NOT NULL,
+      created_at TEXT
+    )
+  `);
   await ensureColumn('materials', 'slug', 'TEXT');
   await ensureColumn('materials', 'product_id', 'TEXT');
   await ensureColumn('materials', 'variant_label', 'TEXT');
   await ensureColumn('materials', 'variant_order', 'INTEGER');
+  // Catalogue tiles (/catalogue, /catalogue-2…, managed in Espace OA >
+  // Catalogue): `name` stays the uppercase key stored in materials.category;
+  // `label` is the title shown on the tile, `position` its order (6 a page).
+  await ensureColumn('categories', 'label', 'TEXT');
+  await ensureColumn('categories', 'description', 'TEXT');
+  await ensureColumn('categories', 'image_url', 'TEXT');
+  await ensureColumn('categories', 'position', 'INTEGER');
 
   await client.executeMultiple(`
     CREATE INDEX IF NOT EXISTS idx_payments_reservation ON payments(reservation_id);
@@ -256,6 +293,8 @@ async function init() {
     CREATE INDEX IF NOT EXISTS idx_material_price_tiers_material ON material_price_tiers(material_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_materials_slug ON materials(slug);
     CREATE INDEX IF NOT EXISTS idx_materials_product ON materials(product_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_accounts_email ON customer_accounts(email COLLATE NOCASE);
+    CREATE INDEX IF NOT EXISTS idx_customer_accounts_created ON customer_accounts(created_at);
   `);
 
   // Seed default categories if empty
@@ -420,6 +459,18 @@ async function init() {
     });
   }
 
+  // One-time: give the existing categories the title, text and photo the
+  // /catalogue page used to hardcode. Flag-guarded so edits made in Espace OA
+  // are never overwritten.
+  const tilesFlag = await client.execute("SELECT value FROM settings WHERE key = 'catalogue_tiles_v1_seeded'");
+  if (!tilesFlag.rows.length || tilesFlag.rows[0].value !== '1') {
+    await seedCatalogueTiles();
+    await client.execute({
+      sql: "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('catalogue_tiles_v1_seeded', '1', ?)",
+      args: [new Date().toISOString()],
+    });
+  }
+
   // Every material gets a URL slug from its name (once — kept on rename).
   // Runs on each start so items added since get one too; a clash with an
   // existing slug or product slug gets a -2, -3… suffix.
@@ -458,6 +509,36 @@ const REAL_CATEGORIES = [
   { id: 'cat-tentes', name: 'TENTES' },
   { id: 'cat-options', name: 'OPTIONS & ACCESSOIRES' },
 ];
+
+const CATALOGUE_TILES = [
+  { name: 'BANQUETTES', label: 'Banquettes', image_url: '/catalogue/Banquettes_600x800.jpg',
+    description: 'Des banquettes confortables pour créer vos espaces lounge, coins détente et cocktails.' },
+  { name: 'CHAISES', label: 'Chaises', image_url: '/catalogue/Chaises_600x800.jpg',
+    description: 'Des chaises élégantes pour vos cérémonies, dîners et réceptions.' },
+  { name: 'DÉCORATIONS', label: 'Décorations', image_url: '/catalogue/Decorations_800x800.jpg',
+    description: 'Arches fleuries, rideaux et pièces de décor pour sublimer votre lieu de réception.' },
+  { name: 'OPTIONS & ACCESSOIRES', label: 'Options & accessoires', image_url: '/catalogue/Options-accessoires_600x800.jpg',
+    description: 'Éclairage, chauffage, rallonges et lestage : tout ce qui complète votre installation.' },
+  { name: 'TABLES', label: 'Tables', image_url: '/catalogue/Tables_1200x670.jpg',
+    description: 'Tables rondes et rectangulaires pour accueillir vos invités.' },
+  { name: 'TENTES', label: 'Tentes', image_url: '/catalogue/Tentes_600x800.jpg',
+    description: 'Des tentes de réception de 32 à 100 m² pour vos événements en extérieur.' },
+];
+
+async function seedCatalogueTiles() {
+  for (const [i, tile] of CATALOGUE_TILES.entries()) {
+    await client.execute({
+      sql: `UPDATE categories SET label = COALESCE(label, ?), description = COALESCE(description, ?),
+              image_url = COALESCE(image_url, ?), position = COALESCE(position, ?) WHERE name = ?`,
+      args: [tile.label, tile.description, tile.image_url, i, tile.name],
+    });
+  }
+  // Any other category goes after them, oldest first.
+  const { rows } = await client.execute('SELECT id FROM categories WHERE position IS NULL ORDER BY created_at, name');
+  for (const [i, row] of rows.entries()) {
+    await client.execute({ sql: 'UPDATE categories SET position = ? WHERE id = ?', args: [CATALOGUE_TILES.length + i, row.id] });
+  }
+}
 
 // Real price sheet from the business owners (2026-08-06). Each tier is
 // [minQty, maxQty|null, weekdayHt, weekendHt] — TTC is always derived at

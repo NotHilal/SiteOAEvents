@@ -3,7 +3,7 @@ import { useRef } from 'react'
 // Photo field of the article editor (was inline in pages/espace-oa.jsx):
 // click-to-choose area with preview, "Choisir" / "Retirer". The file is only
 // uploaded when the article is saved.
-export default function ImagePicker({ preview, onFile, onRemove, label = 'Image' }) {
+export default function ImagePicker({ preview, onFile, onRemove, label = 'Image', required = false, invalid = false }) {
   const inputRef = useRef(null)
   function pick(file) {
     if (!file) return
@@ -14,8 +14,8 @@ export default function ImagePicker({ preview, onFile, onRemove, label = 'Image'
   }
   return (
     <div className="adm-form-group" style={{ marginTop: 8 }}>
-      <label>{label} <span className="adm-label-opt">(optionnel)</span></label>
-      <div className="img-upload-area" onClick={() => inputRef.current?.click()}>
+      <label>{label} {required ? <span className="req">*</span> : <span className="adm-label-opt">(optionnel)</span>}</label>
+      <div className="img-upload-area" onClick={() => inputRef.current?.click()} style={invalid ? { borderColor: 'var(--danger)' } : undefined}>
         {preview
           ? <img src={preview} alt="" className="img-preview-thumb" />
           : <div className="img-upload-placeholder"><i className="fas fa-image" /><p>Aucune image sélectionnée</p><span>JPG, PNG, WEBP — max 5 Mo</span></div>}

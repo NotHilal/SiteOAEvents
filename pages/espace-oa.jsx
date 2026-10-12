@@ -3,7 +3,8 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { supabase } from '../src/lib/supabase.js'
 import { ttcFromHt, groupTiersByMaterial } from '../src/lib/pricing.js'
-import MaterialEditor from '../src/components/admin/MaterialEditor.jsx'
+import MaterialEditor, { removeStorageImg } from '../src/components/admin/MaterialEditor.jsx'
+import CatalogueManager from '../src/components/admin/CatalogueManager.jsx'
 
 
 const HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
@@ -67,7 +68,6 @@ const REGLAGES_TABS = [
   { key:'installments', label:'Paiement en plusieurs fois' },
 ]
 const MAT_PAGE_SIZE = 8
-const CAT_PAGE_SIZE = 10
 const DAY_PAGE_SIZE = 4
 
 function fmtDate(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0') }
@@ -92,6 +92,9 @@ export default function AdminDashboard() {
   const [reservations, setReservations] = useState([])
   const [paymentSummaries, setPaymentSummaries] = useState({})
   const [messages, setMessages] = useState([])
+  const [customerAccounts, setCustomerAccounts] = useState([])
+  const [accountSearch, setAccountSearch] = useState('')
+  const [accountsLoading, setAccountsLoading] = useState(false)
   const [materials, setMaterials] = useState([])
   const [products, setProducts] = useState([])
   const [materialTiers, setMaterialTiers] = useState([])
@@ -112,10 +115,6 @@ export default function AdminDashboard() {
   // Article editor (src/components/admin/MaterialEditor.jsx):
   // null | { mode:'new' } | { materialId } | { productId, focusOptionId }
   const [matEditor, setMatEditor] = useState(null)
-  const [catPage, setCatPage] = useState(0)
-  const [catInput, setCatInput] = useState('')
-  const [catError, setCatError] = useState('')
-  const [catModalOpen, setCatModalOpen] = useState(false)
   const [dayModal, setDayModal] = useState(null)
   const [resaDetail, setResaDetail] = useState(null)
   const [blockTab, setBlockTab] = useState('full')
@@ -159,7 +158,7 @@ export default function AdminDashboard() {
   // scrolling underneath it. Freezing the page instead makes the modal feel
   // like the thing you're actually looking at, not a floating overlay.
   useEffect(() => {
-    const anyModalOpen = !!(dayModal || resaDetail || deleteModal || catModalOpen || contactModal || msgDetail || mobileNavOpen || matEditor)
+    const anyModalOpen = !!(dayModal || resaDetail || deleteModal || contactModal || msgDetail || mobileNavOpen || matEditor)
     // html has an explicit overflow-x set (see style.css, for the horizontal-
     // scrollbar fix) which stops the browser from propagating body's overflow
     // to the viewport — so html itself must be locked too, or this silently
@@ -167,7 +166,7 @@ export default function AdminDashboard() {
     document.documentElement.style.overflowY = anyModalOpen ? 'hidden' : ''
     document.body.style.overflow = anyModalOpen ? 'hidden' : ''
     return () => { document.documentElement.style.overflowY = ''; document.body.style.overflow = '' }
-  }, [dayModal, resaDetail, deleteModal, catModalOpen, contactModal, msgDetail, mobileNavOpen, matEditor])
+  }, [dayModal, resaDetail, deleteModal, contactModal, msgDetail, mobileNavOpen, matEditor])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -199,7 +198,7 @@ export default function AdminDashboard() {
   }, [user])
 
   async function loadAll() {
-    await Promise.all([loadReservations(), loadPaymentSummaries(), loadMessages(), loadBlockedData(), loadMaterials(), loadCategories(), loadSettings(), loadAboutContent()])
+    await Promise.all([loadReservations(), loadPaymentSummaries(), loadMessages(), loadCustomerAccounts(), loadBlockedData(), loadMaterials(), loadCategories(), loadSettings(), loadAboutContent()])
   }
   async function loadReservations() {
     const { data } = await supabase.from('reservations').select('*').order('created_at', { ascending: false })
@@ -222,6 +221,20 @@ export default function AdminDashboard() {
   async function loadMessages() {
     const { data } = await supabase.from('contacts').select('*').order('created_at', { ascending: false })
     setMessages(data || [])
+  }
+  async function loadCustomerAccounts() {
+    setAccountsLoading(true)
+    try {
+      const sessionStr = sessionStorage.getItem('oa_session')
+      const session = sessionStr ? JSON.parse(sessionStr) : null
+      const response = await fetch('/api/admin/accounts', {
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      })
+      const data = await response.json().catch(() => ({}))
+      if (response.ok) setCustomerAccounts(data.accounts || [])
+    } finally {
+      setAccountsLoading(false)
+    }
   }
   async function loadBlockedData() {
     const [bd, bh] = await Promise.all([
@@ -416,7 +429,7 @@ export default function AdminDashboard() {
   }
   async function handleLogout() {
     await supabase.auth.signOut()
-    setReservations([]); setMessages([]); setMaterials([]); setCategories([])
+    setReservations([]); setMessages([]); setCustomerAccounts([]); setMaterials([]); setCategories([])
     setBlockedDatesMap({}); setBlockedHoursMap({}); setActiveTab('demandes')
   }
 
@@ -500,9 +513,7 @@ export default function AdminDashboard() {
   }
 
   function openAddMat() { setMatEditor({ mode: 'new' }) }
-  async function removeStorageImg(url) {
-    try { const m='/object/public/materials/'; const i=url.indexOf(m); if(i===-1)return; await supabase.storage.from('materials').remove([url.slice(i+m.length)]) } catch {}
-  }
+
   async function toggleAvail(id, current) { await supabase.from('materials').update({ available: !current }).eq('id', id); await loadMaterials() }
   function deleteMat(id) {
     confirmDelete('Cet article et son image seront définitivement supprimés.', async () => {
@@ -540,19 +551,6 @@ export default function AdminDashboard() {
   }
 
 
-
-  async function saveCategory() {
-    const name = catInput.trim().toUpperCase(); if (!name) return; setCatError('')
-    const { data, error } = await supabase.from('categories').insert({ name }).select().single()
-    if (error) { setCatError(error.code==='23505'?`La catégorie "${name}" existe déjà.`:'Erreur : '+error.message); return }
-    setCategories(prev => [...prev, data].sort((a,b) => a.name.localeCompare(b.name))); setCatInput('')
-  }
-  function deleteCat(id, name) {
-    confirmDelete(`La catégorie "${name}" sera supprimée.`, async () => {
-      await supabase.from('categories').delete().eq('id', id)
-      setCategories(prev => prev.filter(c => c.id !== id))
-    })
-  }
 
   const closeModal = () => { setDayModal(null); setResaDetail(null) }
 
@@ -596,6 +594,8 @@ export default function AdminDashboard() {
     { key:'calendrier', icon:'fas fa-calendar-alt', label:'Calendrier', badge:0,             blink:false },
     { key:'blocages',   icon:'fas fa-ban',          label:'Blocages',   badge:0,             blink:false },
     { key:'messagerie', icon:'fas fa-envelope',     label:'Messagerie', badge:unreadCount,   blink:unreadCount>0 },
+    { key:'comptes',    icon:'fas fa-users',        label:'Comptes',    badge:customerAccounts.length, blink:false },
+    { key:'catalogue',  icon:'fas fa-th-large',     label:'Catalogue',  badge:0,             blink:false },
     { key:'materiaux',  icon:'fas fa-boxes',        label:'Matériel',   badge:0,             blink:false },
     { key:'visuel',     icon:'fas fa-images',       label:'Visuel Site', badge:0,            blink:false },
     { key:'reglages',   icon:'fas fa-cog',          label:'Réglages',   badge:0,             blink:false },
@@ -766,6 +766,40 @@ export default function AdminDashboard() {
             />
           </div>
 
+          {/* COMPTES CLIENTS */}
+          <div className={`tab-content${activeTab==='comptes'?' active':''}`} id="tab-comptes">
+            <div className="adm-header">
+              <div>
+                <p className="adm-eyebrow">Espace client</p>
+                <h1 className="adm-title">Comptes créés</h1>
+                <p className="adm-sub">Consultez les clients inscrits sur le site. Les mots de passe ne sont jamais affichés.</p>
+              </div>
+              <button type="button" className="adm-btn-ghost" onClick={loadCustomerAccounts}><i className="fas fa-sync-alt" style={{marginRight:8}} />Actualiser</button>
+            </div>
+            <div className="customer-account-stats">
+              <div><span>Comptes</span><strong>{customerAccounts.length}</strong></div>
+              <div><span>Particuliers</span><strong>{customerAccounts.filter(account => account.account_type !== 'professionnel').length}</strong></div>
+              <div><span>Professionnels</span><strong>{customerAccounts.filter(account => account.account_type === 'professionnel').length}</strong></div>
+            </div>
+            <div className="mat-search" style={{maxWidth:380,marginBottom:18}}>
+              <i className="fas fa-search" />
+              <input type="text" placeholder="Rechercher un nom, email ou téléphone…" value={accountSearch} onChange={event => setAccountSearch(event.target.value)} />
+              {accountSearch && <button className="mat-search-clear" onClick={() => setAccountSearch('')} aria-label="Effacer la recherche"><i className="fas fa-times" /></button>}
+            </div>
+            <CustomerAccountsTable accounts={customerAccounts} search={accountSearch} loading={accountsLoading} />
+          </div>
+
+          {/* CATALOGUE — category tiles of /catalogue, /catalogue-2… */}
+          <div className={`tab-content${activeTab==='catalogue'?' active':''}`} id="tab-catalogue">
+            <CatalogueManager
+              categories={categories}
+              materials={materials}
+              products={products}
+              onChanged={async () => { await Promise.all([loadCategories(), loadMaterials()]) }}
+              onConfirmDelete={confirmDelete}
+            />
+          </div>
+
           {/* MATÉRIAUX */}
           <div className={`tab-content${activeTab==='materiaux'?' active':''}`} id="tab-materiaux">
             <div className="adm-header">
@@ -774,7 +808,7 @@ export default function AdminDashboard() {
                 <h1 className="adm-title">Matériel</h1>
               </div>
               <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-                <button className="adm-btn-ghost" onClick={() => setCatModalOpen(true)}><i className="fas fa-folder-plus" style={{marginRight:8}} />Ajouter une catégorie</button>
+                <button className="adm-btn-ghost" onClick={() => setActiveTab('catalogue')}><i className="fas fa-th-large" style={{marginRight:8}} />Gérer les catégories</button>
                 <button className="adm-btn-primary" onClick={openAddMat}><i className="fas fa-plus" style={{marginRight:8}} />Ajouter un article</button>
               </div>
             </div>
@@ -1166,24 +1200,6 @@ export default function AdminDashboard() {
                   <i className="fas fa-trash" style={{marginRight:8}} />Supprimer
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {catModalOpen && (
-          <div className="modal-overlay" style={{display:'flex'}} onClick={e => { if(e.target===e.currentTarget) setCatModalOpen(false) }}>
-            <div className="modal-card" style={{maxWidth:400}}>
-              <button className="modal-close" onClick={() => setCatModalOpen(false)}><i className="fas fa-times" /></button>
-              <h3 className="modal-title"><i className="fas fa-folder-plus" style={{marginRight:8,color:'var(--rose-gold)'}} />Catégories</h3>
-              <div className="adm-form-group">
-                <label>Nouvelle catégorie</label>
-                <div style={{display:'flex',gap:8}}>
-                  <input className="adm-input" placeholder="Ex : Mobilier" value={catInput} onChange={e => setCatInput(e.target.value)} onKeyDown={e => e.key==='Enter'&&saveCategory()} style={{flex:1}} />
-                  <button className="adm-btn-primary" onClick={saveCategory} style={{flexShrink:0}}><i className="fas fa-plus" style={{marginRight:4}} />Ajouter</button>
-                </div>
-                {catError && <div style={{marginTop:8,background:'#fff5f5',border:'1.5px solid #fca5a5',borderRadius:8,padding:'9px 13px',color:'var(--danger)',fontSize:'.83rem',fontWeight:600}}><i className="fas fa-exclamation-circle" style={{marginRight:4}} />{catError}</div>}
-              </div>
-              <CatList categories={categories} page={catPage} onPage={setCatPage} onDelete={deleteCat} />
             </div>
           </div>
         )}
@@ -1773,6 +1789,41 @@ function ResaDetail({ resa, backDate, onBack, onStatus, onDelete }) {
   )
 }
 
+function CustomerAccountsTable({ accounts, search, loading }) {
+  if (loading && !accounts.length) return <div className="adm-loader"><i className="fas fa-circle-notch fa-spin" /> Chargement des comptes…</div>
+  const term = search.trim().toLocaleLowerCase('fr')
+  const filtered = accounts.filter(account => {
+    if (!term) return true
+    return [account.first_name, account.last_name, account.email, account.phone, account.company_name]
+      .some(value => String(value || '').toLocaleLowerCase('fr').includes(term))
+  })
+  if (!filtered.length) return <div className="adm-empty"><i className="fas fa-users" /><p>{accounts.length ? 'Aucun compte ne correspond à cette recherche.' : 'Aucun compte client créé pour le moment.'}</p></div>
+
+  return (
+    <div className="customer-account-table-wrap">
+      <table className="adm-table customer-account-table">
+        <thead><tr><th>Client</th><th>Type</th><th>Coordonnées</th><th>Inscription</th><th>Dernière connexion</th><th>Statut</th></tr></thead>
+        <tbody>
+          {filtered.map(account => {
+            const created = account.created_at ? new Date(account.created_at).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}) : '—'
+            const lastLogin = account.last_login_at ? new Date(account.last_login_at).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) : 'Jamais'
+            return (
+              <tr key={account.id}>
+                <td data-label="Client"><strong className="customer-account-name">{account.first_name} {account.last_name}</strong>{account.company_name && <small>{account.company_name}</small>}</td>
+                <td data-label="Type"><span className="customer-account-type">{account.account_type === 'professionnel' ? 'Professionnel' : 'Particulier'}</span></td>
+                <td data-label="Coordonnées"><a href={`mailto:${account.email}`}>{account.email}</a>{account.phone && <small>{account.phone}</small>}</td>
+                <td data-label="Inscription">{created}</td>
+                <td data-label="Dernière connexion">{lastLogin}</td>
+                <td data-label="Statut"><span className={`customer-account-status${account.active ? ' is-active' : ''}`}>{account.active ? 'Actif' : 'Désactivé'}</span></td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 function MsgList({ messages, filter, onOpen, onDelete }) {
   const filtered = filter==='all'?messages:filter==='unread'?messages.filter(m=>!m.read):messages.filter(m=>m.read)
   if (!filtered.length) return (
@@ -2305,30 +2356,6 @@ function MatTable({ search = '', onClearSearch, materials, products, tiersByMate
           <button className="cat-pg-btn" disabled={p===0} onClick={() => onPageChange(p-1)}><i className="fas fa-chevron-left" /></button>
           <span className="cat-pg-info">{p+1} / {totalPages} <span className="mat-pg-total">({shown.length} article{shown.length > 1 ? 's' : ''}{query ? ` sur ${articles.length}` : ''})</span></span>
           <button className="cat-pg-btn" disabled={p>=totalPages-1} onClick={() => onPageChange(p+1)}><i className="fas fa-chevron-right" /></button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function CatList({ categories, page, onPage, onDelete }) {
-  if (!categories.length) return <p style={{color:'var(--gray)',fontSize:'.85rem',textAlign:'center',padding:'12px 0'}}>Aucune catégorie.</p>
-  const totalPages = Math.ceil(categories.length/CAT_PAGE_SIZE)
-  const p = Math.max(0, Math.min(page, totalPages-1))
-  const slice = categories.slice(p*CAT_PAGE_SIZE,(p+1)*CAT_PAGE_SIZE)
-  return (
-    <div id="cat-list" style={{marginTop:8}}>
-      {slice.map(c => (
-        <div key={c.id} className="cat-list-item">
-          <span className="cat-list-name">{c.name}</span>
-          <button className="adm-btn-delete btn-sm" onClick={() => onDelete(c.id, c.name)}><i className="fas fa-trash" /></button>
-        </div>
-      ))}
-      {totalPages>1&&(
-        <div className="cat-pagination">
-          <button className="cat-pg-btn" disabled={p===0} onClick={() => onPage(p-1)}><i className="fas fa-chevron-left" /></button>
-          <span className="cat-pg-info">{p+1} / {totalPages}</span>
-          <button className="cat-pg-btn" disabled={p>=totalPages-1} onClick={() => onPage(p+1)}><i className="fas fa-chevron-right" /></button>
         </div>
       )}
     </div>

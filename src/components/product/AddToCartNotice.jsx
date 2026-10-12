@@ -9,7 +9,7 @@ export default function AddToCartNotice({ notice }) {
       {notice && (
         <>
           <span className={notice.limited ? 'pdp-notice-warn' : 'pdp-notice-ok'}>{notice.text}</span>{' '}
-          <Link href="/catalogue">Voir ma sélection</Link>
+          <Link href="/catalogue/complet">Voir ma sélection</Link>
         </>
       )}
     </p>

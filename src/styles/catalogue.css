@@ -1,0 +1,194 @@
+/* ===== CATALOGUE LANDING (/catalogue) =====
+   Category tiles modelled on options.fr's category landing: 3-column
+   masonry of portrait (3:4) and square photos, title centred on the photo;
+   on hover the photo darkens, a gold frame appears and the title gives way
+   to a short description and a "Découvrir" button. */
+
+.oa-cat-landing-intro {
+  max-width: 760px;
+  margin: 0 auto clamp(36px, 5vw, 50px);
+  color: var(--oa-muted);
+  font-size: 1rem;
+  line-height: 1.75;
+  text-align: center;
+}
+.oa-cat-landing-intro a {
+  color: var(--oa-accent-dark);
+  font-weight: 700;
+}
+.oa-cat-landing-intro a:hover { color: var(--oa-text); }
+
+.oa-cat-masonry {
+  display: flex;
+  align-items: flex-start;
+  gap: 30px;
+}
+.oa-cat-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.oa-cat-tile {
+  position: relative;
+  display: block;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+  isolation: isolate;
+}
+.oa-cat-tile-tall { aspect-ratio: 3 / 4; }
+.oa-cat-tile img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .6s cubic-bezier(.2, .7, .2, 1);
+}
+/* Dark veil + gold frame, shown on hover/focus. */
+.oa-cat-tile::before,
+.oa-cat-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity .3s ease;
+  pointer-events: none;
+}
+.oa-cat-tile::before { background: rgba(22, 20, 15, .55); }
+.oa-cat-tile::after { border: 3px solid var(--oa-accent); }
+
+.oa-cat-title {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  margin: 0;
+  padding: 0 20px;
+  transform: translateY(-50%);
+  color: var(--oa-text);
+  font-family: var(--oa-font-heading);
+  font-size: clamp(1.2rem, 1.7vw, 1.5rem);
+  font-weight: 700;
+  letter-spacing: .06em;
+  line-height: 1.25;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow: 0 0 5px #fff, 0 0 5px #fff;
+  transition: opacity .25s ease;
+}
+
+.oa-cat-detail {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 30px clamp(24px, 3vw, 40px);
+  color: #fff;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity .3s ease, transform .3s ease;
+}
+.oa-cat-text {
+  font-size: .95rem;
+  line-height: 1.7;
+}
+.oa-cat-btn {
+  display: inline-block;
+  padding: 15px 30px;
+  background: var(--oa-text);
+  color: #fff;
+  font-family: var(--oa-font-heading);
+  font-size: .8rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  transition: background .2s ease, color .2s ease;
+}
+.oa-cat-btn:hover { background: var(--oa-accent); color: var(--oa-text); }
+
+@media (hover: hover) {
+  .oa-cat-tile:hover img { transform: scale(1.04); }
+  .oa-cat-tile:hover::before,
+  .oa-cat-tile:hover::after,
+  .oa-cat-tile:hover .oa-cat-detail { opacity: 1; transform: none; }
+  .oa-cat-tile:hover .oa-cat-title { opacity: 0; }
+}
+.oa-cat-tile:focus-visible { outline: none; }
+.oa-cat-tile:focus-visible::before,
+.oa-cat-tile:focus-visible::after,
+.oa-cat-tile:focus-visible .oa-cat-detail { opacity: 1; transform: none; }
+.oa-cat-tile:focus-visible .oa-cat-title { opacity: 0; }
+
+/* Category saved without a photo: plain warm panel behind the title. */
+.oa-cat-tile-empty { background: #f4efe6; }
+
+/* Arrows + page numbers between /catalogue, /catalogue-2… */
+.oa-cat-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: clamp(32px, 4vw, 44px);
+}
+.oa-cat-pager-pages {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.oa-cat-pager-arrow,
+.oa-cat-pager-page {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--oa-text);
+  color: var(--oa-text);
+  font-family: var(--oa-font-heading);
+  font-size: .85rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background .2s ease, color .2s ease, border-color .2s ease;
+}
+.oa-cat-pager-page { border-color: transparent; }
+.oa-cat-pager-arrow:hover,
+.oa-cat-pager-page:hover { background: var(--oa-text); border-color: var(--oa-text); color: #fff; }
+.oa-cat-pager-page.is-active { background: var(--oa-accent); border-color: var(--oa-accent); color: var(--oa-text); }
+.oa-cat-pager-arrow.is-disabled { opacity: .25; pointer-events: none; }
+
+/* Tablet: 2 equal columns in reading order (mixed heights would leave
+   holes in a plain grid, so every tile becomes 4:5). Phone: 1 column. */
+@media (max-width: 991px) {
+  .oa-cat-masonry {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+  .oa-cat-col { display: contents; }
+  .oa-cat-tile,
+  .oa-cat-tile-tall { aspect-ratio: 4 / 5; }
+}
+@media (max-width: 575px) {
+  .oa-cat-masonry { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .oa-cat-tile,
+  .oa-cat-tile-tall { aspect-ratio: 4 / 3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oa-cat-tile img,
+  .oa-cat-detail { transition: none; }
+}

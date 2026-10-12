@@ -2,7 +2,14 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { isAuthorized } from '../../src/lib/auth';
+import db from '../../src/lib/sqlite-db';
 import formidable from 'formidable';
+
+// Uploads are stored in the database (files table), not written to
+// public/uploads/: a local folder isn't shared between machines, isn't in
+// git, and can't be written on a production host. They're still served at
+// /uploads/<path> (pages/api/files/[...path].js via the rewrite in
+// next.config.js), so URLs saved in the database keep the same shape.
 
 export const config = {
   api: {
@@ -19,18 +26,13 @@ export default async function handler(req, res) {
     return res.status(401).json({ message: 'Unauthorized access' });
   }
 
-  // Ensure uploads directory exists
-  if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-  }
-
   if (req.method === 'POST') {
     const form = formidable({
       keepExtensions: true,
       maxFileSize: 10 * 1024 * 1024, // 10MB limit
     });
 
-    form.parse(req, (err, fields, files) => {
+    form.parse(req, async (err, fields, files) => {
       if (err) {
         console.error('[Upload API Error]', err);
         return res.status(500).json({ message: 'Error parsing upload form' });
@@ -67,33 +69,16 @@ export default async function handler(req, res) {
         return res.status(400).json({ message: 'Chemin invalide' });
       }
 
-      // Ensure subdirectory in uploads exists if frontend requested it
-      const fileDir = path.dirname(targetFilePath);
-      if (!fs.existsSync(fileDir)) {
-        fs.mkdirSync(fileDir, { recursive: true });
-      }
-
       try {
-        fs.renameSync(file.filepath, targetFilePath);
-        return res.status(200).json({
-          data: {
-            path: targetFilename
-          }
-        });
-      } catch (renameError) {
-        // Fallback if cross-device link fails
-        try {
-          fs.copyFileSync(file.filepath, targetFilePath);
-          fs.unlinkSync(file.filepath);
-          return res.status(200).json({
-            data: {
-              path: targetFilename
-            }
-          });
-        } catch(copyError) {
-          console.error('[Upload Save Error]', copyError);
-          return res.status(500).json({ message: 'Failed to save uploaded file' });
-        }
+        const data = fs.readFileSync(file.filepath);
+        await db.prepare('INSERT OR REPLACE INTO files (path, mime, data, size, created_at) VALUES (?, ?, ?, ?, ?)')
+          .run(targetFilename, file.mimetype, data, data.length, new Date().toISOString());
+        return res.status(200).json({ data: { path: targetFilename } });
+      } catch (saveError) {
+        console.error('[Upload Save Error]', saveError);
+        return res.status(500).json({ message: "L'image n'a pas pu être enregistrée." });
+      } finally {
+        try { fs.unlinkSync(file.filepath); } catch {}
       }
     });
     return;
@@ -106,33 +91,24 @@ export default async function handler(req, res) {
       body += chunk.toString();
     });
 
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
         const payload = JSON.parse(body || '{}');
         const paths = payload.paths || [];
-
+        // Database only. Files on disk under public/uploads/ are the
+        // catalogue photos committed to git (shared by every machine), so
+        // they're never deleted from here — replacing one in Espace OA just
+        // points the article at its new photo.
         const deleted = [];
         const errors = [];
-
-        paths.forEach(p => {
-          const filePath = path.join(UPLOADS_DIR, p);
-          // Prevent directory traversal attacks
-          if (!filePath.startsWith(UPLOADS_DIR + path.sep)) {
-            errors.push({ path: p, error: 'Access denied' });
-            return;
+        for (const p of paths.map(String)) {
+          try {
+            await db.prepare('DELETE FROM files WHERE path = ?').run(p);
+            deleted.push(p);
+          } catch (e) {
+            errors.push({ path: p, error: e.message });
           }
-
-          if (fs.existsSync(filePath)) {
-            try {
-              fs.unlinkSync(filePath);
-              deleted.push(p);
-            } catch(e) {
-              errors.push({ path: p, error: e.message });
-            }
-          } else {
-            deleted.push(p); // Already deleted or doesn't exist
-          }
-        });
+        }
 
         return res.status(200).json({ data: { deleted, errors } });
       } catch(e) {

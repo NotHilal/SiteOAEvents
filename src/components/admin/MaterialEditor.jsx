@@ -31,13 +31,17 @@ async function must(query) {
   return data
 }
 
-// Old Supabase-hosted URLs only; local /uploads files are left in place,
-// same as the previous editor.
-async function removeStorageImg(url) {
+// Deletes an uploaded photo that's no longer used. Photos uploaded from
+// Espace OA live in the database (/uploads/<path>, see pages/api/upload.js);
+// the catalogue photos committed to git are never touched by the API. Also
+// handles URLs left over from the old Supabase storage.
+export async function removeStorageImg(url) {
+  if (!url) return
   try {
     const marker = '/object/public/materials/'
     const i = url.indexOf(marker)
-    if (i !== -1) await supabase.storage.from('materials').remove([url.slice(i + marker.length)])
+    if (i !== -1) { await supabase.storage.from('materials').remove([url.slice(i + marker.length)]); return }
+    if (url.startsWith('/uploads/')) await supabase.storage.from('materials').remove([url.slice('/uploads/'.length).split('?')[0]])
   } catch {}
 }
 

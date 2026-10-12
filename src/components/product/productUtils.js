@@ -9,7 +9,7 @@ export const formatEuro = n => euro.format(n)
 // breadcrumb keeps the stored uppercase name (it's set in capitals anyway).
 export const categoryLabel = c => (c ? c.charAt(0) + c.slice(1).toLowerCase() : '')
 
-export const catalogueCategoryHref = c => `/catalogue?categorie=${encodeURIComponent(c)}`
+export const catalogueCategoryHref = c => `/catalogue/complet?categorie=${encodeURIComponent(c)}`
 
 export const minQtyOf = variant => getMinOrderQty(variant.tiers)
 

@@ -10,13 +10,13 @@ export default function ProductLayout({ product, image, imageAlt, imageCaption, 
   return (
     <div className="site-wrap pdp">
       <nav className="pdp-breadcrumbs" aria-label="Fil d'Ariane">
-        <Link href="/catalogue" className="pdp-back">
+        <Link href="/catalogue/complet" className="pdp-back">
           <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
           Retour
         </Link>
         <ol>
           <li><Link href="/">Accueil</Link></li>
-          <li><Link href="/catalogue">Catalogue</Link></li>
+          <li><Link href="/catalogue/complet">Catalogue complet</Link></li>
           {product.category && <li><Link href={catalogueCategoryHref(product.category)}>{product.category}</Link></li>}
           <li aria-current="page"><strong>{product.name}</strong></li>
         </ol>

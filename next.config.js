@@ -56,11 +56,29 @@ const nextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // The vendor CSS purge (scripts/postcss-vendor-purge.cjs) depends on the
+  // class names used in pages/ and src/, which Turbopack's build cache can't
+  // see: a warm build kept serving the old purged Font Awesome, so an icon
+  // added later (e.g. fa-th-large) was missing in production. Build cold.
+  experimental: {
+    turbopackFileSystemCacheForBuild: false,
+  },
+  // Photos uploaded from Espace OA live in the database (files table) and
+  // are served by pages/api/files at their /uploads/<path> URL. Rewrites
+  // run after the public/ folder is checked, so committed files under
+  // public/uploads/ (the catalogue photos) are still served as static files.
+  async rewrites() {
+    return [
+      { source: '/uploads/:path*', destination: '/api/files/:path*' },
+      // /catalogue-2, /catalogue-3… are the next pages of category tiles.
+      { source: '/catalogue-:page(\\d{1,})', destination: '/catalogue?page=:page' },
+    ];
+  },
   async headers() {
     return [
-      // Everything except the /example design reference (a saved copy of a
-      // third-party site that loads its own assets).
-      { source: '/((?!example).*)', headers: securityHeaders },
+      // Everything except saved third-party references that load their own
+      // styles and media. They are isolated in same-origin iframes.
+      { source: '/((?!example|catalogue-reference\\.html).*)', headers: securityHeaders },
       // Admin, API and order tracking never belong in search results.
       { source: '/espace-oa', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
       { source: '/api/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex' }, { key: 'Cache-Control', value: 'no-store' }] },

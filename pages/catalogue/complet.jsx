@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import Seo from '../src/components/Seo.jsx'
+import Seo from '../../src/components/Seo.jsx'
 import { useRouter } from 'next/router'
-import { supabase } from '../src/lib/supabase.js'
-import { getUnitPriceTtc, groupTiersByMaterial, getMinOrderQty } from '../src/lib/pricing.js'
-import { getCatalogueCart, setCatalogueCart, sendCatalogueCartToReservation } from '../src/lib/cart.js'
-import { track } from '../src/lib/analytics.js'
-import InfoTooltip from '../src/components/InfoTooltip.jsx'
-import { slugify } from '../src/lib/slug.js'
+import { supabase } from '../../src/lib/supabase.js'
+import { getUnitPriceTtc, groupTiersByMaterial, getMinOrderQty } from '../../src/lib/pricing.js'
+import { CART_EVENT, getCatalogueCart, setCatalogueCart, sendCatalogueCartToReservation } from '../../src/lib/cart.js'
+import { track } from '../../src/lib/analytics.js'
+import InfoTooltip from '../../src/components/InfoTooltip.jsx'
+import { slugify } from '../../src/lib/slug.js'
+import { categoryTitle, sortCategories } from '../../src/lib/catalogue-pages.js'
 
 const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1478146059778-26028b07395a?w=1600&q=75&auto=format&fit=crop'
-const MAT_PER_PAGE = 9
+const MAT_PER_PAGE = 15
 
 const productHref = slug => `/catalogue/${slug}`
 
@@ -47,6 +48,9 @@ export default function Catalogue() {
   const router = useRouter()
   const [materialsData, setMaterialsData] = useState([])
   const [productsData, setProductsData] = useState([])
+  // Filter pills: the categories managed in Espace OA > Catalogue, in their
+  // tile order.
+  const [categoriesData, setCategoriesData] = useState([])
   const [tiersByMaterial, setTiersByMaterial] = useState({})
   const [loaded, setLoaded] = useState(false)
   const [cart, setCart] = useState({})
@@ -60,12 +64,24 @@ export default function Catalogue() {
       supabase.from('materials').select('*').eq('available', true).order('category'),
       supabase.from('material_price_tiers').select('*'),
       supabase.from('products').select('*'),
-    ]).then(([matRes, tierRes, prodRes]) => {
+      supabase.from('categories').select('*'),
+    ]).then(([matRes, tierRes, prodRes, catRes]) => {
+      setCategoriesData(sortCategories(catRes.data || []))
       setMaterialsData(matRes.data || [])
       setProductsData(prodRes.data || [])
       setTiersByMaterial(groupTiersByMaterial(tierRes.data || []))
       setLoaded(true)
     })
+  }, [])
+
+  useEffect(() => {
+    const syncCart = () => setCart(getCatalogueCart())
+    window.addEventListener(CART_EVENT, syncCart)
+    window.addEventListener('storage', syncCart)
+    return () => {
+      window.removeEventListener(CART_EVENT, syncCart)
+      window.removeEventListener('storage', syncCart)
+    }
   }, [])
 
   useEffect(() => { setMatPage(1) }, [matFilter, matSearch])
@@ -74,8 +90,8 @@ export default function Catalogue() {
   // the catalogue on that filter.
   useEffect(() => {
     const cat = router.query.categorie
-    if (loaded && typeof cat === 'string' && materialsData.some(m => (m.category || 'Autre') === cat)) setMatFilter(cat)
-  }, [loaded, router.query.categorie, materialsData])
+    if (loaded && typeof cat === 'string' && (categoriesData.some(c => c.name === cat) || materialsData.some(m => (m.category || 'Autre') === cat))) setMatFilter(cat)
+  }, [loaded, router.query.categorie, materialsData, categoriesData])
 
   // The whole card opens the product page, except clicks on its own
   // controls (Ajouter, −/+, the info button and its popup).
@@ -106,7 +122,14 @@ export default function Catalogue() {
     ;(acc[c.category] ||= []).push(c)
     return acc
   }, {})
-  const categoryList = Object.keys(cardsByCategory)
+  const categoryMenu = [
+    { value: 'all', label: 'Tous', count: cards.length },
+    ...categoriesData.map(category => ({
+      value: category.name,
+      label: categoryTitle(category),
+      count: cardsByCategory[category.name]?.length || 0,
+    })),
+  ]
 
   // Search matches the card's name, or one of its options' names
   // ("30 kg" still finds Poids de lestage).
@@ -132,8 +155,8 @@ export default function Catalogue() {
       <Seo
         title="Catalogue : location de mobilier et de décoration"
         description="Parcourez notre catalogue de mobilier et de décoration à louer pour vos réceptions : chaises, tables, art de la table, luminaires et plus encore."
-        path="/catalogue"
-        breadcrumb={[{ name: 'Catalogue', path: '/catalogue' }]}
+        path="/catalogue/complet"
+        breadcrumb={[{ name: 'Catalogue complet', path: '/catalogue/complet' }]}
         preloadImage={PAGE_HEADER_DEFAULT}
       />
 
@@ -168,11 +191,12 @@ export default function Catalogue() {
 
             {loaded && materialsData.length > 0 && (
               <>
-                <div className="mat-toolbar" data-reveal>
+                <div className="mat-toolbar oa-catalogue-toolbar" data-reveal>
                   <div className="mat-search">
                     <i className="fas fa-search" />
                     <input
                       type="text"
+                      aria-label="Rechercher dans le catalogue"
                       placeholder="Rechercher un article…"
                       value={matSearch}
                       onChange={e => setMatSearch(e.target.value)}
@@ -183,20 +207,25 @@ export default function Catalogue() {
                       </button>
                     )}
                   </div>
-                  <div className="mat-filter-pills">
-                    <button className={`mat-filter-pill${matFilter==='all'?' active':''}`} onClick={() => setMatFilter('all')}>
-                      Tous <span className="mat-filter-count">{cards.length}</span>
-                    </button>
-                    {categoryList.map(cat => (
-                      <button key={cat} className={`mat-filter-pill${matFilter===cat?' active':''}`} onClick={() => setMatFilter(cat)}>
-                        {cat} <span className="mat-filter-count">{cardsByCategory[cat].length}</span>
-                      </button>
-                    ))}
+                  <div className="oa-catalogue-filter-scroll">
+                    <div className="mat-filter-pills" role="toolbar" aria-label="Filtrer le catalogue par catégorie">
+                      {categoryMenu.map(category => (
+                        <button
+                          key={category.value}
+                          type="button"
+                          className={`mat-filter-pill${matFilter === category.value ? ' active' : ''}`}
+                          aria-pressed={matFilter === category.value}
+                          onClick={() => setMatFilter(category.value)}
+                        >
+                          {category.label} <span className="mat-filter-count">{category.count}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
                 {!filteredMats.length ? (
-                  <p className="no-mat-msg"><i className="fas fa-info-circle me-2" />Aucun article ne correspond à votre recherche.</p>
+                  <p className="no-mat-msg"><i className="fas fa-info-circle me-2" />{matFilter !== 'all' && !matSearch.trim() ? 'Aucun article dans cette catégorie pour le moment.' : 'Aucun article ne correspond à votre recherche.'}</p>
                 ) : (
                   <div className="mat-grid" data-reveal>
                     {pagedMats.map(card => {

@@ -4,6 +4,7 @@ import db, { generateReservationReference } from '../../src/lib/sqlite-db';
 import { PUBLIC_SANITIZERS, isSpam } from '../../src/lib/public-submissions';
 import { rateLimit } from '../../src/lib/rate-limit';
 import { slugify } from '../../src/lib/slug';
+import { normalizeCategoryTitle } from '../../src/lib/catalogue-pages';
 
 // URL slug for a new material or product (/catalogue/[slug]), unique across
 // BOTH tables: the product page resolves product slugs first, so a material
@@ -66,6 +67,17 @@ function serializeRow(table, data) {
   }
   return res;
 }
+
+// Category titles must be unique ignoring case and accents ("Decorations"
+// clashes with "Décorations") — checked on every insert/rename, since both
+// the name key and the shown label come from the title.
+async function categoryTitleTaken(item, exceptId) {
+  const wanted = [item.name, item.label].filter(Boolean).map(normalizeCategoryTitle)
+  if (!wanted.length) return false
+  const rows = await db.prepare('SELECT id, name, label FROM categories').all()
+  return rows.some(r => String(r.id) !== String(exceptId ?? '') && [r.name, r.label].filter(Boolean).map(normalizeCategoryTitle).some(t => wanted.includes(t)))
+}
+const TITLE_TAKEN = 'Ce titre est déjà utilisé par une autre catégorie.'
 
 const ALLOWED_TABLES = ['materials', 'products', 'reservations', 'blocked_dates', 'blocked_hours', 'contacts', 'categories', 'settings', 'payments', 'material_price_tiers', 'site_content'];
 const isValidColumn = (col) => /^[a-zA-Z0-9_]+$/.test(col);
@@ -193,6 +205,11 @@ export default async function handler(req, res) {
       const isArray = Array.isArray(payload);
       const items = isArray ? payload : [payload];
       const insertedItems = [];
+      if (table === 'categories') {
+        for (const item of items) {
+          if (await categoryTitleTaken(item, item.id)) return res.status(409).json({ message: TITLE_TAKEN });
+        }
+      }
 
       const transaction = db.transaction(async () => {
         for (let item of items) {
@@ -241,6 +258,12 @@ export default async function handler(req, res) {
 
       const actualPayload = payload.payload ? payload.payload : payload;
       const actualFilters = payload.filters ? payload.filters : filters;
+
+      if (table === 'categories' && (actualPayload.name || actualPayload.label)) {
+        const idFilter = (actualFilters || []).find(f => f.field === 'id' && f.type === 'eq')
+        if (!idFilter) return res.status(400).json({ message: 'Category rename needs an id filter' })
+        if (await categoryTitleTaken(actualPayload, idFilter.value)) return res.status(409).json({ message: TITLE_TAKEN })
+      }
 
       const serializedPayload = serializeRow(table, actualPayload);
       const updateKeys = Object.keys(serializedPayload).filter(isValidColumn);

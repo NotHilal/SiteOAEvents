@@ -104,7 +104,7 @@ export default function NosExperiences() {
                     </div>
                   </div>
                   <div className={`col-lg-6 ${i % 2 === 1 ? 'pe-lg-5' : 'ps-lg-5'}`} data-reveal>
-                    <span className="devis-tag">{e.tag}</span>
+                    <p className="oa-assurance-tag">{e.tag}</p>
                     <h2>{e.title}</h2>
                     <p className="section-text">{e.text}</p>
                     <ul className="service-includes">

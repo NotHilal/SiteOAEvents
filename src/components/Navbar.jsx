@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { getCatalogueCartCount, CART_EVENT } from '../lib/cart.js'
+import { getCatalogueCart, CART_EVENT } from '../lib/cart.js'
 import Icon from './Icon.jsx'
 import AccountMenu from './AccountMenu.jsx'
 import ContactMenu from './ContactMenu.jsx'
+import CartDrawer from './CartDrawer.jsx'
 import { track } from '../lib/analytics.js'
 import { SITE } from '../lib/site.js'
 
@@ -50,12 +51,16 @@ export default function Navbar() {
   const router = useRouter()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [cartCount, setCartCount] = useState(0)
+  const [cartOpen, setCartOpen] = useState(false)
+  const [cart, setCart] = useState({})
   const closeRef = useRef(null)
   const toggleRef = useRef(null)
+  const cartCloseRef = useRef(null)
+  const cartToggleRef = useRef(null)
+  const cartCount = Object.values(cart).reduce((sum, quantity) => sum + (parseInt(quantity) || 0), 0)
 
   useEffect(() => {
-    const sync = () => setCartCount(getCatalogueCartCount())
+    const sync = () => setCart(getCatalogueCart())
     sync()
     window.addEventListener(CART_EVENT, sync)
     window.addEventListener('storage', sync)
@@ -82,37 +87,43 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Close the drawer on route change.
+  // Close either drawer on route change.
   useEffect(() => {
-    const close = () => setMenuOpen(false)
+    const close = () => { setMenuOpen(false); setCartOpen(false) }
     router.events.on('routeChangeStart', close)
     return () => router.events.off('routeChangeStart', close)
   }, [router.events])
 
-  // Lock page scroll while the drawer is open, and let Escape close it.
+  // Lock page scroll while either drawer is open, and let Escape close it.
   useEffect(() => {
-    document.documentElement.style.overflowY = menuOpen ? 'hidden' : ''
-    document.body.style.overflow = menuOpen ? 'hidden' : ''
+    const drawerOpen = menuOpen || cartOpen
+    document.documentElement.style.overflowY = drawerOpen ? 'hidden' : ''
+    document.body.style.overflow = drawerOpen ? 'hidden' : ''
     // Lenis (see _app.jsx) scrolls via wheel/touch interception, so
     // overflow:hidden alone doesn't stop it — pause it explicitly too.
-    if (menuOpen) window.__lenis?.stop()
+    if (drawerOpen) window.__lenis?.stop()
     else window.__lenis?.start()
-    const onKey = e => { if (e.key === 'Escape') setMenuOpen(false) }
-    if (menuOpen) {
+    const onKey = e => {
+      if (e.key !== 'Escape') return
+      if (menuOpen) { setMenuOpen(false); toggleRef.current?.focus() }
+      if (cartOpen) { setCartOpen(false); cartToggleRef.current?.focus() }
+    }
+    if (drawerOpen) {
       window.addEventListener('keydown', onKey)
-      closeRef.current?.focus()
+      if (menuOpen) closeRef.current?.focus()
+      else cartCloseRef.current?.focus()
     }
     return () => {
       document.documentElement.style.overflowY = ''; document.body.style.overflow = ''
       window.__lenis?.start()
       window.removeEventListener('keydown', onKey)
     }
-  }, [menuOpen])
+  }, [menuOpen, cartOpen])
 
   const isCurrent = href => router.pathname === href
 
   return (
-    <header className={`oah${scrolled ? ' oah-scrolled' : ''}${menuOpen ? ' is-menu-open' : ''}`}>
+    <header className={`oah${scrolled ? ' oah-scrolled' : ''}${menuOpen || cartOpen ? ' is-menu-open' : ''}`}>
       <div className="oah-bar">
         <div className="oah-left">
           <button
@@ -122,7 +133,7 @@ export default function Navbar() {
             aria-label="Ouvrir le menu"
             aria-expanded={menuOpen}
             aria-controls="oah-drawer"
-            onClick={() => setMenuOpen(true)}
+            onClick={() => { setCartOpen(false); setMenuOpen(true) }}
           >
             <Icon name="menu" size={26} />
             <span className="oah-menu-label">Menu</span>
@@ -161,21 +172,25 @@ export default function Navbar() {
             )
           })}
           <AccountMenu />
-          <Link
-            href="/catalogue"
+          <button
+            ref={cartToggleRef}
+            type="button"
             className="oah-icon oah-icon-cart"
+            aria-label={`Mon panier${cartCount > 0 ? `, ${cartCount} article${cartCount > 1 ? 's' : ''}` : ''}`}
+            aria-expanded={cartOpen}
+            aria-controls="oah-cart-drawer"
+            onClick={() => { setMenuOpen(false); setCartOpen(true) }}
           >
             <Icon name="cart" ion size={32} />
             <span className="oah-cart-count" aria-hidden="true">{cartCount}</span>
             <span className="oah-tooltip" aria-hidden="true">Mon panier</span>
-            <span className="visually-hidden">Mon panier{cartCount > 0 ? `, ${cartCount} article${cartCount > 1 ? 's' : ''}` : ''}</span>
-          </Link>
+          </button>
         </nav>
       </div>
 
       <div
-        className={`oah-overlay${menuOpen ? ' is-open' : ''}`}
-        onClick={() => setMenuOpen(false)}
+        className={`oah-overlay${menuOpen || cartOpen ? ' is-open' : ''}`}
+        onClick={() => { setMenuOpen(false); setCartOpen(false) }}
         aria-hidden="true"
       />
       <div
@@ -229,6 +244,12 @@ export default function Navbar() {
           })}
         </nav>
       </div>
+      <CartDrawer
+        cart={cart}
+        closeRef={cartCloseRef}
+        onClose={() => { setCartOpen(false); cartToggleRef.current?.focus() }}
+        open={cartOpen}
+      />
     </header>
   )
 }

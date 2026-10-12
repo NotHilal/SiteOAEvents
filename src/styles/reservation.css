@@ -1307,7 +1307,7 @@
   align-items: start;
   column-gap: 12px;
 }
-.mat-card-catalogue .mat-price { justify-self: end; text-align: right; line-height: 1.5; }
+.mat-card-catalogue .mat-price { justify-self: end; color: var(--oa-text, #16140f); text-align: right; line-height: 1.5; }
 .mat-card-catalogue .mat-name { line-height: 1.4; }
 .mat-card-catalogue .mat-card-img {
   width: 124px;
