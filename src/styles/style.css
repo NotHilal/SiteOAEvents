@@ -365,10 +365,7 @@ body { font-family: var(--oa-font-body); }
 }
 
 .service-block-icon {
-  width: 72px; height: 72px;
-  background: rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  border-radius: 0px; /* Sharp */
+  height: 72px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -377,15 +374,19 @@ body { font-family: var(--oa-font-body); }
 
 .service-block-icon i {
   font-size: 1.65rem;
-  color: #000000;
+  color: var(--oa-accent);
 }
 
+/* Same treatment as .oa-section-title on the home page (gold, not black). */
 .service-block h2 {
-  font-size: clamp(1.5rem, 3vw, 2rem);
+  color: var(--oa-accent-dark);
+  font-family: var(--oa-font-heading);
+  font-size: clamp(1.35rem, 2.4vw, 1.9rem);
   margin-bottom: 14px;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: .06em;
+  line-height: 1.25;
 }
 
 .service-includes {
@@ -410,19 +411,25 @@ body { font-family: var(--oa-font-body); }
   flex-shrink: 0;
 }
 
+/* Eyebrow style, like the home page "—— Nos univers" labels. */
 .devis-tag {
-  display: inline-block;
-  background: #000000;
-  color: #ffffff;
-  font-family: 'Montserrat', sans-serif;
-  font-weight: 800;
-  font-size: .7rem;
-  letter-spacing: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--oa-accent-dark);
+  font-family: var(--oa-font-heading);
+  font-weight: 700;
+  font-size: .72rem;
+  letter-spacing: .3em;
   text-transform: uppercase;
-  padding: 9px 18px;
-  border-radius: 0px; /* Sharp */
-  margin-bottom: 18px;
-  border-left: 3px solid #ffffff;
+  margin: 0 0 14px 18px;
+  vertical-align: middle;
+}
+.devis-tag::before {
+  content: '';
+  width: 30px;
+  height: 1px;
+  background: currentColor;
 }
 
 
@@ -1853,6 +1860,44 @@ a.oah-cart-item-name:hover { color: var(--oa-accent-ink); }
   text-transform: uppercase;
   text-align: center;
   text-wrap: balance;
+}
+/* Nos catégories — full-bleed mosaic (options.fr home): 3 equal columns,
+   a tall tile on the left, two stacked tiles in the others. */
+.oa-home-cats { padding: clamp(48px, 6vw, 72px) 0 0; }
+.oa-home-cats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 0 5px;
+}
+.oa-home-cats-col { display: flex; flex-direction: column; gap: 10px; }
+.oa-home-cat {
+  display: block;
+  height: 325px;
+  padding: 50px;
+  background-color: #f3efe8;
+  background-size: cover;
+  background-position: center;
+  text-decoration: none;
+  overflow: hidden;
+}
+.oa-home-cat.is-tall { height: 660px; }
+.oa-home-cat.is-raised { padding-top: 28px; }
+.oa-home-cat-title {
+  margin: 0;
+  color: var(--oa-cat-text, #000);
+  font-family: var(--oa-font-heading);
+  font-size: clamp(1.25rem, 1.8vw, 1.6rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 1.2;
+  transition: color .25s ease;
+}
+.oa-home-cat:hover .oa-home-cat-title { color: var(--oa-cat-hover, var(--oa-accent-dark)); }
+@media (max-width: 991px) {
+  .oa-home-cats-grid { grid-template-columns: 1fr; padding: 0 16px; }
+  .oa-home-cat, .oa-home-cat.is-tall { height: 260px; padding: 28px; }
+  .oa-home-cat.is-raised { padding-top: 16px; }
 }
 .oa-assurance-grid {
   display: grid;

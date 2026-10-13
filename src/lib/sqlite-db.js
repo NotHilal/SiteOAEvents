@@ -402,7 +402,9 @@ async function init() {
   // starts empty ({}) — public pages fall back to their own hardcoded
   // default image per slot when a key is missing, so an empty row changes
   // nothing visually until an admin actually replaces a photo.
-  for (const key of ['images_home', 'images_services', 'images_contact']) {
+  // home_categories_style holds { hoverColor } for the homepage "Nos
+  // catégories" tiles (Visuel Site > Accueil — Catégories).
+  for (const key of ['images_home', 'images_services', 'images_contact', 'home_categories_style']) {
     await client.execute({
       sql: 'INSERT OR IGNORE INTO site_content (key, value, updated_at) VALUES (?, ?, ?)',
       args: [key, '{}', settingsNow],

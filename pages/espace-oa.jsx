@@ -31,6 +31,15 @@ const HOME_SLOTS = [
   { key:'realisation_5', label:'Réalisation 5' },
   { key:'realisation_6', label:'Réalisation 6' },
 ]
+// Same images_home row as HOME_SLOTS, shown in its own tab — keys match
+// CATEGORY_TILES in pages/index.jsx.
+const HOME_CATEGORY_SLOTS = [
+  { key:'categorie_1', label:'Chaises (grande tuile à gauche)' },
+  { key:'categorie_2', label:'Tables' },
+  { key:'categorie_3', label:'Banquettes' },
+  { key:'categorie_4', label:'Décorations' },
+  { key:'categorie_5', label:'Accessoires' },
+]
 const SERVICES_SLOTS = [
   { key:'page_header', label:'Bannière de page' },
   { key:'service_1', label:'Organisation de Mariage' },
@@ -55,6 +64,7 @@ const CONTACT_SLOTS = [
 // both places can't drift out of sync.
 const VISUEL_TABS = [
   { key:'accueil', label:'Accueil' },
+  { key:'accueil-categories', label:'Accueil — Catégories' },
   { key:'prestations', label:'Prestations' },
   { key:'galerie', label:'Galerie' },
   { key:'apropos', label:'À Propos' },
@@ -861,6 +871,7 @@ export default function AdminDashboard() {
 
             <div className="block-tabs">
               <button className={`block-tab${visuelTab==='accueil'?' active':''}`} onClick={() => setVisuelTab('accueil')}>Accueil</button>
+              <button className={`block-tab${visuelTab==='accueil-categories'?' active':''}`} onClick={() => setVisuelTab('accueil-categories')}>Accueil — Catégories</button>
               <button className={`block-tab${visuelTab==='prestations'?' active':''}`} onClick={() => setVisuelTab('prestations')}>Prestations</button>
               <button className={`block-tab${visuelTab==='galerie'?' active':''}`} onClick={() => setVisuelTab('galerie')}>Galerie</button>
               <button className={`block-tab${visuelTab==='apropos'?' active':''}`} onClick={() => setVisuelTab('apropos')}>À Propos</button>
@@ -890,6 +901,7 @@ export default function AdminDashboard() {
             </div>
 
             {visuelTab==='accueil' && <ImageSlotGrid contentKey="images_home" slots={HOME_SLOTS} bucket="home" />}
+            {visuelTab==='accueil-categories' && <><HomeCategoryStyleEditor /><ImageSlotGrid contentKey="images_home" slots={HOME_CATEGORY_SLOTS} bucket="home" /></>}
             {visuelTab==='prestations' && <ImageSlotGrid contentKey="images_services" slots={SERVICES_SLOTS} bucket="services" />}
             {visuelTab==='galerie' && <GalerieManager />}
             {visuelTab==='contact' && <ImageSlotGrid contentKey="images_contact" slots={CONTACT_SLOTS} bucket="contact" />}
@@ -2000,6 +2012,67 @@ function ImageSlotGrid({ contentKey, slots, bucket }) {
         <button className="adm-btn-primary" onClick={save} disabled={saving}>
           {saving ? <><i className="fas fa-circle-notch fa-spin" style={{marginRight:8}} />Enregistrement…</> : <><i className="fas fa-save" style={{marginRight:8}} />Enregistrer</>}
         </button>
+        {saved && <span style={{marginLeft:12,color:'#2e7d32',fontWeight:700,fontSize:'.85rem'}}><i className="fas fa-check" style={{marginRight:4}} />Enregistré</span>}
+      </div>
+    </div>
+  )
+}
+
+// Title colours of the homepage "Nos catégories" tiles, stored as
+// { textColor, hoverColor } in the site_content "home_categories_style" row
+// (missing = black / the site's dark gold, see .oa-home-cat-title in style.css).
+const CAT_COLOR_DEFAULTS = { textColor: '#000000', hoverColor: '#b38d47' }
+const CAT_COLOR_FIELDS = [
+  { key: 'textColor', label: 'Couleur des titres' },
+  { key: 'hoverColor', label: 'Couleur des titres au survol' },
+]
+function HomeCategoryStyleEditor() {
+  const [colors, setColors] = useState(CAT_COLOR_DEFAULTS)
+  const [loaded, setLoaded] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    supabase.from('site_content').select('*').eq('key', 'home_categories_style').then(({ data }) => {
+      const row = data && data[0]
+      try { const v = row ? JSON.parse(row.value) : {}; setColors({ ...CAT_COLOR_DEFAULTS, ...v }) } catch {}
+      setLoaded(true)
+    })
+  }, [])
+
+  async function save(next) {
+    setSaving(true)
+    try {
+      const { error } = await supabase.from('site_content').update({ value: JSON.stringify(next) }).eq('key', 'home_categories_style')
+      if (error) throw error
+      setColors(next)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) {
+      alert('Erreur : ' + (err.message || err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!loaded) return null
+  return (
+    <div className="mat-form-card" style={{ marginBottom: 20 }}>
+      {CAT_COLOR_FIELDS.map(f => (
+        <div className="adm-form-group" key={f.key}>
+          <label>{f.label}</label>
+          <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+            <input type="color" value={colors[f.key]} onChange={e => setColors(c => ({ ...c, [f.key]: e.target.value }))} style={{ width:48, height:36, padding:0, border:'1px solid #ddd', cursor:'pointer' }} />
+            <span style={{ fontFamily:'monospace' }}>{colors[f.key]}</span>
+            <span style={{ fontWeight:700, textTransform:'uppercase', color: colors[f.key] }}>Aperçu</span>
+          </div>
+        </div>
+      ))}
+      <div className="mat-form-actions">
+        <button className="adm-btn-primary" onClick={() => save(colors)} disabled={saving}>
+          {saving ? <><i className="fas fa-circle-notch fa-spin" style={{marginRight:8}} />Enregistrement…</> : <><i className="fas fa-save" style={{marginRight:8}} />Enregistrer les couleurs</>}
+        </button>
+        <button className="adm-btn-ghost" style={{ marginLeft:8 }} onClick={() => save(CAT_COLOR_DEFAULTS)} disabled={saving}>Couleurs par défaut</button>
         {saved && <span style={{marginLeft:12,color:'#2e7d32',fontWeight:700,fontSize:'.85rem'}}><i className="fas fa-check" style={{marginRight:4}} />Enregistré</span>}
       </div>
     </div>

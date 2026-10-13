@@ -39,6 +39,17 @@ const PRESTATIONS = [
   { icon: 'fas fa-star', img: '/images/prestations/location-decoration.webp', title: 'Location de Décoration', text: 'Vaisselle, mobilier et éclairage, livrés et installés.' },
 ]
 
+// "Nos catégories" mosaic, modelled on options.fr's home block: one tall
+// tile on the left, two stacked tiles in each of the other columns. Photos
+// are swappable from Espace OA > Visuel Site > Accueil — Catégories.
+const CATEGORY_TILES = [
+  { slotKey: 'categorie_1', title: 'Chaises', value: 'CHAISES', img: '/catalogue/Chaises_600x800.jpg' },
+  { slotKey: 'categorie_2', title: 'Tables', value: 'TABLES', img: '/catalogue/Tables_1200x670.jpg' },
+  { slotKey: 'categorie_3', title: 'Banquettes', value: 'BANQUETTES', img: '/catalogue/Banquettes_600x800.jpg', raised: true },
+  { slotKey: 'categorie_4', title: 'Décorations', value: 'DÉCORATIONS', img: '/catalogue/Decorations_800x800.jpg' },
+  { slotKey: 'categorie_5', title: 'Accessoires', value: 'OPTIONS & ACCESSOIRES', img: '/catalogue/Options-accessoires_600x800.jpg' },
+]
+
 // Reassurance strip, modelled on options.fr's "Louez tout le matériel pour
 // votre réception !" block (reference at /example). Copy built only from
 // claims the site already makes elsewhere.
@@ -86,6 +97,16 @@ export default function Home() {
       const row = data && data[0]
       if (!row) return
       try { setImages(JSON.parse(row.value)) } catch {}
+    })
+  }, [])
+
+  // Title colours of the "Nos catégories" tiles, set in Espace OA.
+  const [catColors, setCatColors] = useState({})
+  useEffect(() => {
+    supabase.from('site_content').select('*').eq('key', 'home_categories_style').then(({ data }) => {
+      const row = data && data[0]
+      if (!row) return
+      try { setCatColors(JSON.parse(row.value) || {}) } catch {}
     })
   }, [])
 
@@ -255,34 +276,34 @@ export default function Home() {
           </div>
         </section>
 
-        {/* RÉASSURANCE — options.fr reassurance block */}
-        <section className="oa-section-tight oa-assurance" aria-labelledby="oa-assurance-title">
-          <div className="oa-container">
-            <h2 id="oa-assurance-title" className="oa-section-title" data-reveal>
-              Tout le nécessaire pour sublimer votre réception
-            </h2>
-            <ul className="oa-assurance-grid" data-reveal>
-              {ASSURANCES.map(a => (
-                <li className="oa-assurance-item" key={a.title}>
-                  <Icon name={a.icon} size={48} strokeWidth={1} className="oa-assurance-icon" />
-                  <div className="oa-assurance-body">
-                    <h3 className="oa-assurance-item-title">{a.title}</h3>
-                    <p className="oa-assurance-tag">{a.tag}</p>
-                    <p className="oa-assurance-text">{a.text}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <div className="oa-assurance-intro" data-reveal>
-              <p>
-                Spécialiste de l'organisation d'événements et de la location de décoration en Île-de-France,
-                OA Événementiel vous accompagne dans la concrétisation de vos projets privés et professionnels.
-              </p>
-              <p>
-                Mobilier, art de la table, éclairage et scénographie : composez la réception qui vous ressemble.
-                Laissez-vous guider par vos envies !
-              </p>
-            </div>
+        {/* NOS CATÉGORIES — options.fr category mosaic */}
+        <section
+          className="oa-home-cats"
+          aria-labelledby="oa-home-cats-title"
+          style={{
+            ...(catColors.textColor && { '--oa-cat-text': catColors.textColor }),
+            ...(catColors.hoverColor && { '--oa-cat-hover': catColors.hoverColor }),
+          }}
+        >
+          <h2 id="oa-home-cats-title" className="oa-section-title" data-reveal>Nos catégories</h2>
+          <div className="oa-home-cats-grid" data-reveal>
+            {[[0], [1, 2], [3, 4]].map((col, c) => (
+              <div className="oa-home-cats-col" key={c}>
+                {col.map(i => {
+                  const t = CATEGORY_TILES[i]
+                  return (
+                    <Link
+                      key={t.slotKey}
+                      href={`/catalogue/complet?categorie=${encodeURIComponent(t.value)}`}
+                      className={`oa-home-cat${col.length === 1 ? ' is-tall' : ''}${t.raised ? ' is-raised' : ''}`}
+                      style={{ backgroundImage: `url(${images[t.slotKey] || t.img})` }}
+                    >
+                      <h3 className="oa-home-cat-title">{t.title}</h3>
+                    </Link>
+                  )
+                })}
+              </div>
+            ))}
           </div>
         </section>
 
@@ -465,6 +486,37 @@ export default function Home() {
               >
                 <i className="fas fa-chevron-right" />
               </button>
+            </div>
+          </div>
+        </section>
+
+        {/* RÉASSURANCE — options.fr reassurance block */}
+        <section className="oa-section-tight oa-assurance" aria-labelledby="oa-assurance-title">
+          <div className="oa-container">
+            <h2 id="oa-assurance-title" className="oa-section-title" data-reveal>
+              Tout le nécessaire pour sublimer votre réception
+            </h2>
+            <ul className="oa-assurance-grid" data-reveal>
+              {ASSURANCES.map(a => (
+                <li className="oa-assurance-item" key={a.title}>
+                  <Icon name={a.icon} size={48} strokeWidth={1} className="oa-assurance-icon" />
+                  <div className="oa-assurance-body">
+                    <h3 className="oa-assurance-item-title">{a.title}</h3>
+                    <p className="oa-assurance-tag">{a.tag}</p>
+                    <p className="oa-assurance-text">{a.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="oa-assurance-intro" data-reveal>
+              <p>
+                Spécialiste de l'organisation d'événements et de la location de décoration en Île-de-France,
+                OA Événementiel vous accompagne dans la concrétisation de vos projets privés et professionnels.
+              </p>
+              <p>
+                Mobilier, art de la table, éclairage et scénographie : composez la réception qui vous ressemble.
+                Laissez-vous guider par vos envies !
+              </p>
             </div>
           </div>
         </section>
