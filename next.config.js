@@ -61,6 +61,7 @@ const nextConfig = {
   // see: a warm build kept serving the old purged Font Awesome, so an icon
   // added later (e.g. fa-th-large) was missing in production. Build cold.
   experimental: {
+    agentUpgrade: 'security',
     turbopackFileSystemCacheForBuild: false,
   },
   // Photos uploaded from Espace OA live in the database (files table) and
