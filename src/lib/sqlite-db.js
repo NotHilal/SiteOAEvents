@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import { createClient } from '@libsql/client';
 import { slugify } from './slug.js';
+import fs from 'fs';
+import { DEFAULT_GALERIE_PHOTOS } from './galerie-defaults.js';
 
 // Uses a local file by default (same file as before, now read/written over
 // libSQL instead of better-sqlite3) so local dev needs zero setup. Set
@@ -8,6 +10,10 @@ import { slugify } from './slug.js';
 // database instead — same client, same query code either way, since
 // better-sqlite3 can't run on Vercel (its serverless functions have a
 // read-only filesystem, so writing a local .sqlite file there crashes).
+if (!process.env.TURSO_DATABASE_URL) {
+  fs.mkdirSync('./data', { recursive: true });
+}
+
 const client = createClient({
   url: process.env.TURSO_DATABASE_URL || 'file:./data/db.sqlite',
   authToken: process.env.TURSO_AUTH_TOKEN,
@@ -463,6 +469,26 @@ async function init() {
     });
   }
 
+  // Swap tall photos for their 4:3 catalogue versions — only where the
+  // image is still the one set by seedBrochureAdditions (not an admin upload).
+  for (const name of ['arche-ronde', 'rideau-classique', 'tables-basses-marbre', 'tables-miroir-dorees']) {
+    await client.execute({
+      sql: 'UPDATE materials SET image_url = ? WHERE image_url = ?',
+      args: [`/pics/catalogue/${name}.jpg`, `/pics/${name}.jpg`],
+    });
+  }
+
+  // Brochure items missing from the catalog + product photos from pics/.
+  // Runs once per DB (flag), so admin edits/deletions made afterwards stick.
+  const brochureFlag = await client.execute("SELECT value FROM settings WHERE key = 'catalog_v3_brochure'");
+  if (!brochureFlag.rows.length || brochureFlag.rows[0].value !== '1') {
+    await seedBrochureAdditions();
+    await client.execute({
+      sql: "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('catalog_v3_brochure', '1', ?)",
+      args: [new Date().toISOString()],
+    });
+  }
+
   // One-time: group the real catalogue's size/length/weight/colour variants
   // into products (see PRODUCT_FAMILIES). Flag-guarded like the seed above,
   // so later edits made in Espace OA are never overwritten.
@@ -571,7 +597,7 @@ const REAL_MATERIALS = [
     image_url: '/uploads/materials/mat-banq-2-taupe.webp',
     tiers: [[1, null, 70.00, 80.00]] },
   { id: 'mat-banq-3-beige', name: 'Banquette 3 places – Beige', category: 'BANQUETTES', max_quantity: 10,
-    image_url: null,
+    image_url: '/pics/banquette-3-places-beige.jpg',
     tiers: [[1, null, 130.00, 150.00]] },
 
   // Décorations
@@ -588,7 +614,7 @@ const REAL_MATERIALS = [
     image_url: '/uploads/materials/mat-deco-arche-carree.webp',
     tiers: [[1, null, 35.00, 40.00]] },
   { id: 'mat-deco-tables-basses', name: 'Lot de 2 tables basses effet marbre', category: 'DÉCORATIONS', max_quantity: 6,
-    image_url: null,
+    image_url: '/pics/catalogue/tables-basses-marbre.jpg',
     tiers: [[1, null, 35.00, 40.00]] },
 
   // Tables — real stock counts from the owners
@@ -599,7 +625,7 @@ const REAL_MATERIALS = [
     image_url: '/uploads/materials/mat-table-ronde-152.webp',
     tiers: [[1, 9, 11.90, 14.00], [10, 19, 10.71, 12.60], [20, null, 10.12, 11.90]] },
   { id: 'mat-table-ronde-180', name: 'Table ronde Ø180 cm', category: 'TABLES', max_quantity: 15,
-    image_url: null,
+    image_url: '/pics/table-ronde-180.jpg',
     tiers: [[1, 9, 15.30, 18.00], [10, 19, 13.77, 16.20], [20, null, 13.01, 15.30]] },
 
   // Chaises
@@ -636,7 +662,7 @@ const REAL_MATERIALS = [
     image_url: '/uploads/materials/mat-opt-rallonge-10.webp',
     tiers: [[1, null, 5.00, 5.00]] },
   { id: 'mat-opt-poids-15', name: 'Poids de lestage 15 kg', category: 'OPTIONS & ACCESSOIRES', max_quantity: 30,
-    image_url: null,
+    image_url: '/pics/tente-poids-lestage.jpg',
     tiers: [[1, null, 5.00, 5.00]] },
   { id: 'mat-opt-poids-30', name: 'Poids de lestage 30 kg', category: 'OPTIONS & ACCESSOIRES', max_quantity: 30,
     image_url: '/uploads/materials/mat-opt-poids-30.webp',
@@ -691,23 +717,28 @@ async function seedProductFamilies() {
 // catalogue_images/manifest.json). Applied once per DB, only where no photo
 // was set yet — an image uploaded from Espace OA is never overwritten.
 const CATALOG_IMAGES = {
-  'mat-banq-2-beige': '/catalogue_images/01_banquette-2-places-beige.jpg',
-  'mat-banq-2-taupe': '/catalogue_images/02_banquette-2-places-taupe.jpg',
-  'mat-deco-rideau-tresse': '/catalogue_images/05_rideau-tresse-3x4m.jpg',
-  'mat-deco-arche-ronde': '/catalogue_images/06_arche-de-fleurs-ronde.jpg',
-  'mat-deco-arche-carree': '/catalogue_images/07_arche-de-fleurs-carree.jpg',
-  'mat-table-rect': '/catalogue_images/09_table-rectangulaire.jpg',
-  'mat-table-ronde-152': '/catalogue_images/10_table-ronde-diam152cm.jpg',
-  'mat-chaise-napoleon': '/catalogue_images/12_chaise-napoleon.jpg',
-  'mat-tente-32': '/catalogue_images/13_tente-de-reception-32m2-4x8m.jpg',
-  'mat-tente-50': '/catalogue_images/14_tente-de-reception-50m2-5x10m.jpg',
-  'mat-tente-72': '/catalogue_images/15_tente-de-reception-72m2-6x12m.jpg',
-  'mat-tente-100': '/catalogue_images/16_tente-de-reception-100m2-5x20m.jpg',
-  'mat-opt-kit-led': '/catalogue_images/17_kit-lumiere-led.jpg',
-  'mat-opt-parasol': '/catalogue_images/18_parasol-chauffant-electrique.jpg',
+  'mat-banq-2-beige': '/pics/banquette-2-places-beige.jpg',
+  'mat-banq-2-taupe': '/pics/banquette-2-places-taupe.jpg',
+  'mat-banq-3-beige': '/pics/banquette-3-places-beige.jpg',
+  'mat-chaise-napoleon': '/pics/chaises-napoleon.jpg',
+  'mat-deco-arche-carree': '/pics/arche-carree.jpg',
+  'mat-deco-arche-ronde': '/pics/catalogue/arche-ronde.jpg',
+  'mat-deco-rideau-classique': '/pics/catalogue/rideau-classique.jpg',
+  'mat-deco-rideau-tresse': '/pics/rideau-tresse.jpg',
+  'mat-deco-tables-basses': '/pics/catalogue/tables-basses-marbre.jpg',
+  'mat-opt-kit-led': '/pics/kit-lumiere-led.jpg',
+  'mat-opt-parasol': '/pics/tente-parasol-chauffant.jpg',
+  'mat-opt-poids-15': '/pics/tente-poids-lestage.jpg',
+  'mat-opt-poids-30': '/pics/tente-poids-lestage.jpg',
+  'mat-table-rect': '/pics/table-rectangulaire.jpg',
+  'mat-table-ronde-152': '/pics/table-ronde-152.jpg',
+  'mat-table-ronde-180': '/pics/table-ronde-180.jpg',
+  'mat-tente-32': '/pics/tente-32m2.jpg',
+  'mat-tente-50': '/pics/tente-50m2.jpg',
+  'mat-tente-72': '/pics/tente-72m2.jpg',
+  'mat-tente-100': '/pics/tente-100m2.jpg',
   'mat-opt-rallonge-5': '/catalogue_images/19_rallonge-electrique-5m.jpg',
   'mat-opt-rallonge-10': '/catalogue_images/20_rallonge-electrique-10m.jpg',
-  'mat-opt-poids-30': '/catalogue_images/22_poids-de-lestage-30kg.jpg',
   'mat-opt-galette': '/catalogue_images/23_option-galette-de-chaise.jpg',
 };
 
@@ -743,6 +774,87 @@ async function seedRealCatalog() {
               VALUES (?, ?, ?, ?, ?, ?, ?)`,
         args: [crypto.randomUUID(), mat.id, minQty, maxQty, weekdayHt, weekendHt, now],
       });
+    }
+  }
+}
+
+
+// Brochure additions: Vaisselle category and items from the 2026
+// brochure, plus the gold mirror tables, not present in the original
+// sheet above.
+const BROCHURE_CATEGORY = { id: 'cat-vaisselle', name: 'VAISSELLE & ART DE LA TABLE' };
+const BROCHURE_MATERIALS = [
+  { id: 'mat-vaisselle-kit', name: 'Kit complet vaisselle (par personne)', description: 'Grande et petite assiette, couverts or ou argent. À rendre sale.', category: BROCHURE_CATEGORY.name, max_quantity: 500, ttc: 3.50, image: 'kit-vaisselle' },
+  { id: 'mat-vaisselle-verres', name: 'Option verres à pied et à eau (par personne)', description: 'Les 2 verres, en complément du kit vaisselle.', category: BROCHURE_CATEGORY.name, max_quantity: 500, ttc: 0.50, image: 'verres' },
+  { id: 'mat-vaisselle-sous-assiette', name: 'Sous-assiette dorée transparente', category: BROCHURE_CATEGORY.name, max_quantity: 300, ttc: 1.00, image: 'sous-assiettes-dorees' },
+  { id: 'mat-vaisselle-nappe', name: 'Nappe professionnelle', description: 'Livrée propre et repassée, à rendre sale.', category: BROCHURE_CATEGORY.name, max_quantity: 80, ttc: 12.00, image: 'nappes' },
+  { id: 'mat-deco-tables-miroir', name: 'Lot de 2 tables miroir dorées', category: 'DÉCORATIONS', max_quantity: 3, ttc: 30.00, image: 'catalogue/tables-miroir-dorees' },
+];
+
+const MATERIAL_IMAGES = {
+  'mat-banq-2-beige': 'banquette-2-places-beige',
+  'mat-banq-2-taupe': 'banquette-2-places-taupe',
+  'mat-banq-3-beige': 'banquette-3-places-beige',
+  'mat-chaise-napoleon': 'chaises-napoleon',
+  'mat-deco-arche-carree': 'arche-carree',
+  'mat-deco-arche-ronde': 'catalogue/arche-ronde',
+  'mat-deco-rideau-classique': 'catalogue/rideau-classique',
+  'mat-deco-rideau-tresse': 'rideau-tresse',
+  'mat-deco-tables-basses': 'catalogue/tables-basses-marbre',
+  'mat-opt-kit-led': 'kit-lumiere-led',
+  'mat-opt-parasol': 'tente-parasol-chauffant',
+  'mat-opt-poids-15': 'tente-poids-lestage',
+  'mat-opt-poids-30': 'tente-poids-lestage',
+  'mat-table-rect': 'table-rectangulaire',
+  'mat-table-ronde-152': 'table-ronde-152',
+  'mat-table-ronde-180': 'table-ronde-180',
+  'mat-tente-32': 'tente-32m2',
+  'mat-tente-50': 'tente-50m2',
+  'mat-tente-72': 'tente-72m2',
+  'mat-tente-100': 'tente-100m2',
+};
+
+async function seedBrochureAdditions() {
+  const now = new Date().toISOString();
+  await client.execute({
+    sql: 'INSERT OR IGNORE INTO categories (id, name, created_at) VALUES (?, ?, ?)',
+    args: [BROCHURE_CATEGORY.id, BROCHURE_CATEGORY.name, now],
+  });
+  for (const mat of BROCHURE_MATERIALS) {
+    const inserted = await client.execute({
+      sql: `INSERT OR IGNORE INTO materials (id, name, description, category, max_quantity, available, image_url, price, created_at)
+            VALUES (?, ?, ?, ?, ?, 1, ?, 0, ?)`,
+      args: [mat.id, mat.name, mat.description || null, mat.category, mat.max_quantity, `/pics/${mat.image}.jpg`, now],
+    });
+    if (!inserted.rowsAffected) continue;
+    const ht = Math.round((mat.ttc / 1.2) * 1e6) / 1e6;
+    await client.execute({
+      sql: `INSERT INTO material_price_tiers (id, material_id, min_qty, max_qty, price_weekday_ht, price_weekend_ht, created_at)
+            VALUES (?, ?, 1, NULL, ?, ?, ?)`,
+      args: [crypto.randomUUID(), mat.id, ht, ht, now],
+    });
+  }
+  for (const [id, image] of Object.entries(MATERIAL_IMAGES)) {
+    await client.execute({
+      sql: "UPDATE materials SET image_url = ? WHERE id = ? AND (image_url IS NULL OR image_url = '')",
+      args: [`/pics/${image}.jpg`, id],
+    });
+  }
+  const galerieRow = await client.execute("SELECT value FROM site_content WHERE key = 'images_galerie'");
+  if (galerieRow.rows.length) {
+    let parsed = null;
+    try { parsed = JSON.parse(galerieRow.rows[0].value); } catch {}
+    if (Array.isArray(parsed?.photos)) {
+      const existing = new Set(parsed.photos.map(p => p.src));
+      const missing = DEFAULT_GALERIE_PHOTOS
+        .filter(p => p.src.startsWith('/pics/') && !existing.has(p.src))
+        .map(p => ({ ...p, id: 'pics-' + p.src.slice('/pics/'.length, -'.jpg'.length) }));
+      if (missing.length) {
+        await client.execute({
+          sql: "UPDATE site_content SET value = ?, updated_at = ? WHERE key = 'images_galerie'",
+          args: [JSON.stringify({ ...parsed, photos: [...parsed.photos, ...missing] }), now],
+        });
+      }
     }
   }
 }
