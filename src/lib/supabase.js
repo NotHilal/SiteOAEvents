@@ -104,6 +104,7 @@ class QueryBuilder {
     }
 
     const response = await fetch(`/api/db?${params.toString()}`, options);
+    if (response.status === 401 && headers.Authorization) expireSession();
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
       // Keep the HTTP status so forms can tell a validation error (400) or
@@ -151,6 +152,15 @@ class QueryBuilder {
 }
 
 const authListeners = new Set();
+
+// The admin token was refused (expired after 12 h, or the server secret
+// changed): drop it so Espace OA shows the login form again instead of
+// silently failing every load and save.
+function expireSession() {
+  if (typeof window === 'undefined' || !sessionStorage.getItem('oa_session')) return;
+  sessionStorage.removeItem('oa_session');
+  authListeners.forEach(listener => listener('SIGNED_OUT', null));
+}
 
 export const supabase = {
   from(table) {
@@ -208,7 +218,7 @@ export const supabase = {
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        return { data: null, error: new Error(errData.message || 'Login failed') };
+        return { data: null, error: Object.assign(new Error(errData.message || 'Login failed'), { status: response.status }) };
       }
 
       const data = await response.json();
@@ -249,6 +259,7 @@ export const supabase = {
             headers,
             body: formData
           });
+          if (response.status === 401 && headers.Authorization) expireSession();
 
           if (!response.ok) {
             const errData = await response.json().catch(() => ({}));

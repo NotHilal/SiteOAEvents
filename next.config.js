@@ -70,7 +70,21 @@ const nextConfig = {
   // run after the public/ folder is checked, so committed files under
   // public/uploads/ (the catalogue photos) are still served as static files.
   async redirects() {
-    return ['/galerie', '/nos-experiences'].map(source => ({ source, destination: '/nos-realisations', permanent: true }));
+    return [
+      // One canonical host: www.oa-evenementiel.fr → oa-evenementiel.fr
+      // (the domain DNS must point both names at this site).
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.oa-evenementiel.fr' }],
+        destination: 'https://oa-evenementiel.fr/:path*',
+        permanent: true,
+      },
+      ...['/galerie', '/nos-experiences'].map(source => ({ source, destination: '/nos-realisations', permanent: true })),
+      // The online quote simulation was removed — bookmarks land on the real booking.
+      { source: '/devis', destination: '/reservation', permanent: true },
+      // The Prestations page was removed — old links land on the catalogue.
+      { source: '/services', destination: '/catalogue', permanent: true },
+    ];
   },
   async rewrites() {
     return [

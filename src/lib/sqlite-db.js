@@ -326,6 +326,21 @@ async function init() {
       created_at TEXT
     )
   `);
+  // Extra product photos (JSON array of URLs) shown after image_url in the
+  // product gallery and the catalogue quick view.
+  await ensureColumn('materials', 'gallery', "TEXT DEFAULT '[]'");
+  // Stock log for Espace OA > Stock: every manual change of
+  // materials.max_quantity (purchase, breakage, loss…), with the stock after.
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS stock_movements (
+      id TEXT PRIMARY KEY,
+      material_id TEXT NOT NULL,
+      delta INTEGER NOT NULL,
+      stock_after INTEGER NOT NULL,
+      reason TEXT,
+      created_at TEXT NOT NULL
+    )
+  `);
   await ensureColumn('materials', 'slug', 'TEXT');
   await ensureColumn('materials', 'product_id', 'TEXT');
   await ensureColumn('materials', 'variant_label', 'TEXT');
@@ -456,12 +471,14 @@ async function init() {
   // nothing visually until an admin actually replaces a photo.
   // home_categories_style holds { hoverColor } for the homepage "Nos
   // catégories" tiles (Visuel Site > Accueil — Catégories).
-  for (const key of ['images_home', 'images_services', 'images_contact', 'home_categories_style']) {
+  for (const key of ['images_home', 'images_contact', 'home_categories_style']) {
     await client.execute({
       sql: 'INSERT OR IGNORE INTO site_content (key, value, updated_at) VALUES (?, ?, ?)',
       args: [key, '{}', settingsNow],
     });
   }
+  // The Prestations page (and its Visuel Site tab) was removed.
+  await client.execute("DELETE FROM site_content WHERE key = 'images_services'");
   // Galerie is a dynamic list (add/remove from Espace OA > Visuel Site >
   // Galerie), not fixed slots — seeded with the same 12 default photos
   // pages/galerie.jsx falls back to, so a fresh DB's admin list and public

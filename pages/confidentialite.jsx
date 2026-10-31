@@ -36,7 +36,7 @@ export default function Confidentialite() {
             <td>Mesures précontractuelles prises à votre demande (art. 6.1.b RGPD)</td>
           </tr>
           <tr>
-            <td>Réservation et simulation de devis</td>
+            <td>Réservation</td>
             <td>Prénom, nom, email, téléphone, dates, type d'événement, nombre de personnes, adresse de livraison, matériel choisi, message</td>
             <td>Traiter votre demande, établir le devis, organiser la livraison, assurer le suivi de commande</td>
             <td>Exécution du contrat ou mesures précontractuelles (art. 6.1.b)</td>

@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { getCatalogueCart, CART_EVENT } from '../lib/cart.js'
+import { getCatalogueCart, CART_EVENT, OPEN_CART_EVENT } from '../lib/cart.js'
+import { supabase } from '../lib/supabase.js'
+import { categoryTitle, sortCategories } from '../lib/catalogue-pages.js'
+import { catalogueCategoryHref } from './product/productUtils.js'
 import Icon from './Icon.jsx'
 import AccountMenu from './AccountMenu.jsx'
 import ContactMenu from './ContactMenu.jsx'
@@ -22,14 +25,12 @@ const LOCATION_HREF = '/contact#localisation'
 // smaller gold group beneath — same two-tier split as options.fr's menu.
 const MAIN_LINKS = [
   { href: '/', label: 'Accueil' },
-  { href: '/services', label: 'Prestations' },
   { href: '/catalogue', label: 'Catalogue' },
   { href: '/nos-realisations', label: 'Nos réalisations' },
   { href: '/a-propos', label: 'À Propos' },
 ]
 const SERVICE_LINKS = [
   { href: '/reservation', label: 'Réserver' },
-  { href: '/devis', label: 'Simulation de devis' },
   { href: '/suivi', label: 'Suivi de commande' },
   { href: '/contact', label: 'Contact' },
   // Also in the header icon row, which hides them below 992px.
@@ -57,6 +58,19 @@ export default function Navbar() {
   const cartCloseRef = useRef(null)
   const cartToggleRef = useRef(null)
   const cartCount = Object.values(cart).reduce((sum, quantity) => sum + (parseInt(quantity) || 0), 0)
+  // Catalogue strip under the bar: one link per category tile (Espace OA >
+  // Catalogue), in their order.
+  const [categories, setCategories] = useState([])
+  useEffect(() => {
+    supabase.from('categories').select('*').then(({ data }) => setCategories(sortCategories(data || []).map(c => ({ key: c.name, label: categoryTitle(c) }))))
+  }, [])
+
+  // Other components ask for the cart drawer ("Voir mon panier").
+  useEffect(() => {
+    const open = () => { setMenuOpen(false); setCartOpen(true) }
+    window.addEventListener(OPEN_CART_EVENT, open)
+    return () => window.removeEventListener(OPEN_CART_EVENT, open)
+  }, [])
 
   useEffect(() => {
     const sync = () => setCart(getCatalogueCart())
@@ -137,6 +151,10 @@ export default function Navbar() {
             <Icon name="menu" size={26} />
             <span className="oah-menu-label">Menu</span>
           </button>
+          <Link href="/catalogue" className="oah-shop-btn">
+            <Icon name="book" size={20} strokeWidth={1.6} />
+            <span>Catalogue</span>
+          </Link>
           <Link href="/reservation" className="oah-cta" onClick={() => track('Clic Réserver', { emplacement: 'header' })}>
             <Icon name="calendar" size={30} />
             <span>Réserver votre événement</span>
@@ -186,6 +204,22 @@ export default function Navbar() {
           </button>
         </nav>
       </div>
+
+      <nav className="oah-catbar" aria-label="Catalogue">
+        <div className="oah-catbar-inner">
+          <Link href="/catalogue/complet" className={`oah-catbar-all${router.pathname === '/catalogue/complet' && !router.query.categorie ? ' is-current' : ''}`}>
+            <i className="fas fa-th-large" aria-hidden="true" /> Tout le catalogue
+          </Link>
+          {categories.map(c => (
+            <Link key={c.key} href={catalogueCategoryHref(c.key)} className={`oah-catbar-link${router.query.categorie === c.key ? ' is-current' : ''}`}>
+              {c.label}
+            </Link>
+          ))}
+          <Link href="/reservation" className="oah-catbar-book" onClick={() => track('Clic Réserver', { emplacement: 'barre catalogue' })}>
+            <i className="far fa-calendar-check" aria-hidden="true" /> Réserver
+          </Link>
+        </div>
+      </nav>
 
       <div
         className={`oah-overlay${menuOpen || cartOpen ? ' is-open' : ''}`}

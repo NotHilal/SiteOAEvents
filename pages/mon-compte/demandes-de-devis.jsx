@@ -12,7 +12,7 @@ export default function DemandesDevis() {
           <span className="oa-account-empty-icon"><Icon name="calculator" size={30} strokeWidth={1.25} /></span>
           <h2>Aucune demande de devis</h2>
           <p>Vous n’avez pas encore envoyé de demande. Commencez à préparer votre prochain événement.</p>
-          <Link href="/devis" className="oa-account-primary-link">Demander un devis <span aria-hidden="true">→</span></Link>
+          <Link href="/contact"className="oa-account-primary-link">Demander un devis <span aria-hidden="true">→</span></Link>
         </AccountSection>
       </AccountLayout>
     </>

@@ -2,13 +2,15 @@ import { SITE_URL } from '../src/lib/site.js'
 
 // Crawling rules. Note: robots.txt is NOT access control — /espace-oa and
 // the API are protected by authentication, this only keeps them out of
-// search engines' crawl.
+// search engines' crawl. Account and tracking pages are NOT disallowed:
+// they carry a noindex tag, which crawlers only see if they may fetch them.
 function buildRobots() {
   return `User-agent: *
 Allow: /
 Disallow: /espace-oa
 Disallow: /api/
 Disallow: /example
+Disallow: /catalogue-reference.html
 
 Sitemap: ${SITE_URL}/sitemap.xml
 `

@@ -115,7 +115,7 @@ export async function createRentalOrder(input) {
   }
   const { record, error } = await sanitizeReservation(input)
   if (error) throw orderError(error, 400)
-  if (!record.materials.length) throw orderError('Ajoutez du matériel à votre panier. Pour une prestation sur mesure, contactez-nous.', 400)
+  if (!record.materials.length) throw orderError('Ajoutez du matériel à votre panier. Pour une demande sur mesure, contactez-nous.', 400)
   const bank = await db.prepare("SELECT value FROM settings WHERE key = 'bank_iban'").get()
   if (!isCardCheckoutConfigured() && !bank?.value) throw orderError('La commande en ligne est momentanément indisponible. Contactez-nous pour un devis.', 503)
   await expireUnpaidOrders()

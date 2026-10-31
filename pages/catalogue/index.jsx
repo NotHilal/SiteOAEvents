@@ -25,7 +25,8 @@ export async function getServerSideProps({ query }) {
     img: c.image_url || null,
     text: c.description || '',
   }))
-  return { props: { tiles, page, pageCount } }
+  const { count: productCount } = await db.prepare("SELECT COUNT(DISTINCT COALESCE(product_id, 'm:' || id)) AS count FROM materials WHERE available = 1").get()
+  return { props: { tiles, page, pageCount, productCount: Number(productCount) || 0 } }
 }
 
 // Desktop places tiles row by row into 3 columns (1·4, 2·5, 3·6), like the
@@ -36,7 +37,7 @@ function toColumns(tiles) {
   return [0, 1, 2].map(c => tiles.map((tile, i) => ({ ...tile, i, tall: i % 2 === 0 })).filter(tile => tile.i % 3 === c))
 }
 
-export default function Catalogue({ tiles, page, pageCount }) {
+export default function Catalogue({ tiles, page, pageCount, productCount }) {
   const path = cataloguePagePath(page)
   return (
     <>
@@ -69,8 +70,16 @@ export default function Catalogue({ tiles, page, pageCount }) {
           <div className="oa-container">
             <p className="oa-cat-landing-intro" data-reveal>
               OA Événementiel vous propose à la location le mobilier, la décoration et les accessoires de vos réceptions.
-              Choisissez une catégorie pour découvrir nos articles, ou parcourez <Link href="/catalogue/complet">tout le catalogue</Link>.
+              Choisissez une catégorie, ou parcourez tous nos articles d’un coup.
             </p>
+
+            <Link href="/catalogue/complet" className="shop-allcat" data-reveal>
+              <span className="shop-allcat-text">
+                <span className="shop-allcat-eyebrow">{productCount} articles à louer</span>
+                <span className="shop-allcat-title">Voir tout le catalogue</span>
+              </span>
+              <span className="shop-allcat-arrow" aria-hidden="true"><i className="fas fa-arrow-right" /></span>
+            </Link>
 
             {tiles.length > 0 ? (
               <div className="oa-cat-masonry" data-reveal>
@@ -117,8 +126,8 @@ export default function Catalogue({ tiles, page, pageCount }) {
             )}
 
             <div className="oa-center-cta" data-reveal>
-              <Link href="/catalogue/complet" className="theme-button theme-button-outline w-inline-block">
-                <div className="theme-button-content"><div className="theme-button-text">Voir tout le catalogue</div></div>
+              <Link href="/catalogue/complet" className="shop-btn shop-btn-dark shop-btn-xl">
+                Voir tout le catalogue <i className="fas fa-arrow-right" />
               </Link>
             </div>
           </div>

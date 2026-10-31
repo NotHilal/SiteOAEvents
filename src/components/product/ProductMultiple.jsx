@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { useRouter } from 'next/router'
+import AvailabilityCheck from './AvailabilityCheck.jsx'
+import { sendCatalogueCartToReservation } from '../../lib/cart.js'
 import ProductLayout from './ProductLayout.jsx'
 import QtyStepper from './QtyStepper.jsx'
 import { ProductFacts, TariffTable } from './ProductFacts.jsx'
@@ -19,12 +22,14 @@ export default function ProductMultiple({ product, variants, activeVariantId, re
   const [activeId, setActiveId] = useState(activeVariantId || firstAvailable.id)
   const [quantities, setQuantities] = useState({})
   const [notice, setNotice] = useState(null)
+  const [dates, setDates] = useState([])
+  const router = useRouter()
   const cart = useCatalogueCart()
 
   const active = variants.find(v => v.id === activeId) || firstAvailable
   // A variant without its own photo shows a sibling's, labelled as such so
   // it's never mistaken for the selected item.
-  const imageVariant = active.imageUrl ? active : variants.find(v => v.imageUrl)
+  const imageVariant = active.images?.length ? active : variants.find(v => v.images?.length)
   const imageCaption = imageVariant && imageVariant !== active ? `Photo : ${imageVariant.variantLabel || imageVariant.name}` : null
   const chosen = variants.filter(v => (quantities[v.id] || 0) > 0)
   const activeInCart = cart[active.id] || 0
@@ -49,8 +54,16 @@ export default function ProductMultiple({ product, variants, activeVariantId, re
     setQuantities({})
   }
 
+  // Adds what is chosen in the table (if anything), then opens the booking
+  // wizard on the days checked for the selected option.
+  function bookNow() {
+    if (chosen.length) add()
+    track('Clic Réserver', { emplacement: 'fiche produit' })
+    sendCatalogueCartToReservation(router, { dates })
+  }
+
   return (
-    <ProductLayout product={product} image={imageVariant?.imageUrl} imageAlt={imageVariant?.name} imageCaption={imageCaption} related={related}>
+    <ProductLayout product={product} images={imageVariant?.images || []} imageAlt={imageVariant?.name} imageCaption={imageCaption} related={related}>
       <div className="pdp-name">
         <h1><span>Location</span> {product.name}</h1>
       </div>
@@ -111,6 +124,11 @@ export default function ProductMultiple({ product, variants, activeVariantId, re
         {!chosen.length && <span className="pdp-hint">Indiquez une quantité pour au moins un modèle.</span>}
       </div>
       <AddToCartNotice notice={notice} />
+
+      <AvailabilityCheck variantId={active.id} qty={quantities[active.id] || minQtyOf(active)} onDates={setDates} />
+      <button type="button" className="shop-btn shop-btn-gold pdp-book" onClick={bookNow} disabled={!chosen.length && !Object.keys(cart).some(id => variants.some(v => v.id === id && cart[id] > 0))}>
+        <i className="far fa-calendar-check" /> Réserver maintenant
+      </button>
 
       <section className="pdp-variant-detail" aria-label={`Détails : ${active.name}`}>
         <ProductFacts variant={active} category={product.category} showVariant qty={quantities[active.id] || undefined} />

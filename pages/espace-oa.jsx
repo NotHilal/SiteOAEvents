@@ -1,12 +1,22 @@
-import RealisationsManager from '../src/components/admin/RealisationsManager.jsx'
-﻿import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { supabase } from '../src/lib/supabase.js'
 import { ttcFromHt, groupTiersByMaterial } from '../src/lib/pricing.js'
 import MaterialEditor, { removeStorageImg } from '../src/components/admin/MaterialEditor.jsx'
 import CatalogueManager from '../src/components/admin/CatalogueManager.jsx'
+import RealisationsManager from '../src/components/admin/RealisationsManager.jsx'
+import StockManager from '../src/components/admin/StockManager.jsx'
 
+// The DB client resolves to { data, error } instead of throwing; every
+// write here must stop (and say so) on failure rather than report success.
+async function must(query) {
+  const { data, error } = await query
+  if (error) throw error
+  return data
+}
+// New orders and contact messages show up without reloading the page.
+const REFRESH_MS = 60 * 1000
 
 const HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
@@ -35,13 +45,6 @@ const HOME_CATEGORY_SLOTS = [
   { key:'categorie_4', label:'Décorations' },
   { key:'categorie_5', label:'Accessoires' },
 ]
-const SERVICES_SLOTS = [
-  { key:'page_header', label:'Bannière de page' },
-  { key:'service_1', label:'Organisation de Mariage' },
-  { key:'service_2', label:"Organisation d'Anniversaire" },
-  { key:'service_3', label:'Événements Professionnels' },
-  { key:'service_4', label:'Location de Décoration' },
-]
 const CONTACT_SLOTS = [
   { key:'page_header', label:'Bannière de page' },
 ]
@@ -51,7 +54,6 @@ const CONTACT_SLOTS = [
 const VISUEL_TABS = [
   { key:'accueil', label:'Accueil' },
   { key:'accueil-categories', label:'Accueil — Catégories' },
-  { key:'prestations', label:'Prestations' },
   { key:'apropos', label:'À Propos' },
   { key:'contact', label:'Contact' },
 ]
@@ -182,26 +184,25 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!user) return
     loadAll()
-    const ch = supabase.channel('contacts-rt')
-      .on('postgres_changes', { event:'INSERT', schema:'public', table:'contacts' }, (payload) => {
-        setMessages(prev => [payload.new, ...prev])
-      })
-      .subscribe()
-    return () => supabase.removeChannel(ch)
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') Promise.all([loadReservations(), loadPaymentSummaries(), loadMessages()])
+    }, REFRESH_MS)
+    return () => clearInterval(timer)
   }, [user])
 
   async function loadAll() {
     await Promise.all([loadReservations(), loadPaymentSummaries(), loadMessages(), loadCustomerAccounts(), loadBlockedData(), loadMaterials(), loadCategories(), loadSettings(), loadAboutContent()])
   }
   async function loadReservations() {
-    const { data } = await supabase.from('reservations').select('*').order('created_at', { ascending: false })
-    setReservations(data || [])
+    const { data, error } = await supabase.from('reservations').select('*').order('created_at', { ascending: false })
+    if (!error) setReservations(data || [])
   }
   // Used to show a "paiement reçu" indicator (montant + N/total versements)
   // on each reservation card — one query for every installment across every
   // reservation, grouped client-side, rather than one query per reservation.
   async function loadPaymentSummaries() {
-    const { data } = await supabase.from('payments').select('reservation_id, amount, status').order('installment_index')
+    const { data, error } = await supabase.from('payments').select('reservation_id, amount, status').order('installment_index')
+    if (error) return
     const map = {}
     ;(data || []).forEach(p => {
       if (!map[p.reservation_id]) map[p.reservation_id] = { total: 0, paidCount: 0, paidAmount: 0 }
@@ -212,8 +213,8 @@ export default function AdminDashboard() {
     setPaymentSummaries(map)
   }
   async function loadMessages() {
-    const { data } = await supabase.from('contacts').select('*').order('created_at', { ascending: false })
-    setMessages(data || [])
+    const { data, error } = await supabase.from('contacts').select('*').order('created_at', { ascending: false })
+    if (!error) setMessages(data || [])
   }
   async function loadCustomerAccounts() {
     setAccountsLoading(true)
@@ -305,12 +306,12 @@ export default function AdminDashboard() {
         supabase.from('settings').update({ value: String(parsedTiers[3].minAmount) }).eq('key', 'installment_3x_min_amount'),
         supabase.from('settings').update({ value: String(parsedTiers[4].minAmount) }).eq('key', 'installment_min_total_4x'),
         supabase.from('site_content').update({ value: String(maxDays) }).eq('key', 'max_consecutive_days'),
-      ])
+      ].map(must))
       await loadSettings()
       setSettingsSaved(true)
       setTimeout(() => setSettingsSaved(false), 3000)
-    } catch {
-      setSettingsError('Erreur lors de l\'enregistrement.')
+    } catch (err) {
+      setSettingsError('Erreur lors de l\'enregistrement : ' + (err.message || err))
     } finally {
       setSettingsSaving(false)
     }
@@ -397,7 +398,7 @@ export default function AdminDashboard() {
         counters: aboutForm.counters.map(c => ({ count: c.count.trim(), label: c.label.trim() })),
         values: aboutForm.values.map(v => ({ title: v.title.trim(), text: v.text.trim() })),
       })
-      await supabase.from('site_content').update({ value }).eq('key', 'about_page')
+      await must(supabase.from('site_content').update({ value }).eq('key', 'about_page'))
       setAboutImageFile(null)
       setAboutHeaderFile(null)
       await loadAboutContent()
@@ -417,7 +418,9 @@ export default function AdminDashboard() {
   async function handleLogin(e) {
     e.preventDefault(); setLoginLoading(true); setLoginError('')
     const { error } = await supabase.auth.signInWithPassword({ email: loginEmail, password: loginPassword })
-    if (error) setLoginError('Identifiants incorrects. Vérifiez votre email et mot de passe.')
+    // 400 = wrong credentials; anything else (too many attempts, server not
+    // configured) comes with its own message for the admin.
+    if (error) setLoginError(error.status === 400 ? 'Identifiants incorrects. Vérifiez votre email et mot de passe.' : error.message)
     setLoginLoading(false)
   }
   async function handleLogout() {
@@ -459,7 +462,7 @@ export default function AdminDashboard() {
   }
   function deleteResa(id, backDate) {
     confirmDelete('Cette demande de réservation sera définitivement supprimée.', async () => {
-      await supabase.from('reservations').delete().eq('id', id)
+      await must(supabase.from('reservations').delete().eq('id', id))
       setReservations(prev => prev.filter(r => r.id !== id))
       setResaDetail(null)
       if (backDate) setDayModal({ dateStr: backDate, mode: 'calendar', page: 0 })
@@ -475,32 +478,29 @@ export default function AdminDashboard() {
     setDayModal({ dateStr, mode:'blocage' }); setResaDetail(null)
   }
 
-  async function saveFullBlock(dateStr) {
-    await supabase.from('blocked_dates').upsert({ date: dateStr, reason: blockReason||null }, { onConflict:'date' })
-    await loadBlockedData(); setDayModal(null)
+  // Runs a blocking change, then reloads the calendar whatever happened so
+  // it never shows a state the database doesn't have.
+  async function applyBlocking(change) {
+    try { await change(); setDayModal(null) }
+    catch (err) { alert('Erreur : ' + (err.message || err)) }
+    finally { await loadBlockedData() }
   }
-  async function unblockFull(dateStr) {
-    await supabase.from('blocked_dates').delete().eq('date', dateStr)
-    await loadBlockedData(); setDayModal(null)
-  }
-  async function saveHourBlocks(dateStr) {
-    await supabase.from('blocked_hours').delete().eq('date', dateStr)
-    if (blockSelHours.length) await supabase.from('blocked_hours').insert(blockSelHours.map(h => ({ date: dateStr, hour: h })))
-    await loadBlockedData(); setDayModal(null)
-  }
-  async function clearHourBlocks(dateStr) {
-    await supabase.from('blocked_hours').delete().eq('date', dateStr)
-    await loadBlockedData(); setDayModal(null)
-  }
+  const saveFullBlock = dateStr => applyBlocking(() => must(supabase.from('blocked_dates').upsert({ date: dateStr, reason: blockReason||null }, { onConflict:'date' })))
+  const unblockFull = dateStr => applyBlocking(() => must(supabase.from('blocked_dates').delete().eq('date', dateStr)))
+  const saveHourBlocks = dateStr => applyBlocking(async () => {
+    await must(supabase.from('blocked_hours').delete().eq('date', dateStr))
+    if (blockSelHours.length) await must(supabase.from('blocked_hours').insert(blockSelHours.map(h => ({ date: dateStr, hour: h }))))
+  })
+  const clearHourBlocks = dateStr => applyBlocking(() => must(supabase.from('blocked_hours').delete().eq('date', dateStr)))
 
   async function markMsgRead(id) {
     const m = messages.find(x => x.id === id); if (!m || m.read) return
-    await supabase.from('contacts').update({ read: true }).eq('id', id)
-    setMessages(prev => prev.map(x => x.id === id ? { ...x, read: true } : x))
+    const { error } = await supabase.from('contacts').update({ read: true }).eq('id', id)
+    if (!error) setMessages(prev => prev.map(x => x.id === id ? { ...x, read: true } : x))
   }
   function deleteMsg(id, close) {
     confirmDelete('Ce message sera définitivement supprimé.', async () => {
-      await supabase.from('contacts').delete().eq('id', id)
+      await must(supabase.from('contacts').delete().eq('id', id))
       setMessages(prev => prev.filter(m => m.id !== id))
       if (close) setMsgDetail(null)
     })
@@ -508,25 +508,33 @@ export default function AdminDashboard() {
 
   function openAddMat() { setMatEditor({ mode: 'new' }) }
 
-  async function toggleAvail(id, current) { await supabase.from('materials').update({ available: !current }).eq('id', id); await loadMaterials() }
+  async function toggleAvail(id, current) {
+    const { error } = await supabase.from('materials').update({ available: !current }).eq('id', id)
+    if (error) alert('Erreur : ' + error.message)
+    await loadMaterials()
+  }
   function deleteMat(id) {
     confirmDelete('Cet article et son image seront définitivement supprimés.', async () => {
-      const { data: m } = await supabase.from('materials').select('image_url').eq('id', id).single()
+      const m = await must(supabase.from('materials').select('image_url').eq('id', id).single())
+      try {
+        await must(supabase.from('material_price_tiers').delete().eq('material_id', id))
+        await must(supabase.from('materials').delete().eq('id', id))
+      } finally { await loadMaterials() }
       if (m?.image_url) await removeStorageImg(m.image_url)
-      await supabase.from('material_price_tiers').delete().eq('material_id', id)
-      await supabase.from('materials').delete().eq('id', id); await loadMaterials()
     })
-  }  // Article à options: deletes the article and every option (photos, rates).
+  }
+  // Article à options: deletes the article and every option (photos, rates).
   function deleteProduct(productId) {
     const options = materials.filter(m => m.product_id === productId)
     confirmDelete(`Cet article, ses ${options.length} option${options.length > 1 ? 's' : ''} et leurs images seront définitivement supprimés.`, async () => {
-      for (const m of options) {
-        if (m.image_url) await removeStorageImg(m.image_url)
-        await supabase.from('material_price_tiers').delete().eq('material_id', m.id)
-        await supabase.from('materials').delete().eq('id', m.id)
-      }
-      await supabase.from('products').delete().eq('id', productId)
-      await loadMaterials()
+      try {
+        for (const m of options) {
+          await must(supabase.from('material_price_tiers').delete().eq('material_id', m.id))
+          await must(supabase.from('materials').delete().eq('id', m.id))
+          if (m.image_url) await removeStorageImg(m.image_url)
+        }
+        await must(supabase.from('products').delete().eq('id', productId))
+      } finally { await loadMaterials() }
     })
   }
   // "Dissocier": each option becomes an independent article simple, with
@@ -536,11 +544,14 @@ export default function AdminDashboard() {
     const product = products.find(p => p.id === productId)
     if (!window.confirm(`Dissocier « ${product?.name || 'cet article'} » ? Ses ${options.length} options deviendront ${options.length} articles simples indépendants (mêmes noms, prix, stocks et photos).`)) return
     ;(async () => {
-      for (const m of options) {
-        await supabase.from('materials').update({ product_id: null, variant_label: null, variant_order: null }).eq('id', m.id)
-      }
-      await supabase.from('products').delete().eq('id', productId)
-      await loadMaterials()
+      try {
+        for (const m of options) {
+          await must(supabase.from('materials').update({ product_id: null, variant_label: null, variant_order: null }).eq('id', m.id))
+        }
+        await must(supabase.from('products').delete().eq('id', productId))
+      } catch (err) {
+        alert('Erreur : ' + (err.message || err))
+      } finally { await loadMaterials() }
     })()
   }
 
@@ -591,6 +602,7 @@ export default function AdminDashboard() {
     { key:'comptes',    icon:'fas fa-users',        label:'Comptes',    badge:customerAccounts.length, blink:false },
     { key:'catalogue',  icon:'fas fa-box',          label:'Catalogue',  badge:0,             blink:false },
     { key:'materiaux',  icon:'fas fa-boxes',        label:'Matériel',   badge:0,             blink:false },
+    { key:'stock',      icon:'fas fa-warehouse',    label:'Stock',      badge:0,             blink:false },
     { key:'realisations', icon:'fas fa-images',    label:'Nos réalisations', badge:0,         blink:false },
     { key:'visuel',     icon:'fas fa-images',       label:'Visuel Site', badge:0,            blink:false },
     { key:'reglages',   icon:'fas fa-cog',          label:'Réglages',   badge:0,             blink:false },
@@ -847,9 +859,17 @@ export default function AdminDashboard() {
             />
           </div>
 
+          {/* STOCK — owned units, outings, +/− with history */}
+          <div className={`tab-content${activeTab==='stock'?' active':''}`} id="tab-stock">
+            {activeTab==='stock' && <StockManager onChanged={loadMaterials} />}
+          </div>
+
           <div className={`tab-content${activeTab==='realisations'?' active':''}`} id="tab-realisations">
             <div className="adm-header">
-              <h1 className="adm-title">Nos réalisations</h1>
+              <div>
+                <p className="adm-eyebrow">Contenu du site</p>
+                <h1 className="adm-title">Nos réalisations</h1>
+              </div>
             </div>
             {activeTab==='realisations' && <RealisationsManager />}
           </div>
@@ -866,11 +886,10 @@ export default function AdminDashboard() {
             <div className="block-tabs">
               <button className={`block-tab${visuelTab==='accueil'?' active':''}`} onClick={() => setVisuelTab('accueil')}>Accueil</button>
               <button className={`block-tab${visuelTab==='accueil-categories'?' active':''}`} onClick={() => setVisuelTab('accueil-categories')}>Accueil — Catégories</button>
-              <button className={`block-tab${visuelTab==='prestations'?' active':''}`} onClick={() => setVisuelTab('prestations')}>Prestations</button>
               <button className={`block-tab${visuelTab==='apropos'?' active':''}`} onClick={() => setVisuelTab('apropos')}>À Propos</button>
               <button className={`block-tab${visuelTab==='contact'?' active':''}`} onClick={() => setVisuelTab('contact')}>Contact</button>
             </div>
-            {/* Mobile-only: the 5-item pill row above doesn't fit a phone
+            {/* Mobile-only: the 4-item pill row above doesn't fit a phone
                 width without either scrolling or squashing to illegible
                 widths — a tap-to-expand menu instead. */}
             <div className="block-tabs-mobile">
@@ -895,7 +914,6 @@ export default function AdminDashboard() {
 
             {visuelTab==='accueil' && <ImageSlotGrid contentKey="images_home" slots={HOME_SLOTS} bucket="home" />}
             {visuelTab==='accueil-categories' && <><HomeCategoryStyleEditor /><ImageSlotGrid contentKey="images_home" slots={HOME_CATEGORY_SLOTS} bucket="home" /></>}
-            {visuelTab==='prestations' && <ImageSlotGrid contentKey="images_services" slots={SERVICES_SLOTS} bucket="services" />}
             {visuelTab==='contact' && <ImageSlotGrid contentKey="images_contact" slots={CONTACT_SLOTS} bucket="contact" />}
 
             {visuelTab==='apropos' && (
@@ -1199,7 +1217,10 @@ export default function AdminDashboard() {
               <p className="del-modal-sub">{deleteModal.subtitle}</p>
               <div className="del-modal-actions">
                 <button className="adm-btn-ghost" onClick={() => setDeleteModal(null)}>Annuler</button>
-                <button className="adm-btn-danger" onClick={async () => { await deleteModal.callback(); setDeleteModal(null) }}>
+                <button className="adm-btn-danger" onClick={async () => {
+                  try { await deleteModal.callback() } catch (err) { alert('Suppression impossible : ' + (err.message || err)) }
+                  setDeleteModal(null)
+                }}>
                   <i className="fas fa-trash" style={{marginRight:8}} />Supprimer
                 </button>
               </div>
@@ -1964,7 +1985,7 @@ function ImageSlotGrid({ contentKey, slots, bucket }) {
         if (upErr) throw upErr
         nextUrls[slot.key] = supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl
       }
-      await supabase.from('site_content').update({ value: JSON.stringify(nextUrls) }).eq('key', contentKey)
+      await must(supabase.from('site_content').update({ value: JSON.stringify(nextUrls) }).eq('key', contentKey))
       setUrls(nextUrls)
       setPreviews(nextUrls)
       setFiles({})

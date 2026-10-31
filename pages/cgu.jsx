@@ -28,8 +28,7 @@ export default function Cgu() {
 
       <h2>3. Services proposés</h2>
       <ul>
-        <li>présentation des prestations et du catalogue de location ;</li>
-        <li>simulation de devis en ligne, à titre indicatif et sans engagement ;</li>
+        <li>présentation du catalogue de location et de nos réalisations ;</li>
         <li>demande de réservation et paiement en ligne ;</li>
         <li>suivi de commande à l'aide de l'email et du numéro de commande ;</li>
         <li>formulaire de contact.</li>

@@ -1,5 +1,6 @@
 import db from './sqlite-db.js'
 import { slugify } from './slug.js'
+import { imagesOf } from './catalogue-cards.js'
 
 // Server-only (imported from getServerSideProps): resolves a /catalogue/[slug]
 // URL to a product and its variants. See the products table comment in
@@ -23,6 +24,7 @@ function toMaterial(row) {
     description: row.description || null,
     category: row.category || null,
     imageUrl: row.image_url || null,
+    images: imagesOf(row),
     available: row.available === 1 || row.available === true,
     maxQuantity: row.max_quantity || null,
     variantLabel: row.variant_label || null,

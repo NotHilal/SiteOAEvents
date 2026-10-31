@@ -2,7 +2,6 @@ import React from 'react'
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import Head from 'next/head'
-import { useRouter } from 'next/router'
 import { supabase } from '../lib/supabase.js'
 import { getDayType, getUnitPriceTtc, groupTiersByMaterial, getMinOrderQty } from '../lib/pricing.js'
 import Seo from './Seo.jsx'
@@ -34,11 +33,8 @@ function capitalise(s) { return s.charAt(0).toUpperCase() + s.slice(1) }
 const EMPTY_FORM = { prenom:'', nom:'', email:'', phone:'', address:'', type:'', nb:'', message:'', website:'' }
 const DEFAULT_MAX_CONSECUTIVE_DAYS = 7
 
-// Shared by pages/reservation.jsx (simulation=false, submits a real request)
-// and pages/devis.jsx (simulation=true, same steps but the last one just
-// displays the computed quote instead of writing to the database).
-export default function ReservationWizard({ simulation = false }) {
-  const router = useRouter()
+// Event booking wizard used by pages/reservation.jsx.
+export default function ReservationWizard() {
   const now = new Date()
   const [calYear, setCalYear] = useState(now.getFullYear())
   const [calMonth, setCalMonth] = useState(now.getMonth())
@@ -48,7 +44,6 @@ export default function ReservationWizard({ simulation = false }) {
   const [selectedDates, setSelectedDates] = useState([])
   const [timeType, setTimeType] = useState('full')
   const [selectedHours, setSelectedHours] = useState([])
-  const [calError, setCalError] = useState('')
   const [currentStep, setCurrentStep] = useState(1)
   const [materialsData, setMaterialsData] = useState([])
   const [tiersByMaterial, setTiersByMaterial] = useState({})
@@ -84,19 +79,18 @@ export default function ReservationWizard({ simulation = false }) {
   const wizardRef = useRef(null)
 
   // Direct checkout receipt; the same reference resumes payment on /suivi.
-  // Stays null in simulation mode since nothing is ever created.
   const [orderReference, setOrderReference] = useState(null)
   const [createdOrder, setCreatedOrder] = useState(null)
   const [paymentSummary, setPaymentSummary] = useState(null)
   const checkoutKeyRef = useRef(null)
   const [checkoutAvailable, setCheckoutAvailable] = useState(null)
   useEffect(() => {
-    if (!simulation) fetch('/api/payments/methods').then(r => r.json()).then(result => setCheckoutAvailable(!!(result.data?.card || result.data?.virement))).catch(() => setCheckoutAvailable(false))
-  }, [simulation])
+    fetch('/api/payments/methods').then(r => r.json()).then(result => setCheckoutAvailable(!!(result.data?.card || result.data?.virement))).catch(() => setCheckoutAvailable(false))
+  }, [])
 
   useEffect(() => {
-    if (!simulation) track('Début réservation')
-  }, [simulation])
+    track('Début réservation')
+  }, [])
 
   useEffect(() => {
     loadBlockedData()
@@ -104,14 +98,11 @@ export default function ReservationWizard({ simulation = false }) {
     loadMaxConsecutiveDays()
   }, [])
 
-  // Pick up anything carried over from a simulation on /devis (see
-  // finishSimulation's "Faire une vraie demande" button) so converting a
-  // simulation into a real request doesn't mean retyping everything —
-  // sessionStorage rather than a query string/router state since it's a
-  // one-shot handoff between two separate pages. Real reservation page only:
-  // a simulation should never inherit an earlier simulation's data.
+  // Pick up anything handed over from another page (the catalogue cart, see
+  // src/lib/cart.js) — sessionStorage rather than a query string/router
+  // state since it's a one-shot handoff between two separate pages.
   useEffect(() => {
-    if (simulation || typeof window === 'undefined') return
+    if (typeof window === 'undefined') return
     const raw = sessionStorage.getItem('oa_devis_prefill')
     if (!raw) return
     sessionStorage.removeItem('oa_devis_prefill')
@@ -237,11 +228,6 @@ export default function ReservationWizard({ simulation = false }) {
     return getUnitPriceTtc(tiersByMaterial[String(m.id)], dayType, qty)
   }
 
-  function showCalError(msg) {
-    setCalError(msg)
-    setTimeout(() => setCalError(''), 4000)
-  }
-
   // Same "is this day pickable at all" check the calendar grid itself uses
   // to build `disabled` per cell — recomputed here (rather than looking a
   // cell up) since a two-click range can span days the click endpoints
@@ -351,26 +337,6 @@ export default function ReservationWizard({ simulation = false }) {
     loadStockForDates([dateStr])
   }
 
-  // Dedicated to the "×" on each date pill in the side panel — always means
-  // "remove exactly this date", never "start a new pick" the way clicking
-  // the calendar grid can. Middle dates still can't be removed directly
-  // (would break the contiguous-range assumption the rest of the wizard,
-  // pricing and delivery quote rely on) — same rule as before.
-  function removeDate(dateStr) {
-    const idx = selectedDates.indexOf(dateStr)
-    if (idx === -1) return
-    const isEdge = (idx === 0 || idx === selectedDates.length - 1)
-    if (!isEdge) {
-      showCalError('Pour retirer un jour intermédiaire, commencez par les extrémités ou effacez tout.')
-      return
-    }
-    const next = selectedDates.filter((_, i) => i !== idx)
-    setSelectedDates(next)
-    setRangeAnchor(next.length === 1 ? next[0] : null)
-    if (!next.length) { setTimeType('full'); setSelectedHours([]); setStockUsed({}) }
-    else loadStockForDates(next)
-  }
-
   function clearAllDates() {
     setSelectedDates([])
     setRangeAnchor(null)
@@ -395,14 +361,14 @@ export default function ReservationWizard({ simulation = false }) {
     // Infos fields themselves, not the step number, so it moves with it.
     if (n === 3) {
       const { prenom, nom, email, address, type, nb, phone } = form
-      if (!prenom||!nom||!email.includes('@')||!address.trim()||!type||!nb||parseInt(nb)<1||(!simulation && !phone.trim())) {
+      if (!prenom||!nom||!email.includes('@')||!address.trim()||!type||!nb||parseInt(nb)<1||!phone.trim()) {
         setStep2Error(true)
         return false
       }
       return true
     }
-    if (n === 2 && !simulation && !Object.values(cart).some(q => q > 0)) {
-      setSubmitError('Ajoutez du matériel pour commander. Pour une prestation sur mesure, contactez-nous.'); return false
+    if (n === 2 && !Object.values(cart).some(q => q > 0)) {
+      setSubmitError('Ajoutez du matériel pour commander. Pour une demande sur mesure, contactez-nous.'); return false
     }
     return true
   }
@@ -457,7 +423,7 @@ export default function ReservationWizard({ simulation = false }) {
 
   function goNext() {
     if (!validateStep(currentStep)) return
-    if (currentStep === 4) { simulation ? finishSimulation() : submitForm(); return }
+    if (currentStep === 4) { submitForm(); return }
     setCurrentStep(c => c + 1)
     setTimeout(() => wizardRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }), 50)
   }
@@ -467,44 +433,6 @@ export default function ReservationWizard({ simulation = false }) {
       setCurrentStep(c => c - 1)
       setTimeout(() => wizardRef.current?.scrollIntoView({ behavior:'smooth', block:'start' }), 50)
     }
-  }
-
-  // Simulation mode never touches the database or sends anything — it just
-  // flips to the same "final screen" shape as a real submission so the two
-  // flows feel identical, but the content there shows the quote instead of
-  // a confirmation + order reference.
-  function finishSimulation() {
-    setSuccess(true)
-    track('Simulation terminée')
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  function resetWizard() {
-    setCurrentStep(1)
-    setSelectedDates([])
-    setRangeAnchor(null)
-    setTimeType('full')
-    setSelectedHours([])
-    setStockUsed({})
-    setCart({})
-    setForm(EMPTY_FORM)
-    setQuote(null)
-    setQuoteError('')
-    setSuccess(false)
-    setOrderReference(null)
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  // "Faire une vraie demande" from a finished simulation — hand off what
-  // was already filled in so converting it into a real request doesn't
-  // mean retyping everything. See the matching restore effect above.
-  function convertToRealRequest() {
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('oa_devis_prefill', JSON.stringify({
-        selectedDates, timeType, selectedHours, form, cart,
-      }))
-    }
-    router.push('/reservation')
   }
 
   async function submitForm() {
@@ -598,9 +526,6 @@ export default function ReservationWizard({ simulation = false }) {
 
   /* Build calendar cells */
   const today = new Date(); today.setHours(0,0,0,0)
-  const firstDay = (new Date(calYear, calMonth, 1).getDay() + 6) % 7
-  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
-  const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7
 
   // Selection only ever builds forward from the first day picked — clicking
   // an earlier day starts a brand-new pick rather than extending the range
@@ -625,26 +550,58 @@ export default function ReservationWizard({ simulation = false }) {
     }
   }
 
-  const calCells = []
-  for (let i = 0; i < totalCells; i++) {
-    const dayNum = i - firstDay + 1
-    if (i < firstDay || dayNum > daysInMonth) {
-      calCells.push({ empty: true })
-    } else {
-      const d = new Date(calYear, calMonth, dayNum)
+  const todayStr = fmtDate(today)
+  const rangeStart = selectedDates[0]
+  const rangeEnd = selectedDates[selectedDates.length - 1]
+
+  // Two months side by side on desktop (the second one is hidden on phones
+  // by CSS), both built the same way.
+  function buildMonthCells(year, month) {
+    const firstDay = (new Date(year, month, 1).getDay() + 6) % 7
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7
+    const cells = []
+    for (let i = 0; i < totalCells; i++) {
+      const dayNum = i - firstDay + 1
+      if (i < firstDay || dayNum > daysInMonth) {
+        cells.push({ empty: true })
+        continue
+      }
+      const d = new Date(year, month, dayNum)
       const ds = fmtDate(d)
       const isPast = d <= today
       const isBlk = blockedDates.has(ds)
       const blkH = blockedHours[ds] || []
       const allBlk = blkH.length >= HOURS.length
-      const isWkend = d.getDay() === 0 || d.getDay() === 6
+      // Fri/Sat/Sun and public holidays use the weekend rate (src/lib/pricing.js).
+      const isWkend = getDayType(ds) === 'weekend'
       const partial = !isPast && !isBlk && !allBlk && blkH.length > 0
       const isBusy = !isPast && !isBlk && !allBlk && !partial && busyDates.has(ds)
       const isSel = selectedDates.includes(ds)
       const disabled = isPast || isBlk || allBlk
       const isAdj = !disabled && !isSel && reachableForward.has(ds)
-      calCells.push({ dayNum, ds, isPast, isBlk, allBlk, isWkend, partial, isBusy, isSel, disabled, isAdj })
+      const isToday = ds === todayStr
+      const isStart = isSel && ds === rangeStart && selectedDates.length > 1
+      const isEnd = isSel && ds === rangeEnd && selectedDates.length > 1
+      const isMid = isSel && !isStart && !isEnd && selectedDates.length > 1
+      cells.push({ dayNum, ds, isWkend, partial, isBusy, isSel, disabled, isAdj, isToday, isStart, isEnd, isMid })
     }
+    return cells
+  }
+  const calMonths = [0, 1].map(offset => {
+    const d = new Date(calYear, calMonth + offset, 1)
+    return { year: d.getFullYear(), month: d.getMonth(), cells: buildMonthCells(d.getFullYear(), d.getMonth()) }
+  })
+
+  function shiftMonth(delta) {
+    const d = new Date(calYear, calMonth + delta, 1)
+    setCalYear(d.getFullYear())
+    setCalMonth(d.getMonth())
+  }
+
+  const longDate = ds => {
+    const d = new Date(ds + 'T00:00:00')
+    return capitalise(DAYS_FR[d.getDay()]) + ' ' + d.getDate() + ' ' + MONTHS_FR[d.getMonth()].toLowerCase()
   }
 
   /* Cat grouping for materials (used for the filter pills + counts) */
@@ -674,58 +631,17 @@ export default function ReservationWizard({ simulation = false }) {
   }, 0)
   const grandTotal = materialsTotal + (quote?.fee || 0)
 
-  const pageTitle = simulation ? 'Simulation de Devis' : 'Réservation'
+  const pageTitle = 'Réservation'
 
   if (success) {
     return (
       <>
         <Head>
-          <title>{(simulation ? 'Votre Devis' : 'Commande à régler') + ' — OA Événementiel'}</title>
+          <title>Commande à régler — OA Événementiel</title>
         </Head>
         <div className="site-wrap">
           <section className="resa-section">
             <div className="container">
-              {simulation ? (
-                <div className="resa-success-msg">
-                  <span className="success-icon"><i className="fas fa-receipt" /></span>
-                  <h3>Voici votre devis estimatif</h3>
-                  <p>Ceci est une simulation — aucune demande n'a été envoyée, rien n'a été réservé.</p>
-
-                  <div className="recap-card" style={{textAlign:'left',margin:'24px 0'}}>
-                    {[
-                      { icon: 'fas fa-calendar', label: 'Date(s)', value: recapDate() },
-                      { icon: 'fas fa-tag', label: 'Événement', value: EVENT_LABELS[form.type] || '—' },
-                      { icon: 'fas fa-users', label: 'Personnes', value: form.nb ? form.nb + ' personne(s)' : '—' },
-                      { icon: 'fas fa-map-marker-alt', label: 'Adresse', value: form.address || '—' },
-                      { icon: 'fas fa-boxes', label: 'Matériaux', value: recapMats() },
-                    ].map((row, i) => (
-                      <div key={i} className="recap-row">
-                        <span className="recap-lbl"><i className={row.icon} />{row.label}</span>
-                        <span className="recap-val">{row.value}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="res-quote-box" style={{textAlign:'left'}}>
-                    <h4 className="res-quote-title"><i className="fas fa-euro-sign" style={{marginRight:8}} />Estimation</h4>
-                    <div className="res-total-row">
-                      <span>Sous-total matériaux</span><strong>{materialsTotal.toFixed(2)} €</strong>
-                    </div>
-                    <div className="res-total-row">
-                      <span>Livraison{quote ? ` (${quote.distanceKm} km)` : ''}</span><strong>{quote ? quote.fee.toFixed(2) + ' €' : '—'}</strong>
-                    </div>
-                    <div className="res-total-row res-total-grand">
-                      <span>Total estimé</span><strong>{grandTotal.toFixed(2)} €</strong>
-                    </div>
-                    <p className="res-quote-disclaimer">Estimation indicative, non contractuelle — les tarifs peuvent varier selon la disponibilité réelle.</p>
-                  </div>
-
-                  <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap',marginTop:24}}>
-                    <button className="btn btn-rose-gold mt-3" onClick={convertToRealRequest}>Faire une vraie demande</button>
-                    <button className="step-prev-btn mt-3" style={{padding:'14px 38px'}} onClick={resetWizard}>Nouvelle simulation</button>
-                  </div>
-                </div>
-              ) : (
                 <div className="resa-success-msg">
                   <span className="success-icon"><i className="fas fa-clock" /></span>
                   <h1 className="h3">Finalisez votre commande</h1>
@@ -744,7 +660,6 @@ export default function ReservationWizard({ simulation = false }) {
                     <Link href="/" className="step-prev-btn mt-3" style={{padding:'14px 38px'}}>Retour à l'accueil</Link>
                   </div>
                 </div>
-              )}
             </div>
           </section>
         </div>
@@ -755,12 +670,10 @@ export default function ReservationWizard({ simulation = false }) {
   return (
     <>
       <Seo
-        title={simulation ? 'Simulation de devis en ligne' : 'Réserver votre événement'}
-        description={simulation
-          ? 'Estimez en ligne le coût de la location de votre mobilier et de votre décoration, livraison comprise, en quelques étapes.'
-          : 'Réservez en ligne le mobilier et la décoration de votre événement : choisissez vos dates, votre matériel et votre adresse de livraison.'}
-        path={simulation ? '/devis' : '/reservation'}
-        breadcrumb={[{ name: simulation ? 'Simulation de devis' : 'Réservation', path: simulation ? '/devis' : '/reservation' }]}
+        title="Réserver votre événement"
+        description="Réservez en ligne le mobilier et la décoration de votre événement : choisissez vos dates, votre matériel et votre adresse de livraison."
+        path="/reservation"
+        breadcrumb={[{ name: 'Réservation', path: '/reservation' }]}
       />
 
       <div className="site-wrap">
@@ -782,13 +695,8 @@ export default function ReservationWizard({ simulation = false }) {
 
         <section className="resa-section">
           <div className="container">
-            {simulation && (
-              <div className="resa-alert" style={{background:'#fffbeb',color:'#92400e',borderColor:'#fcd34d',marginBottom:24}}>
-                <i className="fas fa-info-circle" />Simulation gratuite — aucune demande ne sera envoyée, vous verrez uniquement une estimation du devis à la fin.
-              </div>
-            )}
             <div id="resa-wizard" ref={wizardRef}>
-              {!simulation && checkoutAvailable === false && <div className="resa-alert" role="status">La commande en ligne est momentanément indisponible. <Link href="/contact">Contactez-nous pour votre location ou un devis</Link>.</div>}
+              {checkoutAvailable === false && <div className="resa-alert" role="status">La commande en ligne est momentanément indisponible. <Link href="/contact">Contactez-nous pour votre location ou un devis</Link>.</div>}
               {/* Stepper */}
               <div className="resa-stepper">
                 {['Date', 'Matériel', 'Infos', 'Récap'].map((label, i) => {
@@ -816,157 +724,175 @@ export default function ReservationWizard({ simulation = false }) {
                   <h2 className="step-title">Choisissez vos dates</h2>
                   <p className="step-desc">Sélectionnez 1 à {maxConsecutiveDays} jours consécutifs pour votre événement.</p>
 
-                  <div className={`res-step1-layout${selectedDates.length ? '' : ' res-step1-solo'}`}>
-                  {/* Calendar */}
+                  <div className="res-step1-layout">
+                  {/* Calendar — two months side by side (one on phones) */}
                   <div className="res-cal-wrap">
-                    <div className="res-cal-header">
-                      <button className="res-cal-nav" disabled={prevDisabled} onClick={() => {
-                        if (calMonth === 0) { setCalYear(y => y-1); setCalMonth(11) }
-                        else setCalMonth(m => m-1)
-                      }}>
+                    <div className="res-cal-toolbar">
+                      <button type="button" className="res-cal-nav" aria-label="Mois précédent" disabled={prevDisabled} onClick={() => shiftMonth(-1)}>
                         <i className="fas fa-chevron-left" />
                       </button>
-                      <span className="res-cal-month">{MONTHS_FR[calMonth]} {calYear}</span>
-                      <button className="res-cal-nav" onClick={() => {
-                        if (calMonth === 11) { setCalYear(y => y+1); setCalMonth(0) }
-                        else setCalMonth(m => m+1)
-                      }}>
+                      <button
+                        type="button"
+                        className="res-cal-today"
+                        disabled={prevDisabled}
+                        onClick={() => { setCalYear(now.getFullYear()); setCalMonth(now.getMonth()) }}
+                      >
+                        Aujourd’hui
+                      </button>
+                      <button type="button" className="res-cal-nav" aria-label="Mois suivant" onClick={() => shiftMonth(1)}>
                         <i className="fas fa-chevron-right" />
                       </button>
                     </div>
-                    <div className="res-cal-weekdays">
-                      {['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map((d, i) => (
-                        <span key={d} className={i >= 5 ? 'rcd-weekend-hd' : ''}>{d}</span>
-                      ))}
-                    </div>
-                    <div className="res-cal-grid">
-                      {calCells.map((cell, i) => {
-                        if (cell.empty) return <div key={i} className="rcd rcd-empty" />
-                        let cls = 'rcd'
-                        if (cell.disabled) cls += ' rcd-disabled'
-                        else { cls += ' rcd-avail'; if (cell.isWkend) cls += ' rcd-weekend' }
-                        if (cell.partial) cls += ' rcd-partial'
-                        if (cell.isBusy) cls += ' rcd-booked'
-                        if (cell.isSel) cls += ' rcd-selected'
-                        if (cell.isAdj) cls += ' rcd-adjacent'
-                        // Keyboard-operable (Enter/Space) with a spoken date — the
-                        // cells were mouse-only, so keyboard users couldn't book.
-                        const dayLabel = new Date(cell.ds + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-                        const stateLabel = cell.disabled ? 'indisponible' : cell.isSel ? 'sélectionné' : 'disponible'
-                        return (
-                          <div
-                            key={i}
-                            className={cls}
-                            role="button"
-                            tabIndex={cell.disabled ? -1 : 0}
-                            aria-disabled={cell.disabled || undefined}
-                            aria-pressed={cell.isSel || false}
-                            aria-label={`${dayLabel}, ${stateLabel}`}
-                            onClick={() => !cell.disabled && handleDayClick(cell.ds)}
-                            onKeyDown={e => {
-                              if ((e.key === 'Enter' || e.key === ' ') && !cell.disabled) { e.preventDefault(); handleDayClick(cell.ds) }
-                            }}
-                          >
-                            <span aria-hidden="true">{cell.dayNum}</span>
-                            {cell.isSel && <i className="fas fa-check rcd-check" aria-hidden="true" />}
+                    <div className="res-cal-months">
+                      {calMonths.map(({ year, month, cells }, mi) => (
+                        <div key={year + '-' + month} className={`res-cal-month-panel${mi === 1 ? ' res-cal-month-second' : ''}`}>
+                          <div className="res-cal-month" aria-live={mi === 0 ? 'polite' : undefined}>
+                            {MONTHS_FR[month]} <span>{year}</span>
                           </div>
-                        )
-                      })}
-                    </div>
-                    {calError && (
-                      <div className="res-cal-error">
-                        <i className="fas fa-exclamation-circle" />
-                        <span>{calError}</span>
-                      </div>
-                    )}
-                    <div className="res-cal-hint">
-                      <i className="fas fa-info-circle" />
-                      <span>
-                        {!selectedDates.length
-                          ? `Cliquez un jour pour le sélectionner, ou un second jour pour choisir une période (${maxConsecutiveDays} jours consécutifs maximum)`
-                          : selectedDates.length === 1
-                            ? 'Cliquez un jour suivant (surligné) pour créer une période, ou recliquez ce jour pour le désélectionner'
-                            : selectedDates.length >= maxConsecutiveDays
-                              ? 'Maximum atteint — cliquez une extrémité pour retirer un jour, ou un autre jour pour recommencer'
-                              : selectedDates.length + ' jours sélectionnés — cliquez une extrémité pour ajuster, ou un autre jour pour recommencer'
-                        }
-                      </span>
-                    </div>
-                    <div className="res-cal-legend">
-                      <div className="res-leg-item"><div className="res-leg-dot res-leg-avail" /><span>Disponible</span></div>
-                      <div className="res-leg-item"><div className="res-leg-dot res-leg-partial" /><span>Partiellement bloqué</span></div>
-                      <div className="res-leg-item"><div className="res-leg-dot res-leg-booked" /><span>Réservé</span></div>
-                      <div className="res-leg-item"><div className="res-leg-dot res-leg-blocked" /><span>Indisponible</span></div>
-                    </div>
-                  </div>
-
-                  {/* Time section */}
-                  {selectedDates.length > 0 && (
-                    <div className="res-time-section">
-                      <div className="res-dates-header">
-                        <i className="fas fa-calendar-check" />
-                        <span>{selectedDates.length} jour{selectedDates.length>1?'s':''} sélectionné{selectedDates.length>1?'s':''}</span>
-                      </div>
-                      <div className="res-dates-pills">
-                        {selectedDates.map(ds => (
-                          <span key={ds} className="date-pill">
-                            {formatDateLabel(ds)}
-                            <button className="date-pill-rm" onClick={() => removeDate(ds)}>
-                              <i className="fas fa-times" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-
-                      {isMulti && (
-                        <div className="res-multiday-note">
-                          <i className="fas fa-info-circle" />
-                          <span>Pour une réservation multi-jours, le créneau journée entière est appliqué automatiquement.</span>
-                        </div>
-                      )}
-
-                      <p className="res-time-label">Type de créneau</p>
-                      <div className="res-time-tabs">
-                        <button
-                          className={`res-time-tab${timeType==='full'?' active':''}`}
-                          onClick={() => { setTimeType('full'); setSelectedHours([]) }}
-                        >
-                          <i className="fas fa-sun" />Toute la journée
-                        </button>
-                        {!isMulti && (
-                          <button
-                            className={`res-time-tab${timeType==='hours'?' active':''}`}
-                            onClick={() => setTimeType('hours')}
-                          >
-                            <i className="fas fa-clock" />Heures spécifiques
-                          </button>
-                        )}
-                      </div>
-
-                      {timeType === 'hours' && (
-                        <div className="res-hours-section">
-                          <p className="res-hours-hint"><i className="fas fa-info-circle" />Sélectionnez vos créneaux horaires</p>
-                          <div className="res-hours-grid">
-                            {HOURS.map(h => {
-                              const blocked = (blockedHours[selectedDates[0]]||[]).includes(h)
-                              const active = selectedHours.includes(h)
+                          <div className="res-cal-weekdays">
+                            {['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d => <span key={d}>{d}</span>)}
+                          </div>
+                          <div className="res-cal-grid">
+                            {cells.map((cell, i) => {
+                              if (cell.empty) return <div key={i} className="rcd rcd-empty" />
+                              let cls = 'rcd'
+                              if (cell.disabled) cls += ' rcd-disabled'
+                              else { cls += ' rcd-avail'; if (cell.isWkend) cls += ' rcd-weekend' }
+                              if (cell.partial) cls += ' rcd-partial'
+                              if (cell.isBusy) cls += ' rcd-booked'
+                              if (cell.isSel) cls += ' rcd-selected'
+                              if (cell.isStart) cls += ' rcd-range-start'
+                              if (cell.isEnd) cls += ' rcd-range-end'
+                              if (cell.isMid) cls += ' rcd-range-mid'
+                              if (cell.isAdj) cls += ' rcd-adjacent'
+                              if (cell.isToday) cls += ' rcd-today'
+                              // Keyboard-operable (Enter/Space) with a spoken date — the
+                              // cells were mouse-only, so keyboard users couldn't book.
+                              const dayLabel = new Date(cell.ds + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+                              const stateLabel = cell.disabled ? 'indisponible' : cell.isSel ? 'sélectionné' : 'disponible'
                               return (
-                                <button
-                                  key={h}
-                                  className={`res-hour-pill${blocked?' res-hour-blocked':''}${active?' res-hour-active':''}`}
-                                  disabled={blocked}
-                                  onClick={() => !blocked && toggleHour(h)}
+                                <div
+                                  key={i}
+                                  className={cls}
+                                  role="button"
+                                  tabIndex={cell.disabled ? -1 : 0}
+                                  aria-disabled={cell.disabled || undefined}
+                                  aria-pressed={cell.isSel || false}
+                                  aria-label={`${dayLabel}, ${stateLabel}`}
+                                  onClick={() => !cell.disabled && handleDayClick(cell.ds)}
+                                  onKeyDown={e => {
+                                    if ((e.key === 'Enter' || e.key === ' ') && !cell.disabled) { e.preventDefault(); handleDayClick(cell.ds) }
+                                  }}
                                 >
-                                  {h}
-                                </button>
+                                  <span className="rcd-num" aria-hidden="true">{cell.dayNum}</span>
+                                </div>
                               )
                             })}
                           </div>
                         </div>
-                      )}
+                      ))}
+                    </div>
+                    <div className="res-cal-hint">
+                      <i className="fas fa-hand-pointer" />
+                      <span>
+                        {!selectedDates.length
+                          ? `Choisissez le premier jour de votre événement, puis le dernier pour une période (${maxConsecutiveDays} jours maximum).`
+                          : selectedDates.length === 1
+                            ? 'Cliquez un jour suivant (en pointillés) pour étendre la période, ou recliquez ce jour pour l’annuler.'
+                            : selectedDates.length >= maxConsecutiveDays
+                              ? 'Maximum atteint — cliquez une extrémité pour retirer un jour, ou un autre jour pour recommencer.'
+                              : 'Cliquez une extrémité pour ajuster la période, ou un autre jour pour recommencer.'
+                        }
+                      </span>
+                    </div>
+                    <div className="res-cal-legend">
+                      <div className="res-leg-item"><span className="res-leg-dot res-leg-avail" />Disponible</div>
+                      <div className="res-leg-item"><span className="res-leg-dot res-leg-weekend" />Tarif week-end / férié</div>
+                      <div className="res-leg-item"><span className="res-leg-dot res-leg-partial" />Partiellement bloqué</div>
+                      <div className="res-leg-item"><span className="res-leg-dot res-leg-booked" />Déjà réservé</div>
+                      <div className="res-leg-item"><span className="res-leg-dot res-leg-blocked" />Indisponible</div>
+                    </div>
+                  </div>
 
-                      <button className="res-change-btn mt-2" onClick={clearAllDates}>
-                        <i className="fas fa-times me-1" />Effacer la sélection
+                  {/* Selected period + time slot */}
+                  {selectedDates.length > 0 && (
+                    <div className="res-time-section">
+                      <div className="res-period">
+                        <div className="res-period-cell">
+                          <span className="res-period-lbl">{isMulti ? 'Du' : 'Le'}</span>
+                          <strong>{longDate(rangeStart)}</strong>
+                          <span className="res-period-year">{rangeStart.slice(0, 4)}</span>
+                        </div>
+                        {isMulti && (
+                          <>
+                            <i className="fas fa-long-arrow-alt-right res-period-arrow" aria-hidden="true" />
+                            <div className="res-period-cell">
+                              <span className="res-period-lbl">Au</span>
+                              <strong>{longDate(rangeEnd)}</strong>
+                              <span className="res-period-year">{rangeEnd.slice(0, 4)}</span>
+                            </div>
+                          </>
+                        )}
+                        <div className="res-period-meta">
+                          <span className="res-period-count">{selectedDates.length} jour{isMulti ? 's' : ''}</span>
+                          <span className={`res-period-rate${dayType === 'weekend' ? ' is-weekend' : ''}`}>
+                            {dayType === 'weekend' ? 'Tarif week-end' : 'Tarif semaine'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="res-slot">
+                        <p className="res-time-label">Créneau</p>
+                        <div className="res-time-tabs">
+                          <button
+                            type="button"
+                            className={`res-time-tab${timeType==='full'?' active':''}`}
+                            onClick={() => { setTimeType('full'); setSelectedHours([]) }}
+                          >
+                            <i className="fas fa-sun" />Toute la journée
+                          </button>
+                          {!isMulti && (
+                            <button
+                              type="button"
+                              className={`res-time-tab${timeType==='hours'?' active':''}`}
+                              onClick={() => setTimeType('hours')}
+                            >
+                              <i className="fas fa-clock" />Heures spécifiques
+                            </button>
+                          )}
+                        </div>
+                        {isMulti && (
+                          <p className="res-multiday-note">
+                            <i className="fas fa-info-circle" />Sur plusieurs jours, la journée entière est réservée.
+                          </p>
+                        )}
+
+                        {timeType === 'hours' && (
+                          <div className="res-hours-section">
+                            <p className="res-hours-hint"><i className="fas fa-info-circle" />Sélectionnez vos créneaux horaires</p>
+                            <div className="res-hours-grid">
+                              {HOURS.map(h => {
+                                const blocked = (blockedHours[selectedDates[0]]||[]).includes(h)
+                                const active = selectedHours.includes(h)
+                                return (
+                                  <button
+                                    type="button"
+                                    key={h}
+                                    className={`res-hour-pill${blocked?' res-hour-blocked':''}${active?' res-hour-active':''}`}
+                                    disabled={blocked}
+                                    onClick={() => !blocked && toggleHour(h)}
+                                  >
+                                    {h}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <button type="button" className="res-change-btn" onClick={clearAllDates}>
+                        <i className="fas fa-redo-alt me-1" />Changer de dates
                       </button>
                     </div>
                   )}
@@ -1014,7 +940,7 @@ export default function ReservationWizard({ simulation = false }) {
                       <input type="email" className="form-control" value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} style={step2Error && !form.email.includes('@') ? {borderColor:'#e53e3e'} : {}} />
                     </div>
                     <div className="form-group">
-                      <label>Téléphone {!simulation && <span className="req">*</span>}</label>
+                      <label>Téléphone <span className="req">*</span></label>
                       <input
                         type="tel"
                         inputMode="numeric"
@@ -1100,7 +1026,7 @@ export default function ReservationWizard({ simulation = false }) {
                   <span className="step-tag">Étape {currentStep} / 4</span>
                   <h2 className="step-title">Matériaux & Décoration</h2>
                   <p className="step-desc">Sélectionnez les articles que vous souhaitez louer pour votre événement.</p>
-                  {!simulation && <p>Pour l’organisation de votre événement, <Link href="/contact">demandez un devis sur mesure</Link>. La commande directe concerne la location de matériel.</p>}
+                  <p>Pour l’organisation de votre événement, <Link href="/contact">demandez un devis sur mesure</Link>. La commande directe concerne la location de matériel.</p>
                   {submitError && <p role="alert">{submitError}</p>}
 
                   {!materialsData.length && (
@@ -1272,7 +1198,7 @@ export default function ReservationWizard({ simulation = false }) {
                   <h2 className="step-title">Récapitulatif</h2>
 
                   <>
-                      <p className="step-desc">{simulation ? 'Vérifiez les informations de votre simulation.' : 'Vérifiez votre commande de matériel et les frais de livraison avant de passer au paiement.'}</p>
+                      <p className="step-desc">Vérifiez votre commande de matériel et les frais de livraison avant de passer au paiement.</p>
 
                       <div className="recap-card">
                         {[
@@ -1342,9 +1268,9 @@ export default function ReservationWizard({ simulation = false }) {
                           <span>Livraison</span><strong>{quote ? quote.fee.toFixed(2) + ' €' : '—'}</strong>
                         </div>
                         <div className="res-total-row res-total-grand">
-                          <span>{simulation ? 'Total estimé' : 'Total TTC'}</span><strong>{grandTotal.toFixed(2)} €</strong>
+                          <span>Total TTC</span><strong>{grandTotal.toFixed(2)} €</strong>
                         </div>
-                        <p className="res-quote-disclaimer">{simulation ? 'Estimation indicative.' : 'Les prix et disponibilités sont vérifiés à nouveau au moment de commander. La commande est confirmée après réception du premier versement.'}</p>
+                        <p className="res-quote-disclaimer">Les prix et disponibilités sont vérifiés à nouveau au moment de commander. La commande est confirmée après réception du premier versement.</p>
                       </div>
 
                       {submitError && (
@@ -1354,9 +1280,7 @@ export default function ReservationWizard({ simulation = false }) {
                       )}
 
                       <p className="resa-privacy">
-                        {simulation
-                          ? "Simulation uniquement — aucune donnée n'est enregistrée ni envoyée."
-                          : <>En envoyant ce formulaire, vous acceptez que vos données soient utilisées pour traiter votre demande (voir notre <Link href="/confidentialite">politique de confidentialité</Link>) et vous reconnaissez avoir pris connaissance des <Link href="/cgv">conditions générales de vente</Link>.</>}
+                        En envoyant ce formulaire, vous acceptez que vos données soient utilisées pour traiter votre demande (voir notre <Link href="/confidentialite">politique de confidentialité</Link>) et vous reconnaissez avoir pris connaissance des <Link href="/cgv">conditions générales de vente</Link>.
                       </p>
                       {/* Honeypot: invisible to people, filled in by bots. */}
                       <div className="hp-field" aria-hidden="true">
@@ -1366,12 +1290,10 @@ export default function ReservationWizard({ simulation = false }) {
 
                       <div className="step-nav">
                         <button className="step-prev-btn" onClick={goPrev}><i className="fas fa-arrow-left me-1" />Retour</button>
-                        <button className="btn btn-rose-gold step-next-btn" onClick={goNext} disabled={submitting || (!simulation && (!quote || quoteLoading || !materialsTotal || checkoutAvailable === false))}>
+                        <button className="btn btn-rose-gold step-next-btn" onClick={goNext} disabled={submitting || !quote || quoteLoading || !materialsTotal || checkoutAvailable === false}>
                           {submitting
                             ? <><i className="fas fa-circle-notch fa-spin me-1" />Envoi…</>
-                            : simulation
-                              ? <>Voir mon devis <i className="fas fa-receipt ms-1" /></>
-                              : <>Commander et passer au paiement <i className="fas fa-credit-card ms-1" /></>
+                            : <>Commander et passer au paiement <i className="fas fa-credit-card ms-1" /></>
                           }
                         </button>
                       </div>

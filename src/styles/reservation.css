@@ -283,402 +283,344 @@
   margin: 10px 0 0;
 }
 
-/* Calendar sits left, the date-summary/time-type sidebar sits right of it
-   instead of stacking below — keeps step 1 short even once dates are picked.
-   Grid (not flex-wrap) so the two columns never fall back to stacking just
-   because the combined width is a touch tight — each track has its own
-   elastic floor/ceiling instead of an all-or-nothing wrap threshold. */
+/* Step 1 — calendar on top, selected period + time slot underneath. */
 .res-step1-layout {
-  display: grid;
-  grid-template-columns: minmax(300px, 440px) minmax(190px, 1fr);
-  align-items: stretch;
-  gap: 20px;
-}
-@media(max-width: 640px) {
-  .res-step1-layout { grid-template-columns: 1fr; }
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-/* Before any date is picked, the sidebar isn't rendered — collapse to a
-   single track and center the calendar instead of leaving it stuck to the
-   left edge of the (now empty) two-column grid. */
-.res-step1-solo {
-  grid-template-columns: 1fr;
-}
-.res-step1-solo .res-cal-wrap {
-  width: 100%;
-  max-width: 440px;
-  margin: 0 auto;
-}
-
-/* CALENDRIER — capped width so the aspect-ratio:1 day cells stay compact;
-   at full wizard width each cell was rendering ~100px square. */
+/* CALENDRIER — two months side by side, one on phones. Day numbers sit in
+   an inner .rcd-num square so a selected period can draw a continuous band
+   behind them (the cell) while the start/end days stay solid squares. */
 .res-cal-wrap {
+  position: relative;
   background: #fff;
-  border: 1.5px solid var(--border);
-  border-radius: 0px;
-  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .05);
+  padding: 18px 22px 16px;
   user-select: none;
-  width: 100%;
+  -webkit-user-select: none;
 }
 
-.res-cal-header {
+.res-cal-toolbar {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  right: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 18px;
-  background: var(--dark);
-  color: #fff;
+  pointer-events: none;
 }
-
-.res-cal-month {
-  font-family: 'Montserrat', sans-serif;
-  font-size: .92rem;
-  font-weight: 600;
-  letter-spacing: .5px;
-}
+.res-cal-toolbar > * { pointer-events: auto; }
+.res-cal-toolbar .res-cal-today { margin-left: auto; margin-right: 8px; }
 
 .res-cal-nav {
-  width: 30px;
-  height: 30px;
-  border-radius: 0px;
-  border: 1.5px solid rgba(255,255,255,.28);
-  background: transparent;
-  color: #fff;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--dark);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: .85rem;
-  transition: background .2s, border-color .2s;
+  font-size: .78rem;
+  transition: background .2s, border-color .2s, color .2s;
 }
-.res-cal-nav:hover:not(:disabled) {
-  background: rgba(196,149,106,.3);
-  border-color: var(--rose-gold);
-}
+.res-cal-nav:hover:not(:disabled) { background: var(--dark); border-color: var(--dark); color: #fff; }
 .res-cal-nav:disabled { cursor: not-allowed; opacity: .3; }
+
+.res-cal-today {
+  order: 1;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--dark-mid);
+  font-family: 'Montserrat', sans-serif;
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color .2s, color .2s;
+}
+.res-cal-today:hover:not(:disabled) { border-color: var(--dark); color: var(--dark); }
+.res-cal-today:disabled { display: none; }
+.res-cal-toolbar .res-cal-nav:last-child { order: 2; }
+
+.res-cal-months {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 36px;
+}
+.res-cal-month-second {
+  position: relative;
+}
+.res-cal-month-second::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 0;
+  left: -18px;
+  width: 1px;
+  background: var(--border);
+}
+
+.res-cal-month {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.02rem;
+  font-weight: 600;
+  letter-spacing: .4px;
+  color: var(--dark);
+  text-align: center;
+  line-height: 34px;
+  margin-bottom: 12px;
+}
+.res-cal-month span { color: var(--gray); font-weight: 400; }
 
 .res-cal-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  background: var(--rg-pale);
-  padding: 6px 10px 4px;
-  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
 }
 .res-cal-weekdays span {
   text-align: center;
   font-family: 'Lato', sans-serif;
   font-weight: 700;
-  font-size: .6rem;
-  letter-spacing: 1px;
+  font-size: .62rem;
+  letter-spacing: 1.2px;
   text-transform: uppercase;
-  color: var(--dark-mid);
+  color: var(--gray);
 }
-.rcd-weekend-hd { color: var(--rose-gold) !important; }
 
 .res-cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  padding: 8px 8px 10px;
-  /* Click-and-drag day selection (see ReservationWizard.jsx) holds the
-     mouse/finger down and moves across cells — without this, that reads as
-     a text-selection drag and highlights the day numbers. Scroll-blocking
-     during an actual drag is handled in JS (preventDefault on touchmove,
-     only once a drag has started on a real cell) rather than a blanket
-     touch-action: none here, so touching the grid without landing on a
-     selectable day doesn't swallow the page's normal scroll. */
-  user-select: none;
-  -webkit-user-select: none;
+  row-gap: 4px;
+  padding-top: 8px;
 }
 
 .rcd {
   position: relative;
   aspect-ratio: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 0px;
   font-family: 'Lato', sans-serif;
-  font-size: .82rem;
-  font-weight: 500;
-  transition: background .18s, color .18s, transform .15s, box-shadow .15s;
-  min-height: 30px;
+  font-size: .86rem;
+  color: var(--dark);
+  min-height: 34px;
 }
 .rcd-empty { background: transparent; }
 
-.rcd-avail {
-  color: var(--dark);
-  background: var(--cream);
-  cursor: pointer;
-  border: 1.5px solid transparent;
-}
-.rcd-avail:hover {
-  background: var(--rg-pale);
-  border-color: var(--rose-gold);
-  color: var(--rose-gold);
-  font-weight: 700;
-  transform: scale(1.06);
-}
-.rcd-weekend { background: #fdf5ef; }
-
-.rcd-partial::after {
-  content: '';
-  position: absolute;
-  bottom: 5px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 5px;
-  height: 5px;
-  border-radius: 0px;
-  background: #f59e0b;
-}
-
-.rcd-disabled {
-  color: #ccc;
-  background: #f7f6f4;
-  cursor: not-allowed;
-  text-decoration: line-through;
-  border: 1.5px solid transparent;
-  font-weight: 400;
-  font-size: .72rem;
-}
-
-.rcd-selected {
-  background: var(--rose-gold) !important;
-  color: #fff !important;
-  border-color: var(--rose-gold) !important;
-  font-weight: 700 !important;
-  transform: scale(1.08);
-  box-shadow: 0 4px 14px rgba(196,149,106,.42);
-}
-.rcd-check {
-  font-size: .48rem;
-  margin-top: 1px;
-  opacity: .9;
-}
-
-.res-cal-hint {
+.rcd-num {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 14px;
-  background: var(--rg-pale);
-  font-size: .78rem;
-  color: var(--rose-gold);
-  font-family: 'Lato', sans-serif;
-  font-weight: 600;
-  border-top: 1px solid rgba(196,149,106,.2);
+  justify-content: center;
+  width: 86%;
+  height: 86%;
+  max-width: 46px;
+  max-height: 46px;
+  border: 1px solid transparent;
+  transition: background .18s, color .18s, border-color .18s, transform .15s;
 }
 
-.res-cal-error {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 10px 14px;
-  background: #fff5f5;
-  border-top: 1px solid #fed7d7;
-  font-size: .8rem;
-  color: #c53030;
-  font-family: 'Lato', sans-serif;
-  font-weight: 600;
-  animation: fadeStepIn .2s ease;
+.rcd-avail { cursor: pointer; }
+.rcd-avail:hover .rcd-num { border-color: var(--dark); }
+.rcd-avail:active .rcd-num { transform: scale(.94); }
+
+/* Fri/Sat/Sun + public holidays: weekend rate. */
+.rcd-weekend .rcd-num { background: var(--rg-pale); }
+
+.rcd-disabled { cursor: not-allowed; }
+.rcd-disabled .rcd-num {
+  color: #c4c4c4;
+  text-decoration: line-through;
+  text-decoration-color: #d8d8d8;
 }
 
+/* Today: small mark under the number. */
+.rcd-today .rcd-num::after {
+  content: '';
+  position: absolute;
+  bottom: 18%;
+  left: 50%;
+  width: 14px;
+  height: 2px;
+  transform: translateX(-50%);
+  background: currentColor;
+}
+
+/* Partially blocked / already booked by someone else: corner dot. */
+.rcd-partial::after,
 .rcd-booked::after {
   content: '';
   position: absolute;
-  bottom: 5px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 5px;
-  height: 5px;
-  border-radius: 0px;
-  background: #e07070;
+  z-index: 2;
+  top: 18%;
+  right: 18%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
 }
+.rcd-partial::after { background: #f59e0b; }
+.rcd-booked::after  { background: #e07070; }
 
-.rcd-adjacent {
-  border-color: var(--rose-gold) !important;
-  border-style: dashed !important;
-  color: var(--rose-gold);
-  font-weight: 600;
-}
-.rcd-adjacent:hover {
-  background: var(--rg-pale);
-  transform: scale(1.06);
-}
+/* Days that can extend the current single-day pick. */
+.rcd-adjacent .rcd-num { border: 1px dashed #b08a55; }
+.rcd-adjacent:hover .rcd-num { border-style: solid; border-color: var(--dark); }
 
-.rcd-range-start {
-  background: var(--rose-gold);
+/* Selection: solid black squares for the picked days… */
+.rcd-selected .rcd-num {
+  background: var(--dark);
   color: #fff;
-  border-radius: 0px 0 0 8px !important;
-  box-shadow: 0 4px 14px rgba(196,149,106,.4);
+  font-weight: 700;
+  border-color: var(--dark);
 }
-
-.rcd-range-end {
-  background: var(--rose-gold);
-  color: #fff;
-  border-radius: 0 8px 8px 0 !important;
-  box-shadow: 0 4px 14px rgba(196,149,106,.4);
-}
-
-.rcd-range-mid {
-  background: rgba(196,149,106,.18);
+/* …and a gold band joining the days of a period. */
+.rcd-range-mid { background: rgba(235, 199, 149, .38); }
+.rcd-range-mid .rcd-num {
+  background: transparent;
   color: var(--dark);
-  border-radius: 0 !important;
-  font-weight: 600;
-  box-shadow: -3px 0 0 rgba(196,149,106,.18), 3px 0 0 rgba(196,149,106,.18);
+  border-color: transparent;
 }
+.rcd-range-start { background: linear-gradient(to right, transparent 50%, rgba(235, 199, 149, .38) 50%); }
+.rcd-range-end   { background: linear-gradient(to left, transparent 50%, rgba(235, 199, 149, .38) 50%); }
 
-.res-multiday-note {
-  background: #fff;
-  border: 1.5px solid rgba(196,149,106,.3);
-  border-radius: 0px;
-  padding: 8px 10px;
-  font-size: .72rem;
-  color: var(--dark-mid);
+.res-cal-hint {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 10px 14px;
+  background: var(--rg-pale);
+  font-size: .8rem;
+  line-height: 1.5;
+  color: var(--dark-mid);
+  font-family: 'Lato', sans-serif;
 }
-.res-multiday-note i { color: var(--rose-gold); flex-shrink: 0; margin-top: 2px; }
+.res-cal-hint i { color: #b08a55; margin-top: 3px; }
 
 .res-cal-legend {
   display: flex;
-  gap: 14px;
+  gap: 8px 18px;
   flex-wrap: wrap;
-  padding: 8px 14px;
-  border-top: 1px solid var(--border);
-  background: #fafaf8;
+  margin-top: 12px;
 }
 .res-leg-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: .7rem;
+  gap: 7px;
+  font-size: .72rem;
   color: var(--gray);
   font-family: 'Lato', sans-serif;
 }
 .res-leg-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 0px;
+  width: 11px;
+  height: 11px;
   flex-shrink: 0;
 }
-.res-leg-avail   { background: var(--cream); border: 1.5px solid #ccc; }
-.res-leg-partial { background: #f59e0b; }
-.res-leg-booked  { background: #e07070; }
-.res-leg-blocked { background: #ccc; }
+.res-leg-avail   { background: #fff; border: 1px solid #bdbdbd; }
+.res-leg-weekend { background: var(--rg-pale); border: 1px solid var(--rose-gold); }
+.res-leg-partial { background: #f59e0b; border-radius: 50%; }
+.res-leg-booked  { background: #e07070; border-radius: 50%; }
+.res-leg-blocked { background: #ececec; border: 1px solid #d6d6d6; }
 
-/* TIME SECTION — stretches to match the calendar's height (align-items:stretch
-   on the grid parent); laid out as a column so the "Effacer" button settles
-   at the bottom instead of leaving a ragged gap under a short "full day" state. */
+/* SELECTED PERIOD + TIME SLOT */
 .res-time-section {
-  background: var(--rg-pale);
-  border: 1.5px solid rgba(196,149,106,.32);
-  border-radius: 0px;
-  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--rose-gold);
+  padding: 18px 22px;
   animation: fadeStepIn .3s ease;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 18px 28px;
+  align-items: start;
 }
-.res-time-section .res-change-btn {
-  margin-top: auto;
-  align-self: flex-start;
-}
+.res-time-section .res-change-btn { grid-column: 1 / -1; justify-self: start; }
 
-.res-date-badge {
+.res-period {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 18px;
   flex-wrap: wrap;
+  gap: 10px 16px;
 }
-.res-date-badge > i { color: var(--rose-gold); font-size: 1.1rem; flex-shrink: 0; }
-.res-date-badge > span {
+.res-period-cell { display: flex; flex-direction: column; min-width: 0; }
+.res-period-lbl {
   font-family: 'Lato', sans-serif;
   font-weight: 700;
-  font-size: .95rem;
-  color: var(--dark);
-  flex: 1;
+  font-size: .62rem;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--gray);
 }
+.res-period-cell strong {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.02rem;
+  font-weight: 600;
+  color: var(--dark);
+  line-height: 1.3;
+}
+.res-period-year { font-size: .76rem; color: var(--gray); }
+.res-period-arrow { color: #b08a55; font-size: 1.1rem; }
+.res-period-meta {
+  flex-basis: 100%;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.res-period-count,
+.res-period-rate {
+  font-family: 'Montserrat', sans-serif;
+  font-size: .64rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 5px 10px;
+}
+.res-period-count { background: var(--dark); color: #fff; }
+.res-period-rate { border: 1px solid var(--border); color: var(--dark-mid); }
+.res-period-rate.is-weekend { background: var(--rg-pale); border-color: var(--rose-gold); color: var(--dark); }
+
 .res-change-btn {
   background: transparent;
-  border: 1.5px solid var(--rose-gold);
-  color: var(--rose-gold);
-  border-radius: 0px;
-  padding: 4px 14px;
-  font-size: .8rem;
+  border: none;
+  border-bottom: 1px solid currentColor;
+  color: var(--dark-mid);
+  padding: 2px 0;
+  font-size: .78rem;
   font-family: 'Montserrat', sans-serif;
   font-weight: 600;
   cursor: pointer;
-  transition: background .2s, color .2s;
+  transition: color .2s;
   white-space: nowrap;
 }
-.res-change-btn:hover { background: var(--rose-gold); color: #fff; }
+.res-change-btn:hover { color: #b08a55; }
 
-.res-dates-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-.res-dates-header > i { color: var(--rose-gold); font-size: .92rem; flex-shrink: 0; }
-.res-dates-header > span {
-  font-family: 'Lato', sans-serif;
-  font-weight: 700;
-  font-size: .8rem;
-  color: var(--dark);
-  flex: 1;
-}
-
-.res-dates-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.date-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: var(--rose-gold);
-  color: #fff;
-  border-radius: 0px;
-  padding: 4px 6px 4px 10px;
-  font-family: 'Lato', sans-serif;
+.res-multiday-note {
   font-size: .74rem;
-  font-weight: 600;
-  line-height: 1;
+  color: var(--gray);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 8px 0 0;
 }
-.date-pill-rm {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 15px;
-  height: 15px;
-  background: rgba(255,255,255,.25);
-  border: none;
-  border-radius: 0px;
-  color: #fff;
-  cursor: pointer;
-  font-size: .55rem;
-  transition: background .15s;
-  padding: 0;
-  flex-shrink: 0;
-}
-.date-pill-rm:hover { background: rgba(255,255,255,.5); }
+.res-multiday-note i { color: #b08a55; flex-shrink: 0; margin-top: 2px; }
 
 .res-time-label {
   font-family: 'Lato', sans-serif;
   font-weight: 700;
-  font-size: .66rem;
-  letter-spacing: 1.2px;
+  font-size: .62rem;
+  letter-spacing: 1.4px;
   text-transform: uppercase;
-  color: var(--dark-mid);
+  color: var(--gray);
   margin-bottom: 6px;
 }
 
@@ -686,31 +628,40 @@
 
 .res-time-tab {
   flex: 1;
-  min-width: 95px;
+  min-width: 130px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px 8px;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 12px;
   background: #fff;
-  border: 2px solid var(--border);
-  border-radius: 0px;
+  border: 1px solid var(--border);
   font-family: 'Lato', sans-serif;
-  font-size: .74rem;
+  font-size: .8rem;
   font-weight: 600;
-  color: var(--gray);
+  color: var(--dark-mid);
   cursor: pointer;
-  transition: border-color .22s, color .22s, background .22s, box-shadow .22s;
+  transition: border-color .2s, color .2s, background .2s;
   text-align: center;
 }
-.res-time-tab i { font-size: 1.05rem; }
-.res-time-tab:hover { border-color: var(--rose-gold); color: var(--rose-gold); }
+.res-time-tab i { font-size: .9rem; color: #b08a55; }
+.res-time-tab:hover { border-color: var(--dark); color: var(--dark); }
 .res-time-tab.active {
-  border-color: var(--rose-gold);
-  background: var(--rose-gold);
+  border-color: var(--dark);
+  background: var(--dark);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(196,149,106,.3);
 }
+.res-time-tab.active i { color: var(--rose-gold); }
+
+@media (max-width: 767.98px) {
+  .res-cal-wrap { padding: 14px 12px 14px; }
+  .res-cal-toolbar { top: 10px; left: 10px; right: 10px; }
+  .res-cal-months { grid-template-columns: 1fr; }
+  .res-cal-month-second { display: none; }
+  .rcd { font-size: .84rem; }
+  .res-time-section { grid-template-columns: 1fr; padding: 16px; }
+}
+
 
 .res-hours-section { margin-top: 12px; animation: fadeStepIn .25s ease; }
 
@@ -742,8 +693,8 @@
   background: var(--rg-pale);
 }
 .res-hour-pill.res-hour-active {
-  background: var(--rose-gold);
-  border-color: var(--rose-gold);
+  background: var(--dark);
+  border-color: var(--dark);
   color: #fff;
 }
 .res-hour-pill.res-hour-blocked {
@@ -1282,10 +1233,7 @@
   .step-circle { width: 38px; height: 38px; font-size: .82rem; }
   .step-label  { font-size: .62rem; }
   .step-line   { margin-bottom: 22px; }
-  .res-cal-grid { gap: 3px; padding: 8px; }
-  .rcd { font-size: .78rem; min-height: 36px; border-radius: 0px; }
   .res-time-tabs { gap: 8px; }
-  .res-time-tab  { min-width: 120px; padding: 12px 8px; font-size: .82rem; }
   .res-hours-grid { gap: 6px; }
   .res-hour-pill  { padding: 7px 12px; font-size: .8rem; }
   .recap-lbl { min-width: 90px; font-size: .68rem; }

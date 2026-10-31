@@ -53,9 +53,8 @@ export default function Footer() {
               <div className="footer-nav-two-col">
                 <ul role="list" className="list-style-one">
                   <li className="list-item"><Link href="/" className="list-text-link">Accueil</Link></li>
-                  <li className="list-item"><Link href="/services" className="list-text-link">Prestations</Link></li>
                   <li className="list-item"><Link href="/nos-realisations" className="list-text-link">Nos réalisations</Link></li>
-                  <li className="list-item"><Link href="/devis" className="list-text-link">Simulation de Devis</Link></li>
+                  <li className="list-item"><Link href="/reservation" className="list-text-link">Réserver</Link></li>
                 </ul>
                 <ul role="list" className="list-style-one">
                   <li className="list-item"><Link href="/suivi" className="list-text-link">Suivi de commande</Link></li>

@@ -2,24 +2,23 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import Seo from '../../src/components/Seo.jsx'
-import { getUnitPriceTtc, getMinOrderQty } from '../../src/lib/pricing.js'
-import { addToCatalogueCart } from '../../src/lib/cart.js'
-import { track } from '../../src/lib/analytics.js'
-import { slugify } from '../../src/lib/slug.js'
-import { categoryTitle, sortCategories } from '../../src/lib/catalogue-pages.js'
-import { formatEuro, useCatalogueCart } from '../../src/components/product/productUtils.js'
+import ShopCard from '../../src/components/product/ShopCard.jsx'
+import QuickView from '../../src/components/product/QuickView.jsx'
+import { categoryTitle } from '../../src/lib/catalogue-pages.js'
+import { useCatalogueCart } from '../../src/components/product/productUtils.js'
 
-// Product listing modelled on options.fr's category page
-// (/mobilier/location-de-chaises.html): centred gold title + breadcrumb,
-// "Produits 1-32 sur 121" toolbar with pages and a per-page limiter, then a
-// 4-column grid whose cards lift on hover (shadow, "Ajouter au panier"
-// scaling in over the photo, a "voir la fiche" action unfolding above the
-// name). No search or filter: the category comes from the tile clicked on
-// /catalogue (?categorie=CHAISES); without it, every article is listed.
+// Shop listing: every rentable article (or one category with
+// ?categorie=CHAISES), category chips, sorting, pages, and a quick view on
+// every card. Cards come from src/lib/catalogue-cards.js.
 
-const LIMITS = [32, 64, 'all']
-const DEFAULT_LIMIT = 32
-const MAX_SWATCHES = 3
+const LIMITS = [24, 48, 'all']
+const DEFAULT_LIMIT = 24
+const SORTS = [
+  { key: '', label: 'Pertinence' },
+  { key: 'prix', label: 'Prix croissant' },
+  { key: 'prix-desc', label: 'Prix décroissant' },
+  { key: 'nom', label: 'Nom (A → Z)' },
+]
 
 const queryString = params => {
   const qs = new URLSearchParams()
@@ -29,63 +28,25 @@ const queryString = params => {
 }
 
 export async function getServerSideProps({ query }) {
-  const { default: db } = await import('../../src/lib/sqlite-db.js')
-  const [materials, products, categoryRows, tierRows] = await Promise.all([
-    db.prepare('SELECT * FROM materials WHERE available = 1 ORDER BY variant_order, name').all(),
-    db.prepare('SELECT id, slug, name, category FROM products').all(),
-    db.prepare('SELECT id, name, label, description, position, created_at FROM categories').all(),
-    db.prepare('SELECT material_id, min_qty, max_qty, price_weekday_ht, price_weekend_ht FROM material_price_tiers ORDER BY min_qty').all(),
-  ])
-  const categories = sortCategories(categoryRows)
+  const { getCatalogueCards } = await import('../../src/lib/catalogue-cards.js')
+  const { cards, categories } = await getCatalogueCards()
 
   const requested = typeof query.categorie === 'string' ? query.categorie : ''
   const category = requested ? categories.find(c => c.name === requested) || null : null
-  if (requested && !category && !materials.some(m => (m.category || 'Autre') === requested)) {
+  if (requested && !category && !cards.some(c => c.category === requested)) {
     return { redirect: { destination: '/catalogue/complet', permanent: false } }
   }
 
-  const tiers = {}
-  for (const t of tierRows) (tiers[String(t.material_id)] ||= []).push({
-    min_qty: t.min_qty, max_qty: t.max_qty ?? null,
-    price_weekday_ht: t.price_weekday_ht, price_weekend_ht: t.price_weekend_ht,
-  })
+  const counts = {}
+  for (const c of cards) counts[c.category] = (counts[c.category] || 0) + 1
+  const chips = categories.filter(c => counts[c.name]).map(c => ({ key: c.name, label: categoryTitle(c), count: counts[c.name] }))
 
-  // One card per product: a simple article is its own card; the options of
-  // an article à options are folded into one card under the product's name
-  // (they're chosen on its page) and shown as round swatches.
-  const productById = Object.fromEntries(products.map(p => [String(p.id), p]))
-  const cards = []
-  const byProduct = {}
-  for (const m of materials) {
-    const minQty = getMinOrderQty(tiers[String(m.id)])
-    const variant = {
-      id: String(m.id),
-      name: m.name,
-      label: m.variant_label || m.name,
-      slug: m.slug || slugify(m.name),
-      imageUrl: m.image_url || null,
-      minQty,
-      maxQty: m.max_quantity || null,
-      price: getUnitPriceTtc(tiers[String(m.id)], 'weekday', minQty),
-    }
-    const product = m.product_id && productById[String(m.product_id)]
-    if (!product) {
-      cards.push({ key: `m:${m.id}`, name: m.name, category: m.category || 'Autre', slug: variant.slug, variants: [variant] })
-      continue
-    }
-    if (!byProduct[product.id]) {
-      byProduct[product.id] = { key: `p:${product.id}`, name: product.name, category: product.category || m.category || 'Autre', slug: product.slug, variants: [] }
-      cards.push(byProduct[product.id])
-    }
-    byProduct[product.id].variants.push(variant)
-  }
-
-  const filtered = requested ? cards.filter(c => c.category === requested) : cards
-  // Whole catalogue: grouped by category, in the tile order of /catalogue.
-  if (!requested) {
-    const rank = Object.fromEntries(categories.map((c, i) => [c.name, i]))
-    filtered.sort((a, b) => (rank[a.category] ?? 1e9) - (rank[b.category] ?? 1e9))
-  }
+  const sort = SORTS.some(s => s.key === query.tri) ? String(query.tri) : ''
+  let filtered = requested ? cards.filter(c => c.category === requested) : [...cards]
+  const price = c => c.fromPrice || Infinity
+  if (sort === 'prix') filtered.sort((a, b) => price(a) - price(b))
+  if (sort === 'prix-desc') filtered.sort((a, b) => (b.fromPrice || 0) - (a.fromPrice || 0))
+  if (sort === 'nom') filtered.sort((a, b) => a.name.localeCompare(b.name, 'fr'))
 
   const limit = query.limit === 'all' ? 'all' : (LIMITS.includes(Number(query.limit)) ? Number(query.limit) : DEFAULT_LIMIT)
   const perPage = limit === 'all' ? Math.max(1, filtered.length) : limit
@@ -95,20 +56,16 @@ export async function getServerSideProps({ query }) {
 
   return {
     props: {
-      cards: filtered.slice(start, start + perPage).map(card => {
-        const prices = card.variants.map(v => v.price).filter(p => p > 0)
-        return {
-          ...card,
-          imageUrl: card.variants.find(v => v.imageUrl)?.imageUrl || null,
-          fromPrice: prices.length ? Math.min(...prices) : 0,
-        }
-      }),
+      cards: filtered.slice(start, start + perPage),
       total: filtered.length,
+      allTotal: cards.length,
       first: filtered.length ? start + 1 : 0,
       last: Math.min(start + perPage, filtered.length),
       page,
       pageCount,
       limit,
+      sort,
+      chips,
       categoryKey: requested || null,
       title: category ? categoryTitle(category) : (requested ? categoryTitle({ name: requested }) : 'Tout le catalogue'),
       intro: category?.description || '',
@@ -116,124 +73,33 @@ export async function getServerSideProps({ query }) {
   }
 }
 
-function Toolbar({ total, first, last, page, pageCount, limit, hrefFor, onLimit, bottom }) {
+function Pages({ page, pageCount, hrefFor }) {
+  if (pageCount < 2) return null
   return (
-    <div className={`oa-pl-toolbar${bottom ? ' oa-pl-toolbar-bottom' : ''}`}>
-      <p className="oa-pl-amount">
-        {total > 0 ? <>Produits <span>{first}</span>-<span>{last}</span> sur <span>{total}</span></> : 'Aucun produit'}
-      </p>
-      {pageCount > 1 && (
-        <nav className="oa-pl-pages" aria-label="Pages">
-          <ol>
-            {page > 1 && (
-              <li><Link href={hrefFor(page - 1)} className="oa-pl-page oa-pl-page-arrow" aria-label="Page précédente"><i className="fas fa-caret-left" /></Link></li>
-            )}
-            {Array.from({ length: pageCount }, (_, i) => i + 1).map(n => (
-              <li key={n}>
-                {n === page
-                  ? <strong className="oa-pl-page is-current" aria-current="page">{n}</strong>
-                  : <Link href={hrefFor(n)} className="oa-pl-page">{n}</Link>}
-              </li>
-            ))}
-            {page < pageCount && (
-              <li><Link href={hrefFor(page + 1)} className="oa-pl-page oa-pl-page-arrow" aria-label="Page suivante"><i className="fas fa-caret-right" /></Link></li>
-            )}
-          </ol>
-        </nav>
-      )}
-      {!bottom && (
-        <label className="oa-pl-limiter">
-          <span className="visually-hidden">Produits par page</span>
-          <select value={String(limit)} onChange={e => onLimit(e.target.value)}>
-            {LIMITS.map(l => <option key={l} value={String(l)}>Afficher {l === 'all' ? 'tous' : l} par page</option>)}
-          </select>
-        </label>
-      )}
-    </div>
+    <nav className="shop-pages" aria-label="Pages">
+      <ol>
+        {page > 1 && <li><Link href={hrefFor(page - 1)} className="shop-page" aria-label="Page précédente"><i className="fas fa-chevron-left" /></Link></li>}
+        {Array.from({ length: pageCount }, (_, i) => i + 1).map(n => (
+          <li key={n}>
+            {n === page
+              ? <strong className="shop-page is-current" aria-current="page">{n}</strong>
+              : <Link href={hrefFor(n)} className="shop-page">{n}</Link>}
+          </li>
+        ))}
+        {page < pageCount && <li><Link href={hrefFor(page + 1)} className="shop-page" aria-label="Page suivante"><i className="fas fa-chevron-right" /></Link></li>}
+      </ol>
+    </nav>
   )
 }
 
-function ProductCard({ card, inCart, onAdd, eager }) {
-  const [added, setAdded] = useState(false)
-  const href = `/catalogue/${card.slug}`
-  const multiple = card.variants.length > 1
-  const swatches = card.variants.slice(0, MAX_SWATCHES)
-  const extra = card.variants.length - swatches.length
-
-  function add() {
-    onAdd(card.variants[0])
-    setAdded(true)
-    setTimeout(() => setAdded(false), 1600)
-  }
-
-  return (
-    <li className="oa-pl-cell">
-      <div className="oa-pl-card">
-        <div className="oa-pl-image">
-          <Link href={href} className="oa-pl-photo" tabIndex={-1} aria-hidden="true">
-            {card.imageUrl
-              ? <img src={card.imageUrl} alt="" loading={eager ? 'eager' : 'lazy'} decoding="async" />
-              : <span className="oa-pl-photo-empty"><i className="fas fa-image" /></span>}
-          </Link>
-          {inCart > 0 && <span className="oa-pl-badge">{inCart} dans votre sélection</span>}
-          <div className="oa-pl-primary">
-            {multiple ? (
-              <Link href={href} className="oa-pl-tocart">
-                <span>Choisir une option</span>
-              </Link>
-            ) : (
-              <button type="button" className={`oa-pl-tocart${added ? ' is-added' : ''}`} onClick={add}>
-                <span>{added ? 'Ajouté' : 'Ajouter au panier'}</span>
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="oa-pl-details">
-          <div className="oa-pl-actions">
-            <Link href={href} className="oa-pl-view" aria-label={`Voir la fiche ${card.name}`} title="Voir la fiche">
-              <i className="far fa-eye" />
-            </Link>
-          </div>
-          {multiple && (
-            <div className="oa-pl-swatches">
-              {swatches.map(v => (
-                <Link key={v.id} href={`/catalogue/${v.slug}`} className="oa-pl-swatch" aria-label={v.label}>
-                  {v.imageUrl ? <span className="oa-pl-swatch-img" style={{ backgroundImage: `url('${v.imageUrl}')` }} /> : <span className="oa-pl-swatch-img" />}
-                  <span className="oa-pl-swatch-tip">{v.label}</span>
-                </Link>
-              ))}
-              {extra > 0 && (
-                <Link href={href} className="oa-pl-swatch oa-pl-swatch-more" title={`+${extra} options supplémentaires`}>+{extra}</Link>
-              )}
-            </div>
-          )}
-          <h2 className="oa-pl-name"><Link href={href}>{card.name}</Link></h2>
-          {card.fromPrice > 0 && (
-            <p className="oa-pl-price">dès <strong>{formatEuro(card.fromPrice)}</strong> TTC</p>
-          )}
-        </div>
-      </div>
-    </li>
-  )
-}
-
-export default function CatalogueListing({ cards, total, first, last, page, pageCount, limit, categoryKey, title, intro }) {
+export default function CatalogueListing({ cards, total, allTotal, first, last, page, pageCount, limit, sort, chips, categoryKey, title, intro }) {
   const router = useRouter()
   const cart = useCatalogueCart()
-  const base = { categorie: categoryKey, limit: limit === DEFAULT_LIMIT ? null : limit }
+  const [quick, setQuick] = useState(null)
+  const base = { categorie: categoryKey, tri: sort || null, limit: limit === DEFAULT_LIMIT ? null : limit }
   const hrefFor = n => queryString({ ...base, p: n > 1 ? n : null })
   const path = queryString({ categorie: categoryKey })
-
-  function onLimit(value) {
-    router.push(queryString({ categorie: categoryKey, limit: value === String(DEFAULT_LIMIT) ? null : value }))
-  }
-
-  function onAdd(variant) {
-    const before = cart[variant.id] || 0
-    addToCatalogueCart(variant.id, before > 0 ? 1 : variant.minQty, variant.maxQty)
-    if (!before) track('Ajout panier', { emplacement: 'catalogue' })
-  }
-
+  const go = patch => router.push(queryString({ ...base, ...patch }), undefined, { scroll: false })
   const inCartOf = card => card.variants.reduce((n, v) => n + (cart[v.id] || 0), 0)
 
   return (
@@ -245,40 +111,72 @@ export default function CatalogueListing({ cards, total, first, last, page, page
         breadcrumb={[{ name: 'Catalogue', path: '/catalogue' }, { name: title, path }]}
       />
 
-      <div className="site-wrap oa-pl">
-        <div className="oa-pl-title">
-          <h1>{title}</h1>
+      <div className="site-wrap shop-listing">
+        <header className="shop-listing-head">
           <nav aria-label="Fil d'Ariane">
-            <ol className="oa-pl-breadcrumbs">
+            <ol className="shop-crumbs">
               <li><Link href="/">Accueil</Link></li>
               <li><Link href="/catalogue">Catalogue</Link></li>
-              <li><strong>{title}</strong></li>
+              <li aria-current="page">{title}</li>
             </ol>
           </nav>
-        </div>
+          <h1>{title}</h1>
+          <p>{intro || 'Mobilier, art de la table et décoration à louer, livrés et installés. Ajoutez vos articles au panier puis choisissez vos dates : le total, livraison comprise, est calculé en ligne.'}</p>
+        </header>
 
-        <div className="oa-pl-container">
-          <p className="oa-pl-intro">
-            {intro || 'Chez OA Événementiel, spécialiste de la location de matériel pour réception, vous trouverez un large choix d’articles pour tous vos événements. Les prix affichés sont indicatifs : le tarif définitif dépend de la date choisie.'}
-          </p>
+        <div className="shop-container">
+          <div className="shop-chips shop-chips-scroll" role="navigation" aria-label="Catégories">
+            <Link href={queryString({ tri: sort || null })} className={`shop-chip${!categoryKey ? ' is-active' : ''}`} scroll={false}>
+              Tout <span>{allTotal}</span>
+            </Link>
+            {chips.map(c => (
+              <Link key={c.key} href={queryString({ categorie: c.key, tri: sort || null })} className={`shop-chip${categoryKey === c.key ? ' is-active' : ''}`} scroll={false}>
+                {c.label} <span>{c.count}</span>
+              </Link>
+            ))}
+          </div>
 
-          <Toolbar total={total} first={first} last={last} page={page} pageCount={pageCount} limit={limit} hrefFor={hrefFor} onLimit={onLimit} />
+          <div className="shop-toolbar">
+            <p className="shop-amount">{total > 0 ? <><strong>{total}</strong> article{total > 1 ? 's' : ''}{pageCount > 1 && <> · {first}–{last}</>}</> : 'Aucun article'}</p>
+            <div className="shop-toolbar-controls">
+              <label className="shop-select">
+                <span>Trier</span>
+                <select value={sort} onChange={e => go({ tri: e.target.value || null, p: null })}>
+                  {SORTS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                </select>
+              </label>
+              <label className="shop-select">
+                <span>Afficher</span>
+                <select value={String(limit)} onChange={e => go({ limit: e.target.value === String(DEFAULT_LIMIT) ? null : e.target.value, p: null })}>
+                  {LIMITS.map(l => <option key={l} value={String(l)}>{l === 'all' ? 'Tout' : `${l} par page`}</option>)}
+                </select>
+              </label>
+            </div>
+          </div>
 
           {cards.length > 0 ? (
-            <ol className="oa-pl-grid">
+            <div className="shop-grid">
               {cards.map((card, i) => (
-                <ProductCard key={card.key} card={card} inCart={inCartOf(card)} onAdd={onAdd} eager={i < 4} />
+                <ShopCard key={card.key} card={card} inCart={inCartOf(card)} onQuickView={setQuick} eager={i < 4} />
               ))}
-            </ol>
+            </div>
           ) : (
-            <p className="oa-pl-empty">Aucun article disponible dans cette catégorie pour le moment.</p>
+            <p className="shop-empty">Aucun article disponible dans cette catégorie pour le moment.</p>
           )}
 
-          {cards.length > 0 && (
-            <Toolbar total={total} first={first} last={last} page={page} pageCount={pageCount} limit={limit} hrefFor={hrefFor} onLimit={onLimit} bottom />
-          )}
+          <Pages page={page} pageCount={pageCount} hrefFor={hrefFor} />
+
+          <aside className="shop-help">
+            <div>
+              <h2>Un projet sur mesure ?</h2>
+              <p>Décoration complète, scénographie, grandes quantités : notre équipe vous prépare un devis.</p>
+            </div>
+            <Link href="/contact" className="shop-btn shop-btn-ghost">Demander un devis</Link>
+          </aside>
         </div>
       </div>
+
+      {quick && <QuickView card={quick} onClose={() => setQuick(null)} />}
     </>
   )
 }

@@ -1,9 +1,9 @@
 // Single source of truth for site-wide identity used by SEO tags, JSON-LD,
 // the sitemap, robots.txt and the legal pages.
 //
-// SITE_URL: set NEXT_PUBLIC_SITE_URL in production (e.g.
-// https://www.oa-evenementiel.fr). The fallback is inferred from the contact
-// email's domain and MUST be confirmed before going live.
+// SITE_URL: the production domain is https://oa-evenementiel.fr (without
+// www — next.config.js redirects www there). NEXT_PUBLIC_SITE_URL overrides
+// it, e.g. for a staging deployment.
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://oa-evenementiel.fr').replace(/\/$/, '');
 
 export const SITE = {
@@ -25,17 +25,15 @@ export const SITE = {
     pinterest: '',
   },
   description:
-    "Organisation de mariages, anniversaires, événements d'entreprise et location de décoration raffinée en Île-de-France.",
+    "Location de mobilier et de décoration raffinée pour mariages, anniversaires et événements d'entreprise en Île-de-France.",
 };
 
 // Public, indexable pages — drives the sitemap. Private/technical routes
 // (espace-oa, suivi, api, example) are deliberately absent.
 export const PUBLIC_PAGES = [
   { path: '/', priority: 1.0, changefreq: 'weekly' },
-  { path: '/services', priority: 0.9, changefreq: 'monthly' },
   { path: '/catalogue', priority: 0.9, changefreq: 'weekly' },
   { path: '/reservation', priority: 0.8, changefreq: 'monthly' },
-  { path: '/devis', priority: 0.8, changefreq: 'monthly' },
   { path: '/nos-realisations', priority: 0.7, changefreq: 'weekly' },
   { path: '/a-propos', priority: 0.6, changefreq: 'yearly' },
   { path: '/contact', priority: 0.7, changefreq: 'yearly' },

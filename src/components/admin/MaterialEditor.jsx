@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase.js'
 import { ttcFromHt } from '../../lib/pricing.js'
 import PricingEditor from './PricingEditor.jsx'
 import ImagePicker from './ImagePicker.jsx'
+import GalleryPicker from './GalleryPicker.jsx'
 import {
   emptyPricing, emptyOption, newOptionKey, pricingFromTiers, parsePricing, tierRowsFor,
   validateArticle, optionName,
@@ -60,6 +61,8 @@ async function resolveImage({ imageFile, imageUrl }, originalUrl) {
   return imageUrl || null
 }
 
+const galleryOf = m => { try { const list = JSON.parse(m.gallery || '[]'); return Array.isArray(list) ? list : [] } catch { return [] } }
+
 async function replaceTiers(materialId, tiers) {
   await must(supabase.from('material_price_tiers').delete().eq('material_id', materialId))
   await must(supabase.from('material_price_tiers').insert(tierRowsFor(materialId, tiers)))
@@ -67,7 +70,7 @@ async function replaceTiers(materialId, tiers) {
 
 const blankForm = () => ({
   kind: 'single', name: '', category: '', description: '',
-  qty: 1, available: true, pricing: emptyPricing(), imageUrl: '', imageFile: null, imagePreview: null,
+  qty: 1, available: true, pricing: emptyPricing(), imageUrl: '', imageFile: null, imagePreview: null, gallery: [],
   options: [], keepMaterialId: null,
 })
 
@@ -75,7 +78,7 @@ function optionFromMaterial(m, tiers, open = false) {
   return {
     key: newOptionKey(), id: m.id, label: m.variant_label || '', qty: m.max_quantity ?? 1,
     description: m.description || '', available: m.available !== false,
-    pricing: pricingFromTiers(tiers), imageUrl: m.image_url || '', imageFile: null, imagePreview: m.image_url || null, open,
+    pricing: pricingFromTiers(tiers), imageUrl: m.image_url || '', imageFile: null, imagePreview: m.image_url || null, gallery: galleryOf(m), open,
   }
 }
 
@@ -114,7 +117,7 @@ export default function MaterialEditor({ target, categories, onClose, onSaved })
           setForm({
             ...blankForm(), name: m.name, category: m.category || '', description: m.description || '',
             qty: m.max_quantity ?? 1, available: m.available !== false, pricing: pricingFromTiers(tiers),
-            imageUrl: m.image_url || '', imagePreview: m.image_url || null,
+            imageUrl: m.image_url || '', imagePreview: m.image_url || null, gallery: galleryOf(m),
           })
           setOriginal({ materialId: m.id, productId: null, optionIds: [], images: { [m.id]: m.image_url || null }, slug: m.slug || null })
           setLoading(false)
@@ -163,7 +166,7 @@ export default function MaterialEditor({ target, categories, onClose, onSaved })
     if (kind === 'multiple') {
       const first = {
         ...emptyOption(), id: original.materialId || form.keepMaterialId || null, qty: form.qty, available: form.available, pricing: form.pricing,
-        imageUrl: form.imageUrl, imageFile: form.imageFile, imagePreview: form.imagePreview,
+        imageUrl: form.imageUrl, imageFile: form.imageFile, imagePreview: form.imagePreview, gallery: form.gallery || [],
       }
       set({ kind, options: [first, emptyOption()] })
       // A new article starts on Informations (name, category first); an
@@ -192,7 +195,7 @@ export default function MaterialEditor({ target, categories, onClose, onSaved })
     const o = form.options[0] || emptyOption()
     set({
       kind: 'single', options: [], qty: o.qty, available: o.available, pricing: o.pricing,
-      imageUrl: o.imageUrl, imageFile: o.imageFile, imagePreview: o.imagePreview,
+      imageUrl: o.imageUrl, imageFile: o.imageFile, imagePreview: o.imagePreview, gallery: o.gallery || [],
       description: form.description || o.description,
       // The option's material becomes the simple article (same id, so
       // carts and links keep working).
@@ -255,6 +258,7 @@ export default function MaterialEditor({ target, categories, onClose, onSaved })
           name, category, description: form.description.trim() || null,
           max_quantity: parseInt(String(form.qty), 10), available: form.available,
           image_url: await resolveImage(form, materialId ? original.images[materialId] : null),
+          gallery: JSON.stringify(form.gallery || []),
           product_id: null, variant_label: null, variant_order: null,
         }
         let id = materialId
@@ -280,6 +284,7 @@ export default function MaterialEditor({ target, categories, onClose, onSaved })
             name: optionName(name, o.label), category, description: o.description.trim() || null,
             max_quantity: parseInt(String(o.qty), 10), available: o.available,
             image_url: await resolveImage(o, o.id ? original.images[o.id] : null),
+            gallery: JSON.stringify(o.gallery || []),
             product_id: productId, variant_label: o.label.trim(), variant_order: i + 1,
           }
           let id = o.id
@@ -384,7 +389,7 @@ export default function MaterialEditor({ target, categories, onClose, onSaved })
                   </div>
                   {form.kind === 'single' && (
                     <div className="adm-form-group">
-                      <label htmlFor="mat-qty">Stock initial <span className="req">*</span></label>
+                      <label htmlFor="mat-qty">Stock <span className="req">*</span></label>
                       <input id="mat-qty" type="number" min={1} className="adm-input" value={form.qty} onChange={e => set({ qty: e.target.value })} />
                     </div>
                   )}
@@ -395,6 +400,9 @@ export default function MaterialEditor({ target, categories, onClose, onSaved })
                     onFile={(file, preview) => set({ imageFile: file, imagePreview: preview })}
                     onRemove={() => set({ imageFile: null, imageUrl: '', imagePreview: null })}
                   />
+                ) : null}
+                {form.kind === 'single' ? (
+                  <GalleryPicker value={form.gallery} onChange={gallery => set({ gallery })} />
                 ) : (
                   <p className="mat-kind-note">Le stock, les tarifs, la photo et la disponibilité se règlent pour chaque option, dans l'onglet <button type="button" className="mat-link-btn" onClick={() => setTab('options')}>Options</button>.</p>
                 )}
@@ -456,6 +464,7 @@ export default function MaterialEditor({ target, categories, onClose, onSaved })
                             onFile={(file, preview) => setOption(o.key, { imageFile: file, imagePreview: preview })}
                             onRemove={() => setOption(o.key, { imageFile: null, imageUrl: '', imagePreview: null })}
                           />
+                          <GalleryPicker label="Photos supplémentaires de l'option" value={o.gallery || []} onChange={gallery => setOption(o.key, { gallery })} />
                           <h4 className="mat-option-subtitle">Tarification</h4>
                           <PricingEditor pricing={o.pricing} onChange={pricing => setOption(o.key, { pricing })} />
                         </div>

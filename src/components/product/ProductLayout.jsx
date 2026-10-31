@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import Icon from '../Icon.jsx'
 import { catalogueCategoryHref } from './productUtils.js'
+import ProductGallery from './ProductGallery.jsx'
 
 // Frame shared by both product templates (options.fr product page, see
 // /example/product-single and /example/product-multiple): "Retour" +
 // breadcrumb, square picture on the left, product column on the right,
 // then other products from the same category.
-export default function ProductLayout({ product, image, imageAlt, imageCaption, related, children }) {
+export default function ProductLayout({ product, images, imageAlt, imageCaption, related, children }) {
   return (
     <div className="site-wrap pdp">
       <nav className="pdp-breadcrumbs" aria-label="Fil d'Ariane">
@@ -24,17 +25,8 @@ export default function ProductLayout({ product, image, imageAlt, imageCaption, 
 
       <div className="pdp-main">
         <div className="pdp-media">
-          {image
-            // key: a new picture (variant change) fades in instead of
-            // swapping abruptly.
-            ? <img key={image} src={image} alt={imageAlt} className="pdp-media-img" />
-            : (
-              <div className="pdp-media-empty">
-                <Icon name="image" size={56} strokeWidth={0.9} />
-                <span>Photo bientôt disponible</span>
-              </div>
-            )}
-          {image && imageCaption && <p className="pdp-media-caption">{imageCaption}</p>}
+          <ProductGallery images={images || []} alt={imageAlt} />
+          {images?.length > 0 && imageCaption && <p className="pdp-media-caption">{imageCaption}</p>}
         </div>
         <div className="pdp-info">{children}</div>
       </div>
@@ -43,21 +35,17 @@ export default function ProductLayout({ product, image, imageAlt, imageCaption, 
         <section className="oa-section-tight pdp-related" aria-labelledby="pdp-related-title">
           <div className="oa-container">
             <h2 id="pdp-related-title" className="oa-section-title">Dans la même catégorie</h2>
-            {/* Same cards as the homepage catalogue teaser. */}
-            <div className="oa-catalogue-teaser-grid">
+            <div className="shop-related-grid">
               {related.map(r => (
-                <article className="oa-product-card" key={r.key}>
-                  <Link href={`/catalogue/${r.slug}`} className="oa-product-link">
-                    <div className="oa-product-media">
-                      {r.imageUrl
-                        ? <img src={r.imageUrl} alt="" loading="lazy" />
-                        : <Icon name="image" size={40} strokeWidth={1} className="oa-product-placeholder" />}
-                    </div>
-                    <div className="oa-product-details">
-                      <h3 className="oa-product-name">{r.name}</h3>
-                    </div>
-                  </Link>
-                </article>
+                <Link href={`/catalogue/${r.slug}`} className="shop-related" key={r.key}>
+                  <span className="shop-related-media">
+                    {r.imageUrl
+                      ? <img src={r.imageUrl} alt="" loading="lazy" decoding="async" />
+                      : <Icon name="image" size={40} strokeWidth={1} />}
+                  </span>
+                  <span className="shop-related-name">{r.name}</span>
+                  <span className="shop-related-link">Voir le produit <i className="fas fa-arrow-right" /></span>
+                </Link>
               ))}
             </div>
           </div>

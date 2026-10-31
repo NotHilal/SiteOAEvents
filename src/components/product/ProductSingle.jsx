@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { useRouter } from 'next/router'
+import AvailabilityCheck from './AvailabilityCheck.jsx'
+import { sendCatalogueCartToReservation } from '../../lib/cart.js'
 import ProductLayout from './ProductLayout.jsx'
 import QtyStepper from './QtyStepper.jsx'
 import { ProductFacts, TariffTable } from './ProductFacts.jsx'
@@ -13,6 +16,8 @@ export default function ProductSingle({ product, variant, related }) {
   const minQty = minQtyOf(variant)
   const [qty, setQty] = useState(minQty)
   const [notice, setNotice] = useState(null)
+  const [dates, setDates] = useState([])
+  const router = useRouter()
   const cart = useCatalogueCart()
   const inCart = cart[variant.id] || 0
   const atStockLimit = variant.maxQuantity != null && inCart >= variant.maxQuantity
@@ -25,10 +30,19 @@ export default function ProductSingle({ product, variant, related }) {
       ? { limited: true, text: added > 0 ? `Stock limité : ${plural(added, 'unité')} ajoutée${added > 1 ? 's' : ''}.` : 'Quantité maximale déjà dans votre sélection.' }
       : { text: `${plural(added, 'unité')} ajoutée${added > 1 ? 's' : ''} à votre sélection.` })
     setQty(minQty)
+    return added
+  }
+
+  // Puts the chosen quantity in the cart if it isn't there yet, then opens
+  // the booking wizard on the days checked below.
+  function bookNow() {
+    if (!inCart) add()
+    track('Clic Réserver', { emplacement: 'fiche produit' })
+    sendCatalogueCartToReservation(router, { dates })
   }
 
   return (
-    <ProductLayout product={product} image={variant.imageUrl} imageAlt={product.name} related={related}>
+    <ProductLayout product={product} images={variant.images} imageAlt={product.name} related={related}>
       <div className="pdp-name">
         <h1><span>Location</span> {product.name}</h1>
       </div>
@@ -52,6 +66,15 @@ export default function ProductSingle({ product, variant, related }) {
       </div>
       {inCart > 0 && <p className="pdp-in-cart">Dans votre sélection : {plural(inCart, 'unité')}</p>}
       <AddToCartNotice notice={notice} />
+
+      {variant.available && (
+        <>
+          <AvailabilityCheck variantId={variant.id} qty={qty} onDates={setDates} />
+          <button type="button" className="shop-btn shop-btn-gold pdp-book" onClick={bookNow} disabled={atStockLimit && !inCart}>
+            <i className="far fa-calendar-check" /> Réserver maintenant
+          </button>
+        </>
+      )}
 
       <TariffTable variant={variant} />
     </ProductLayout>

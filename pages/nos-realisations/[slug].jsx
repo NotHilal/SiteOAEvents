@@ -1,13 +1,33 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Lightbox from 'yet-another-react-lightbox'
-import Seo from '../../src/components/Seo.jsx'
+import Seo, { ORGANIZATION_ID, absoluteUrl } from '../../src/components/Seo.jsx'
 import { getRealisations } from '../../src/lib/realisations-server.js'
-import { SITE_URL } from '../../src/lib/site.js'
+import { SITE, SITE_URL } from '../../src/lib/site.js'
 
 export async function getServerSideProps({ params }) {
   const item = (await getRealisations()).find(item => item.slug === params.slug)
   return item ? { props: { item } } : { notFound: true }
+}
+
+// SQLite "YYYY-MM-DD HH:MM:SS" is UTC.
+const isoDate = value => (value ? `${String(value).replace(' ', 'T')}${/Z|[+-]\d\d:?\d\d$/.test(value) ? '' : 'Z'}` : undefined)
+
+function articleLd(item) {
+  const url = `${SITE_URL}/nos-realisations/${item.slug}`
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: item.title.slice(0, 110),
+    description: item.summary,
+    url,
+    mainEntityOfPage: url,
+    image: [item.cover, ...item.media.filter(m => m.type === 'image').map(m => m.src)].slice(0, 10).map(absoluteUrl),
+    ...(item.updatedAt ? { dateModified: isoDate(item.updatedAt) } : {}),
+    inLanguage: 'fr-FR',
+    author: { '@type': 'Organization', '@id': ORGANIZATION_ID, name: SITE.name, url: SITE_URL },
+    publisher: { '@type': 'Organization', '@id': ORGANIZATION_ID, name: SITE.name, logo: { '@type': 'ImageObject', url: SITE.logo } },
+  }
 }
 
 export default function Realisation({ item }) {
@@ -15,7 +35,7 @@ export default function Realisation({ item }) {
   const photos = [{ src: item.cover, caption: item.title }, ...item.media.filter(m => m.type === 'image')]
   let photoIndex = 0
   return <>
-    <Seo title={item.title} description={item.summary} image={`${SITE_URL}${item.cover}`} path={`/nos-realisations/${item.slug}`} breadcrumb={[{ name: 'Nos réalisations', path: '/nos-realisations' }, { name: item.title, path: `/nos-realisations/${item.slug}` }]} />
+    <Seo title={item.title} description={item.summary} image={item.cover} imageAlt={item.title} type="article" jsonLd={articleLd(item)} path={`/nos-realisations/${item.slug}`} breadcrumb={[{ name: 'Nos réalisations', path: '/nos-realisations' }, { name: item.title, path: `/nos-realisations/${item.slug}` }]} />
     <div className="site-wrap"><article className="oa-section"><div className="oa-container">
       <Link href="/nos-realisations" className="oa-univers-link">← Toutes nos réalisations</Link>
       <header className="realisations-heading"><h1>{item.title}</h1><p>{item.summary}</p></header>

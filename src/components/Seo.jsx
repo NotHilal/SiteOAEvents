@@ -8,10 +8,14 @@ import { SITE } from '../lib/site.js'
 // BreadcrumbList so search results can show the page's place in the site.
 // `preloadImage` — URL of the page's above-the-fold hero image when it's a
 // CSS background (invisible to the browser's preload scanner otherwise).
-export default function Seo({ title, description, path = '/', image, noindex = false, breadcrumb, jsonLd, preloadImage }) {
+// `type` — Open Graph type: 'website' by default, 'article' for a
+// réalisation, 'product' for a catalogue item.
+export default function Seo({ title, description, path = '/', image, imageAlt, type = 'website', noindex = false, breadcrumb, jsonLd, preloadImage }) {
   const url = `${SITE.url}${path === '/' ? '/' : path}`
   const fullTitle = title.includes(SITE.name) ? title : `${title} | ${SITE.name}`
-  const img = image || SITE.ogImage
+  const img = absoluteUrl(image) || SITE.ogImage
+  // Only the default share image is known to be 1200×630.
+  const isDefaultImage = img === SITE.ogImage
 
   const blocks = []
   if (breadcrumb?.length) {
@@ -33,19 +37,19 @@ export default function Seo({ title, description, path = '/', image, noindex = f
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
       <link rel="canonical" href={url} />
-      {noindex && <meta name="robots" content="noindex, follow" />}
+      <meta name="robots" content={noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'} />
       {preloadImage && <link rel="preload" as="image" href={preloadImage} fetchPriority="high" />}
 
-      <meta property="og:type" content="website" />
+      <meta property="og:type" content={type} />
       <meta property="og:site_name" content={SITE.name} />
       <meta property="og:locale" content={SITE.locale} />
       <meta property="og:title" content={fullTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:url" content={url} />
       <meta property="og:image" content={img} />
-      <meta property="og:image:width" content="1200" />
-      <meta property="og:image:height" content="630" />
-      <meta property="og:image:alt" content={`${SITE.name} — organisation d'événements et location de décoration`} />
+      {isDefaultImage && <meta property="og:image:width" content="1200" />}
+      {isDefaultImage && <meta property="og:image:height" content="630" />}
+      <meta property="og:image:alt" content={imageAlt || (isDefaultImage ? `${SITE.name} — location de mobilier et de décoration pour événements` : title)} />
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={fullTitle} />
@@ -59,24 +63,40 @@ export default function Seo({ title, description, path = '/', image, noindex = f
   )
 }
 
+// Site-relative paths (/uploads/…) → absolute URLs, as Open Graph and
+// schema.org require.
+export function absoluteUrl(src) {
+  if (!src) return ''
+  return /^https?:\/\//.test(src) ? src : `${SITE.url}${src.startsWith('/') ? '' : '/'}${src}`
+}
+
+export const ORGANIZATION_ID = `${SITE.url}/#organization`
+
 // Organization + WebSite, for the homepage only. Only facts the site
 // already states — no address, ratings or reviews invented.
 export const ORGANIZATION_LD = [
   {
     '@context': 'https://schema.org',
     '@type': 'Organization',
+    '@id': ORGANIZATION_ID,
     name: SITE.name,
     url: SITE.url,
     logo: SITE.logo,
+    image: SITE.ogImage,
     email: SITE.email,
+    ...(SITE.phone ? { telephone: SITE.phone } : {}),
     description: SITE.description,
     areaServed: { '@type': 'AdministrativeArea', name: SITE.region },
+    knowsAbout: ['Location de mobilier événementiel', 'Location de décoration de mariage', 'Location de tentes et chapiteaux', 'Art de la table'],
+    ...(Object.values(SITE.social).some(Boolean) ? { sameAs: Object.values(SITE.social).filter(Boolean) } : {}),
   },
   {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
+    '@id': `${SITE.url}/#website`,
     name: SITE.name,
     url: SITE.url,
     inLanguage: 'fr-FR',
+    publisher: { '@id': ORGANIZATION_ID },
   },
 ]

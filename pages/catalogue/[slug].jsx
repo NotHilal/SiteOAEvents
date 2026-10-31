@@ -1,8 +1,9 @@
-import Seo from '../../src/components/Seo.jsx'
+import Seo, { ORGANIZATION_ID, absoluteUrl } from '../../src/components/Seo.jsx'
 import ProductSingle from '../../src/components/product/ProductSingle.jsx'
 import ProductMultiple from '../../src/components/product/ProductMultiple.jsx'
 import { getCatalogueProduct } from '../../src/lib/catalogue-products.js'
 import { SITE } from '../../src/lib/site.js'
+import { ttcFromHt } from '../../src/lib/pricing.js'
 
 // One route for every catalogue product (/catalogue/table-ronde,
 // /catalogue/kit-lumiere-led…). Rendered per request so a direct link or a
@@ -13,6 +14,37 @@ export async function getServerSideProps({ params }) {
   const data = await getCatalogueProduct(String(params.slug || ''))
   if (!data) return { notFound: true }
   return { props: data }
+}
+
+// schema.org Product: name, photos and the range of TTC unit rates (every
+// tier, weekday and weekend) so search results can show "à partir de".
+function productLd(product, variants, description, url) {
+  const images = [...new Set(variants.flatMap(v => v.images || []))].slice(0, 10).map(absoluteUrl)
+  const prices = variants.flatMap(v => v.tiers.flatMap(t => [ttcFromHt(t.price_weekday_ht), ttcFromHt(t.price_weekend_ht)])).filter(p => p > 0)
+  const available = variants.some(v => v.available)
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    url,
+    ...(description ? { description } : {}),
+    ...(images.length ? { image: images } : {}),
+    ...(product.category ? { category: product.category } : {}),
+    brand: { '@type': 'Brand', name: SITE.name },
+    ...(prices.length ? {
+      offers: {
+        '@type': 'AggregateOffer',
+        priceCurrency: 'EUR',
+        lowPrice: Math.min(...prices).toFixed(2),
+        highPrice: Math.max(...prices).toFixed(2),
+        offerCount: variants.length,
+        availability: available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        businessFunction: 'http://purl.org/goodrelations/v1#LeaseOut',
+        areaServed: { '@type': 'AdministrativeArea', name: SITE.region },
+        seller: { '@type': 'Organization', '@id': ORGANIZATION_ID, name: SITE.name },
+      },
+    } : {}),
+  }
 }
 
 export default function CatalogueProduct({ product, variants, activeVariantId, related }) {
@@ -28,7 +60,10 @@ export default function CatalogueProduct({ product, variants, activeVariantId, r
           ? `${product.name} à la location : ${description}`.slice(0, 160)
           : `Louez ${product.name} pour votre réception en ${SITE.region} avec OA Événementiel.`}
         path={`/catalogue/${product.slug}`}
-        image={image ? (/^https?:/.test(image) ? image : `${SITE.url}${image}`) : undefined}
+        image={image}
+        imageAlt={product.name}
+        type="product"
+        jsonLd={productLd(product, variants, description, `${SITE.url}/catalogue/${product.slug}`)}
         breadcrumb={[{ name: 'Catalogue', path: '/catalogue' }, { name: product.name, path: `/catalogue/${product.slug}` }]}
       />
       {variants.length > 1

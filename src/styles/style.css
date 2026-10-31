@@ -2113,7 +2113,7 @@ html.reveal-on [data-reveal-state="shown"] {
 .hamburger-line:nth-child(3) { transform: translateY(6px); }
 
 /* ===== HOMEPAGE — EDITORIAL RECONSTRUCTION =====
-   New sections added to pages/index.jsx (Nos Univers, Nos Prestations,
+   New sections added to pages/index.jsx (Nos Univers,
    Réalisations, Chiffres clés, Témoignages, CTA finale), replacing the raw
    Webflow fake-CMS sections (countdown, fabricated blog). Built on the
    .oa-container / .oa-section / .oa-eyebrow / .oa-heading tokens defined
@@ -2189,24 +2189,6 @@ a.oa-univers-link:focus-visible i,
 .oa-univers-card:hover .oa-univers-link i,
 .oa-univers-card:focus-visible .oa-univers-link i { transform: translateX(4px); transition-duration: .3s; }
 a.oa-univers-link:focus-visible { outline: 2px solid var(--oa-accent-ink); outline-offset: 2px; }
-
-/* Nos Prestations */
-/* Prestation cards reuse .oa-product-card (see "Product card" below);
-   only the link reset and the gold icon above the title are specific. */
-.oa-prestation-card { color: inherit; text-decoration: none; }
-.oa-prestation-card:hover { color: inherit; }
-.oa-prestation-card:focus-visible { outline: 2px solid var(--oa-text); outline-offset: 3px; }
-.oa-prestation-card .oa-product-add i { font-size: .75rem; }
-.oa-prestation-icon {
-  width: 56px; height: 56px;
-  margin: 0 auto 14px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(201,161,90,.12);
-  border: 1px solid rgba(201,161,90,.3);
-  color: var(--oa-accent-dark);
-  font-size: 1.1rem;
-}
 
 /* Catalogue teaser (homepage) — quick "add to cart" preview of a few
    materials, one per category; the real browsing/filtering happens on
@@ -2492,8 +2474,6 @@ a.oa-univers-link:focus-visible { outline: 2px solid var(--oa-accent-ink); outli
 @media (max-width: 640px) {
   .oa-univers-grid { grid-template-columns: 1fr; }
   .oa-section-head-split { flex-direction: column; align-items: flex-start; }
-  .oa-prestation-card { padding: 24px 20px; }
-  .oa-prestation-icon { width: 46px; height: 46px; font-size: .95rem; margin-bottom: 14px; }
 }
 
 /* ===== LEGAL PAGES (src/components/LegalPage.jsx) ===== */

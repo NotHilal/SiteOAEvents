@@ -17,7 +17,7 @@ export default function Deconnexion() {
         <AccountSection className="oa-account-empty-state oa-account-logout-state">
           <span className="oa-account-empty-icon is-success"><Icon name="check" size={30} strokeWidth={1.5} /></span>
           <h2>À bientôt</h2>
-          <p>Vous êtes à présent déconnecté(e). Vous pouvez retourner à l’accueil ou continuer à découvrir nos prestations.</p>
+          <p>Vous êtes à présent déconnecté(e). Vous pouvez retourner à l’accueil ou continuer à découvrir notre catalogue.</p>
           <Link href="/mon-compte/connexion" className="oa-account-primary-link">Se reconnecter <span aria-hidden="true">→</span></Link>
         </AccountSection>
       </AccountLayout>

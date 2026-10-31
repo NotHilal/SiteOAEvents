@@ -2,7 +2,7 @@
 
 ## Parcours
 
-Le catalogue et `/reservation` concernent la location de matériel. Le client choisit les dates, les quantités et la livraison, vérifie le récapitulatif puis passe directement au paiement. Les prestations d’organisation sur mesure renvoient vers `/contact` pour un devis. `/devis` reste une simulation, sans enregistrement.
+Le catalogue et `/reservation` concernent la location de matériel. Le client choisit les dates, les quantités et la livraison, vérifie le récapitulatif puis passe directement au paiement. Les prestations d’organisation sur mesure renvoient vers `/contact` pour un devis.
 
 Le stock, les créneaux bloqués et les tarifs sont contrôlés côté serveur. Le contrôle et l’enregistrement utilisent une vraie transaction d’écriture libSQL. Le stock est réservé sur chaque journée de location, même si le client précise des heures. Plusieurs commandes peuvent partager une date dans la limite du stock. Une clé de tentative empêche de créer deux commandes après un double clic ou une réponse réseau perdue.
 

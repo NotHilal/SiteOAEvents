@@ -3,11 +3,10 @@ import { getRealisations } from '../src/lib/realisations-server.js'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Seo, { ORGANIZATION_LD } from '../src/components/Seo.jsx'
-import { useRouter } from 'next/router'
 import { supabase } from '../src/lib/supabase.js'
-import { getUnitPriceTtc, groupTiersByMaterial, getMinOrderQty } from '../src/lib/pricing.js'
-import { addToCatalogueCart } from '../src/lib/cart.js'
-import { slugify } from '../src/lib/slug.js'
+import ShopCard from '../src/components/product/ShopCard.jsx'
+import QuickView from '../src/components/product/QuickView.jsx'
+import { useCatalogueCart } from '../src/components/product/productUtils.js'
 import Icon from '../src/components/Icon.jsx'
 import HeroVideo from '../src/components/HeroVideo.jsx'
 import { track } from '../src/lib/analytics.js'
@@ -15,30 +14,25 @@ import { track } from '../src/lib/analytics.js'
 const UNIVERS = [
   {
     slotKey: 'univers_1',
+    href: '/nos-realisations',
     title: 'Mariages & Réceptions',
     text: 'De la demande à la nuit de noces, une scénographie pensée dans le moindre détail.',
     img: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=720&q=70&auto=format&fit=crop',
   },
   {
     slotKey: 'univers_2',
+    href: '/nos-realisations',
     title: 'Anniversaires & Fêtes',
     text: "Des célébrations sur mesure, intimes ou grandioses, à votre image.",
     img: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=720&q=70&auto=format&fit=crop',
   },
   {
     slotKey: 'univers_3',
+    href: '/catalogue',
     title: 'Location de Décoration',
     text: 'Mobilier, art de la table et scénographie disponibles à la location, livrés et installés.',
     img: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=720&q=70&auto=format&fit=crop',
   },
-]
-
-// Photos: public/images/prestations/ (OA's own, 900px WebP).
-const PRESTATIONS = [
-  { icon: 'fas fa-heart', img: '/images/prestations/organisation-mariage.webp', title: 'Organisation de Mariage', text: "Recherche du lieu, prestataires, coordination du jour J." },
-  { icon: 'fas fa-birthday-cake', img: '/images/prestations/organisation-anniversaire.webp', title: "Organisation d'Anniversaire", text: 'Thème, décoration et animation sur mesure.' },
-  { icon: 'fas fa-briefcase', img: '/images/prestations/evenements-professionnels.webp', title: 'Événements Professionnels', text: 'Séminaires, galas et lancements d\'entreprise.' },
-  { icon: 'fas fa-star', img: '/images/prestations/location-decoration.webp', title: 'Location de Décoration', text: 'Vaisselle, mobilier et éclairage, livrés et installés.' },
 ]
 
 // "Nos catégories" mosaic, modelled on options.fr's home block: one tall
@@ -79,12 +73,30 @@ const STATS = [
   { count: '99%', label: 'Satisfaction Client' },
 ]
 
-export async function getServerSideProps() {
-  return { props: { realisations: (await getRealisations()).slice(0, 6) } }
+const SELECTION_SIZE = 8
+
+// Homepage selection: cards taken in turn from each category (one chair,
+// one table, one tent…) so it reads as "a bit of everything we rent".
+function pickSelection(cards) {
+  const byCategory = {}
+  for (const c of cards) (byCategory[c.category] ||= []).push(c)
+  const queues = Object.values(byCategory).map(list => [...list].sort((a, b) => (b.imageUrl ? 1 : 0) - (a.imageUrl ? 1 : 0)))
+  const out = []
+  while (out.length < SELECTION_SIZE && queues.some(q => q.length)) {
+    for (const q of queues) if (q.length && out.length < SELECTION_SIZE) out.push(q.shift())
+  }
+  return out
 }
 
-export default function Home({ realisations }) {
-  const router = useRouter()
+export async function getServerSideProps() {
+  const { getCatalogueCards } = await import('../src/lib/catalogue-cards.js')
+  const [realisations, { cards }] = await Promise.all([getRealisations(), getCatalogueCards()])
+  return { props: { realisations: realisations.slice(0, 6), selection: pickSelection(cards), productCount: cards.length } }
+}
+
+export default function Home({ realisations, selection, productCount }) {
+  const cart = useCatalogueCart()
+  const [quick, setQuick] = useState(null)
   // The hero's entrance animation is pure CSS (see .hero-reveal in
   // index.css) — it starts on first paint, no JS flag needed.
 
@@ -107,56 +119,13 @@ export default function Home({ realisations }) {
     })
   }, [])
 
-  // Homepage teaser for /catalogue — one item per category (up to 4) rather
-  // than just the first 4 rows, so the preview reads as "a bit of everything
-  // we rent" instead of whatever happens to sort first.
-  const [catalogueTeaser, setCatalogueTeaser] = useState([])
-  const [catalogueTiers, setCatalogueTiers] = useState({})
-  const [addedId, setAddedId] = useState(null)
-  useEffect(() => {
-    Promise.all([
-      supabase.from('materials').select('*').eq('available', true).order('category'),
-      supabase.from('material_price_tiers').select('*'),
-      supabase.from('products').select('*'),
-    ]).then(([matRes, tierRes, prodRes]) => {
-      const tiers = groupTiersByMaterial(tierRes.data || [])
-      setCatalogueTiers(tiers)
-      // First item of each category. An option of an article à options is
-      // shown as its article (name, page, cheapest option's price) — the
-      // option itself is chosen on the product page.
-      const productById = Object.fromEntries((prodRes.data || []).map(p => [String(p.id), p]))
-      const mats = matRes.data || []
-      const byCategory = {}
-      mats.forEach(m => {
-        const cat = m.category || 'Autre'
-        if (byCategory[cat]) return
-        const product = m.product_id && productById[String(m.product_id)]
-        if (!product) { byCategory[cat] = { ...m, displayName: m.name, href: `/catalogue/${m.slug || slugify(m.name)}` }; return }
-        const options = mats.filter(o => String(o.product_id) === String(product.id))
-        const prices = options.map(o => getUnitPriceTtc(tiers[String(o.id)], 'weekday', getMinOrderQty(tiers[String(o.id)]))).filter(p => p > 0)
-        byCategory[cat] = {
-          ...m, displayName: product.name, href: `/catalogue/${product.slug}`, isOptions: true,
-          image_url: options.find(o => o.image_url)?.image_url || null,
-          fromPrice: prices.length ? Math.min(...prices) : 0,
-        }
-      })
-      setCatalogueTeaser(Object.values(byCategory).slice(0, 4))
-    })
-  }, [])
-
-  function handleQuickAdd(m) {
-    const minQty = getMinOrderQty(catalogueTiers[String(m.id)])
-    addToCatalogueCart(m.id, minQty)
-    track('Ajout panier', { emplacement: 'accueil' })
-    setAddedId(m.id)
-    setTimeout(() => setAddedId(id => id === m.id ? null : id), 1600)
-  }
+  const inCartOf = card => card.variants.reduce((n, v) => n + (cart[v.id] || 0), 0)
 
   return (
     <>
       <Seo
-        title="OA Événementiel — Organisation d'événements et location de décoration"
-        description="Organisation de mariages, anniversaires, événements d'entreprise et location de mobilier et de décoration raffinée en Île-de-France."
+        title="OA Événementiel — Location de mobilier et de décoration pour vos réceptions"
+        description="Louez en ligne chaises, tables, tentes, art de la table et décoration pour vos mariages, anniversaires et événements en Île-de-France. Livraison et installation."
         path="/"
         jsonLd={ORGANIZATION_LD}
       />
@@ -166,28 +135,34 @@ export default function Home({ realisations }) {
         <section id="Hero-Section" className="oa-hero" aria-labelledby="oa-hero-title">
           <HeroVideo />
           <div className="oa-container oa-hero-inner">
-            <p className="oa-hero-eyebrow hero-reveal hero-reveal-1">Créateur d'Émotions</p>
+            <p className="oa-hero-eyebrow hero-reveal hero-reveal-1">Location de mobilier & décoration</p>
             <h1 id="oa-hero-title" className="oa-hero-title hero-reveal hero-reveal-2">
-              Organisation & Scénographie d'Événements
+              Louez tout pour votre réception
             </h1>
             <p className="oa-hero-text hero-reveal hero-reveal-3">
-              Mariages, anniversaires, réceptions privées ou professionnelles... Nous concevons et décorons vos plus beaux moments en Île-de-France.
+              Chaises, tables, tentes, art de la table et décoration : choisissez en ligne, réservez votre date, nous livrons et installons en Île-de-France.
             </p>
             <div className="oa-hero-actions hero-reveal hero-reveal-4">
-              <Link href="/reservation" className="theme-button w-inline-block">
-                <div className="theme-button-content">
-                  <div className="theme-button-text">Réserver</div>
-                  <div className="theme-button-hover-text">Réserver</div>
-                </div>
+              <Link href="/catalogue/complet" className="shop-btn shop-btn-gold shop-btn-xl" onClick={() => track('Clic Catalogue', { emplacement: 'hero' })}>
+                <i className="fas fa-th-large" /> Voir le catalogue
               </Link>
-              <Link href="/services" className="theme-button theme-button-outline w-inline-block">
-                <div className="theme-button-content">
-                  <div className="theme-button-text">Prestations</div>
-                  <div className="theme-button-hover-text">Prestations</div>
-                </div>
+              <Link href="/reservation" className="shop-btn shop-btn-light shop-btn-xl" onClick={() => track('Clic Réserver', { emplacement: 'hero' })}>
+                <i className="far fa-calendar-check" /> Réserver une date
               </Link>
             </div>
           </div>
+        </section>
+
+        {/* ARGUMENTS — compact reassurance under the hero */}
+        <section className="shop-usp" aria-label="Nos engagements">
+          <ul className="shop-usp-list">
+            {ASSURANCES.map(a => (
+              <li key={a.title}>
+                <Icon name={a.icon} size={30} strokeWidth={1.2} />
+                <span><strong>{a.title}</strong><small>{a.tag}</small></span>
+              </li>
+            ))}
+          </ul>
         </section>
 
         {/* NOS CATÉGORIES — options.fr category mosaic */}
@@ -221,116 +196,26 @@ export default function Home({ realisations }) {
           </div>
         </section>
 
-        {/* NOS UNIVERS */}
-        <section className="oa-section oa-univers">
-          <div className="oa-container">
-            <div className="oa-section-head" data-reveal>
-              <span className="oa-eyebrow">Nos Univers</span>
-              <h2 className="oa-section-title">Un événement, une histoire</h2>
-            </div>
-            <div className="oa-univers-grid" data-reveal>
-              {UNIVERS.map((u, i) => (
-                <Link href="/services" key={u.title} className="oa-univers-card">
-                  <div className="oa-univers-image" style={{ backgroundImage: `url(${images[u.slotKey] || u.img})` }} />
-                  <div className="oa-univers-body">
-                    <h3 className="oa-heading" style={{ fontSize: 'var(--oa-size-h3)' }}>{u.title}</h3>
-                    <p className="oa-text-muted">{u.text}</p>
-                    <span className="oa-univers-link">Découvrir <i className="fas fa-arrow-right" /></span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* NOS PRESTATIONS */}
-        <section className="oa-section oa-section-tight oa-prestations">
-          <div className="oa-container">
-            <div className="oa-section-head" data-reveal>
-              <span className="oa-eyebrow">Nos Prestations</span>
-              <h2 className="oa-section-title">Un accompagnement complet</h2>
-            </div>
-            {/* Same card as "Choisissez votre mobilier" (.oa-product-card):
-                square photo, centered title + line, shadow and a button
-                rising at the bottom of the photo on hover. */}
-            <div className="oa-catalogue-teaser-grid" data-reveal>
-              {PRESTATIONS.map(p => (
-                <Link href="/services" className="oa-product-card oa-prestation-card" key={p.title}>
-                  <div className="oa-product-media">
-                    <img src={p.img} alt={p.title} width="900" height="900" loading="lazy" decoding="async" />
-                    <span className="oa-product-add" aria-hidden="true">
-                      <span>Découvrir</span>
-                      <i className="fas fa-arrow-right" />
-                    </span>
-                  </div>
-                  <div className="oa-product-details">
-                    <div className="oa-prestation-icon" aria-hidden="true"><i className={p.icon} /></div>
-                    <h3 className="oa-product-name">{p.title}</h3>
-                    <p className="oa-product-price">{p.text}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            <div className="oa-center-cta" data-reveal>
-              <Link href="/services" className="btn btn-rose-gold">Voir toutes nos prestations</Link>
-            </div>
-          </div>
-        </section>
-
-        {/* CATALOGUE */}
-        {catalogueTeaser.length > 0 && (
-          <section className="oa-section oa-section-tight oa-catalogue-teaser">
+        {/* NOTRE SÉLECTION — products to add to the cart */}
+        {selection.length > 0 && (
+          <section className="oa-section oa-section-tight shop-home-selection" aria-labelledby="shop-selection-title">
             <div className="oa-container">
-              <div className="oa-section-head oa-section-head-split" data-reveal>
+              <div className="shop-section-head" data-reveal>
                 <div>
-                  <span className="oa-eyebrow">Catalogue</span>
-                  <h2 className="oa-section-title">Choisissez votre mobilier</h2>
+                  <span className="oa-eyebrow">À louer dès maintenant</span>
+                  <h2 id="shop-selection-title" className="oa-section-title">Notre sélection</h2>
                 </div>
-                <Link href="/catalogue" className="oa-univers-link">Voir tout le catalogue <i className="fas fa-arrow-right" /></Link>
+                <Link href="/catalogue/complet" className="shop-link-arrow">Tout le catalogue ({productCount}) <i className="fas fa-arrow-right" /></Link>
               </div>
-              {/* Product cards modelled on options.fr's "Notre sélection du
-                  moment": borderless, square image, centered name + price;
-                  on hover a soft shadow and an "Ajouter au panier" button
-                  rising at the bottom of the image. */}
-              <div className="oa-catalogue-teaser-grid" data-reveal>
-                {catalogueTeaser.map(m => {
-                  const tiers = catalogueTiers[String(m.id)]
-                  const minQty = getMinOrderQty(tiers)
-                  const price = m.isOptions ? m.fromPrice : getUnitPriceTtc(tiers, 'weekday', minQty)
-                  const added = addedId === m.id
-                  return (
-                    <article className={`oa-product-card${added ? ' is-added' : ''}`} key={m.id}>
-                      <div className="oa-product-media">
-                        <Link href={m.href} className="oa-product-media-link" tabIndex={-1} aria-hidden="true">
-                          {m.image_url
-                            ? <img src={m.image_url} alt="" loading="lazy" />
-                            : <Icon name="image" size={40} strokeWidth={1} className="oa-product-placeholder" />}
-                        </Link>
-                        {m.isOptions ? (
-                          <Link href={m.href} className="oa-product-add" aria-label={`Choisir une option de ${m.displayName}`}>
-                            <Icon name="bag" size={18} strokeWidth={1.6} />
-                            <span>Choisir une option</span>
-                          </Link>
-                        ) : (
-                          <button
-                            type="button"
-                            className="oa-product-add"
-                            onClick={() => handleQuickAdd(m)}
-                            disabled={added}
-                            aria-label={added ? `${m.name} ajouté au panier` : `Ajouter ${m.name} au panier`}
-                          >
-                            <Icon name={added ? 'check' : 'bag'} size={18} strokeWidth={1.6} />
-                            <span>{added ? 'Ajouté au panier' : 'Ajouter au panier'}</span>
-                          </button>
-                        )}
-                      </div>
-                      <div className="oa-product-details">
-                        <h3 className="oa-product-name"><Link href={m.href}>{m.displayName}</Link></h3>
-                        {price > 0 && <p className="oa-product-price">dès {price.toFixed(2)} €</p>}
-                      </div>
-                    </article>
-                  )
-                })}
+              <div className="shop-grid" data-reveal>
+                {selection.map((card, i) => (
+                  <ShopCard key={card.key} card={card} inCart={inCartOf(card)} onQuickView={setQuick} eager={i < 4} place="accueil" />
+                ))}
+              </div>
+              <div className="oa-center-cta" data-reveal>
+                <Link href="/catalogue/complet" className="shop-btn shop-btn-dark shop-btn-xl">
+                  Voir tout le catalogue <i className="fas fa-arrow-right" />
+                </Link>
               </div>
             </div>
           </section>
@@ -351,6 +236,45 @@ export default function Home({ realisations }) {
                 </li>
               ))}
             </ol>
+            <div className="oa-center-cta">
+              <Link href="/reservation" className="shop-btn shop-btn-gold shop-btn-xl" onClick={() => track('Clic Réserver', { emplacement: 'étapes' })}>
+                <i className="far fa-calendar-check" /> Commencer ma réservation
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* BANNIÈRE — custom projects */}
+        <section className="shop-banner" style={{ backgroundImage: `url(${images.univers_1 || UNIVERS[0].img})` }}>
+          <div className="shop-banner-inner" data-reveal>
+            <span className="oa-eyebrow">Organisation sur mesure</span>
+            <h2>Un mariage, un anniversaire, un séminaire ?</h2>
+            <p>Au-delà de la location, notre équipe conçoit et installe la scénographie complète de votre événement.</p>
+            <div className="shop-banner-actions">
+              <Link href="/contact" className="shop-btn shop-btn-light">Demander un devis</Link>
+            </div>
+          </div>
+        </section>
+
+        {/* NOS UNIVERS */}
+        <section className="oa-section oa-univers">
+          <div className="oa-container">
+            <div className="oa-section-head" data-reveal>
+              <span className="oa-eyebrow">Nos Univers</span>
+              <h2 className="oa-section-title">Un événement, une histoire</h2>
+            </div>
+            <div className="oa-univers-grid" data-reveal>
+              {UNIVERS.map(u => (
+                <Link href={u.href} key={u.title} className="oa-univers-card">
+                  <div className="oa-univers-image" style={{ backgroundImage: `url(${images[u.slotKey] || u.img})` }} />
+                  <div className="oa-univers-body">
+                    <h3 className="oa-heading" style={{ fontSize: 'var(--oa-size-h3)' }}>{u.title}</h3>
+                    <p className="oa-text-muted">{u.text}</p>
+                    <span className="oa-univers-link">Découvrir <i className="fas fa-arrow-right" /></span>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -368,41 +292,10 @@ export default function Home({ realisations }) {
           </div>
         </section>
 
-        {/* RÉASSURANCE — options.fr reassurance block */}
-        <section className="oa-section-tight oa-assurance" aria-labelledby="oa-assurance-title">
-          <div className="oa-container">
-            <h2 id="oa-assurance-title" className="oa-section-title" data-reveal>
-              Tout le nécessaire pour sublimer votre réception
-            </h2>
-            <ul className="oa-assurance-grid" data-reveal>
-              {ASSURANCES.map(a => (
-                <li className="oa-assurance-item" key={a.title}>
-                  <Icon name={a.icon} size={48} strokeWidth={1} className="oa-assurance-icon" />
-                  <div className="oa-assurance-body">
-                    <h3 className="oa-assurance-item-title">{a.title}</h3>
-                    <p className="oa-assurance-tag">{a.tag}</p>
-                    <p className="oa-assurance-text">{a.text}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <div className="oa-assurance-intro" data-reveal>
-              <p>
-                Spécialiste de l'organisation d'événements et de la location de décoration en Île-de-France,
-                OA Événementiel vous accompagne dans la concrétisation de vos projets privés et professionnels.
-              </p>
-              <p>
-                Mobilier, art de la table, éclairage et scénographie : composez la réception qui vous ressemble.
-                Laissez-vous guider par vos envies !
-              </p>
-            </div>
-          </div>
-        </section>
-
         {/* CHIFFRES CLÉS */}
         <section className="oa-section-tight oa-stats-band">
           <div className="oa-container oa-stats-grid" data-reveal>
-            {STATS.map((s, i) => (
+            {STATS.map(s => (
               <div className="oa-stat" key={s.label}>
                 <span className="oa-stat-count">{s.count}</span>
                 <span className="oa-stat-label">{s.label}</span>
@@ -414,17 +307,17 @@ export default function Home({ realisations }) {
         {/* CTA FINALE */}
         <section className="apropos-cta-section">
           <div className="container">
-            <h2 className="apropos-cta-title oa-section-title">Discutons de votre événement</h2>
-            <p className="apropos-cta-text">Parlons de votre projet et voyons comment lui donner vie ensemble.</p>
+            <h2 className="apropos-cta-title oa-section-title">Prêt à composer votre réception ?</h2>
+            <p className="apropos-cta-text">Choisissez vos articles, indiquez votre date : le total, livraison comprise, est calculé en ligne.</p>
             <div className="oa-center-cta" style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link href="/devis" className="btn btn-rose-gold">Simuler mon devis</Link>
-              <Link href="/contact" className="theme-button theme-button-outline w-inline-block">
-                <div className="theme-button-content"><div className="theme-button-text">Nous contacter</div></div>
-              </Link>
+              <Link href="/catalogue/complet" className="shop-btn shop-btn-dark shop-btn-xl">Voir le catalogue</Link>
+              <Link href="/reservation" className="shop-btn shop-btn-gold shop-btn-xl">Réserver mon événement</Link>
             </div>
           </div>
         </section>
       </div>
+
+      {quick && <QuickView card={quick} onClose={() => setQuick(null)} />}
     </>
   )
 }

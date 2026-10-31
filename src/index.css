@@ -3,6 +3,8 @@
 
 /* Yet another react lightbox */
 @import 'yet-another-react-lightbox/styles.css';
+@import 'yet-another-react-lightbox/plugins/thumbnails.css';
+@import 'yet-another-react-lightbox/plugins/counter.css';
 
 /* Webflow Furnish template styles */
 @import './styles/furnish.css';
@@ -13,6 +15,7 @@
 @import './styles/product.css';
 @import './styles/catalogue.css';
 @import './styles/catalogue-listing.css';
+@import './styles/shop.css';
 @import './styles/admin.css';
 @import './styles/realisations.css';
 @import './styles/account.css';

@@ -179,7 +179,7 @@ export default function Contact() {
                   { icon: 'fas fa-map-marker-alt', title: 'Localisation', text: 'Île-de-France, France', id: 'localisation' },
                   { icon: 'fas fa-phone', title: 'Téléphone', text: 'Sur demande' },
                   { icon: 'fas fa-envelope', title: 'Email', text: 'contact@oa-evenementiel.fr', href: 'mailto:contact@oa-evenementiel.fr' },
-                  { icon: 'fas fa-clock', title: 'Disponibilité', text: 'Lun – Dim : 9h – 20h', note: 'Livraison et prestations possibles 24h/24, 7j/7' },
+                  { icon: 'fas fa-clock', title: 'Disponibilité', text: 'Lun – Dim : 9h – 20h', note: 'Livraison et installation possibles 24h/24, 7j/7' },
                 ].map((item, i) => (
                   <div key={i} id={item.id} className="contact-info-item">
                     <div className="contact-info-icon"><i className={item.icon} aria-hidden="true" /></div>

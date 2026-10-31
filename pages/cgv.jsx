@@ -37,7 +37,7 @@ export default function Cgv() {
         <li>la commande est confirmée automatiquement après réception du premier versement prévu à l’échéancier. Les prestations sur mesure font l’objet d’un devis distinct.</li>
       </ol>
       <p>
-        La « simulation de devis » ne constitue pas une commande. Le Client peut suivre sa demande à tout moment
+        Le Client peut suivre sa demande à tout moment
         depuis la page <Link href="/suivi">Suivi de commande</Link>.
       </p>
 

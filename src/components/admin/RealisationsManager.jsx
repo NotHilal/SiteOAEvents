@@ -12,7 +12,7 @@ async function request(method = 'GET', body) {
     headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
     ...(body ? { body: JSON.stringify(body) } : {}),
   })
-  const result = await response.json()
+  const result = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(result.message || 'Chargement impossible. Réessayez.')
   return result.data
 }

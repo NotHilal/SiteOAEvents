@@ -61,7 +61,7 @@ let keySeq = 0
 export const newOptionKey = () => `opt-${Date.now().toString(36)}-${keySeq++}`
 
 export function emptyOption() {
-  return { key: newOptionKey(), id: null, label: '', qty: 1, description: '', available: true, pricing: emptyPricing(), imageUrl: '', imageFile: null, imagePreview: null, open: true }
+  return { key: newOptionKey(), id: null, label: '', qty: 1, description: '', available: true, pricing: emptyPricing(), imageUrl: '', imageFile: null, imagePreview: null, gallery: [], open: true }
 }
 
 // Validates the whole article. Returns { ok: true } or the first problem

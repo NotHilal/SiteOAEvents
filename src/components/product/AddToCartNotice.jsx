@@ -1,5 +1,4 @@
-import Link from 'next/link'
-import { addToCatalogueCart, getCatalogueCart } from '../../lib/cart.js'
+import { addToCatalogueCart, getCatalogueCart, openCartDrawer } from '../../lib/cart.js'
 
 // Confirmation under the "Ajouter au panier" button; announced to screen
 // readers through the live region.
@@ -9,7 +8,7 @@ export default function AddToCartNotice({ notice }) {
       {notice && (
         <>
           <span className={notice.limited ? 'pdp-notice-warn' : 'pdp-notice-ok'}>{notice.text}</span>{' '}
-          <Link href="/catalogue/complet">Voir ma sélection</Link>
+          <button type="button" className="shop-link" onClick={openCartDrawer}>Voir mon panier</button>
         </>
       )}
     </p>
