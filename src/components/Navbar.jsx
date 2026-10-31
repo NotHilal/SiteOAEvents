@@ -24,8 +24,7 @@ const MAIN_LINKS = [
   { href: '/', label: 'Accueil' },
   { href: '/services', label: 'Prestations' },
   { href: '/catalogue', label: 'Catalogue' },
-  { href: '/nos-experiences', label: 'Nos Expériences' },
-  { href: '/galerie', label: 'Galerie' },
+  { href: '/nos-realisations', label: 'Nos réalisations' },
   { href: '/a-propos', label: 'À Propos' },
 ]
 const SERVICE_LINKS = [
@@ -120,7 +119,7 @@ export default function Navbar() {
     }
   }, [menuOpen, cartOpen])
 
-  const isCurrent = href => router.pathname === href
+  const isCurrent = href => router.pathname === href || (href === '/nos-realisations' && router.pathname === '/nos-realisations/[slug]')
 
   return (
     <header className={`oah${scrolled ? ' oah-scrolled' : ''}${menuOpen || cartOpen ? ' is-menu-open' : ''}`}>

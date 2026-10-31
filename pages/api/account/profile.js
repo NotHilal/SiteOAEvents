@@ -1,5 +1,5 @@
 import db from '../../../src/lib/sqlite-db.js'
-import { getCustomerSession, publicCustomer } from '../../../src/lib/customer-auth.js'
+import { getCustomerSession, publicCustomer, isCurrentCustomerSession } from '../../../src/lib/customer-auth.js'
 
 const clean = (value, max = 120) => String(value || '').trim().slice(0, max)
 
@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   const session = getCustomerSession(req)
   if (!session) return res.status(401).json({ message: 'Session expirée.' })
   const account = await db.prepare('SELECT * FROM customer_accounts WHERE id = ? AND active = 1').get(session.sub)
-  if (!account) return res.status(401).json({ message: 'Compte introuvable.' })
+  if (!isCurrentCustomerSession(session, account)) return res.status(401).json({ message: 'Session expirée. Reconnectez-vous.' })
 
   if (req.method === 'GET') return res.status(200).json({ user: publicCustomer(account) })
 

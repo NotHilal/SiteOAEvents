@@ -15,15 +15,11 @@ function getStripePromise() {
   return stripePromise
 }
 
-// Payment step for an already-confirmed reservation — used by /suivi once a
-// client looks up a request that's been accepted. Originally lived inline in
-// the reservation wizard, but payment now happens only after confirmation
-// (asking for money before the admin has even confirmed availability is a
-// bad experience if the request then gets refused), so this is a standalone,
-// reusable piece driven only by `reservationId` + `grandTotal`.
+// Shared by direct checkout and tracking. The server holds the stock and
+// confirms the order only after receiving the scheduled first payment.
 const TIER_LABELS = { 1: 'En 1 fois', 2: 'En 2 fois', 3: 'En 3 fois', 4: 'En 4 fois' }
 
-export default function PaymentFlow({ reservationId, grandTotal, onComplete }) {
+export default function PaymentFlow({ reservationId, grandTotal, orderReference, onComplete, onPrepared }) {
   const [methodsAvail, setMethodsAvail] = useState({ card: false, virement: false })
   const [tiersInfo, setTiersInfo] = useState({ 2: { eligible: true, reason: null }, 3: { eligible: true, reason: null }, 4: { eligible: true, reason: null } })
   const [phase, setPhase] = useState('choose') // choose | plan-choice | card | bank
@@ -34,14 +30,18 @@ export default function PaymentFlow({ reservationId, grandTotal, onComplete }) {
   const [clientSecret, setClientSecret] = useState(null)
   const [billingDetails, setBillingDetails] = useState(null)
   const [bankInfo, setBankInfo] = useState(null)
+  const [bankDeadline, setBankDeadline] = useState(null)
+  const [methodsLoading, setMethodsLoading] = useState(true)
+  const [prepared, setPrepared] = useState(null)
 
   useEffect(() => {
     fetch('/api/payments/methods?reservationId=' + encodeURIComponent(reservationId)).then(r => r.json()).then(res => {
       if (res.data) {
         setMethodsAvail(res.data)
         if (res.data.installmentTiers) setTiersInfo(res.data.installmentTiers)
+        if (res.data.prepared) setPrepared(res.data.prepared)
       }
-    }).catch(() => {})
+    }).catch(() => { setInitError('Impossible de charger les moyens de paiement. Actualisez la page.') }).finally(() => setMethodsLoading(false))
   }, [reservationId])
 
   // Every non-"choose" phase's back button returns straight to "choose"
@@ -69,6 +69,7 @@ export default function PaymentFlow({ reservationId, grandTotal, onComplete }) {
       setClientSecret(result.data.clientSecret)
       setBillingDetails(result.data.billingDetails || null)
       setSchedule(result.data.schedule)
+      setPrepared({ method: 'card', count: result.data.schedule.length })
       setPhase('card')
     } catch (err) {
       setInitError(err.message)
@@ -89,7 +90,10 @@ export default function PaymentFlow({ reservationId, grandTotal, onComplete }) {
       const result = await res.json()
       if (!res.ok) throw new Error(result.message || 'Erreur lors de la préparation du virement')
       setBankInfo(result.data.bank)
+      setBankDeadline(result.data.expiresAt)
+      onPrepared?.({ expiresAt: result.data.expiresAt })
       setSchedule(result.data.schedule)
+      setPrepared({ method: 'virement', count: result.data.schedule.length })
       setPhase('bank')
     } catch (err) {
       setInitError(err.message)
@@ -111,10 +115,11 @@ export default function PaymentFlow({ reservationId, grandTotal, onComplete }) {
     onComplete?.({ method: 'virement', firstAmount: schedule[0]?.amount, count: schedule.length })
   }
 
+  if (methodsLoading) return <p role="status">Chargement des moyens de paiement…</p>
   if (!methodsAvail.card && !methodsAvail.virement) {
     return (
       <div className="resa-alert">
-        <i className="fas fa-info-circle" />Le paiement en ligne n'est pas encore configuré — contactez-nous pour régler votre réservation.
+        <i className="fas fa-info-circle" />{initError || 'Le paiement en ligne est indisponible — contactez-nous pour régler votre réservation.'}
       </div>
     )
   }
@@ -129,12 +134,12 @@ export default function PaymentFlow({ reservationId, grandTotal, onComplete }) {
             </div>
           </div>
           <div style={{display:'flex', gap:14, flexWrap:'wrap'}}>
-            {methodsAvail.card && (
+            {methodsAvail.card && (!prepared || prepared.method === 'card') && (
               <button className="btn btn-rose-gold" onClick={() => { setPendingMethod('card'); setPhase('plan-choice') }} disabled={initLoading}>
                 <i className="fas fa-credit-card me-2" />Payer par carte
               </button>
             )}
-            {methodsAvail.virement && (
+            {methodsAvail.virement && (!prepared || prepared.method === 'virement') && (
               <button className="step-prev-btn" onClick={() => { setPendingMethod('virement'); setPhase('plan-choice') }} disabled={initLoading} style={{padding:'14px 38px'}}>
                 <i className="fas fa-university me-2" />Payer par virement
               </button>
@@ -150,6 +155,7 @@ export default function PaymentFlow({ reservationId, grandTotal, onComplete }) {
       {phase === 'plan-choice' && (
         <div>
           <p className="step-desc">Choisissez comment régler {pendingMethod === 'card' ? 'par carte' : 'par virement'}.</p>
+          <p>Une fois préparés, le moyen de paiement et le nombre de versements restent identiques pour cette commande.</p>
           <div style={{display:'flex', gap:12, flexWrap:'wrap'}}>
             {[1, 2, 3, 4].map(tier => {
               const info = tier === 1 ? { eligible: true, reason: null } : tiersInfo[tier]
@@ -159,7 +165,7 @@ export default function PaymentFlow({ reservationId, grandTotal, onComplete }) {
                   key={tier}
                   className={tier === 1 ? 'btn btn-rose-gold' : 'step-prev-btn'}
                   onClick={() => choosePlan(tier)}
-                  disabled={initLoading || !eligible}
+                  disabled={initLoading || !eligible || (prepared && prepared.count !== tier)}
                   title={!eligible ? info?.reason : undefined}
                   style={tier === 1 ? undefined : {padding:'14px 26px'}}
                 >
@@ -204,6 +210,8 @@ export default function PaymentFlow({ reservationId, grandTotal, onComplete }) {
       {phase === 'bank' && bankInfo && (
         <div>
           <p className="step-desc">Réglez par virement bancaire aux coordonnées ci-dessous, en respectant l'échéancier.</p>
+          {orderReference && <p>Référence à indiquer dans le virement : <strong>{orderReference}</strong>.</p>}
+          {bankDeadline && <p>Premier virement à recevoir avant le {new Date(bankDeadline).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })} (heure de Paris). Sans réception dans ce délai, le matériel est libéré.</p>}
           <div className="recap-card">
             {bankInfo.holder && (
               <div className="recap-row"><span className="recap-lbl"><i className="fas fa-user" />Titulaire</span><span className="recap-val">{bankInfo.holder}</span></div>
@@ -230,7 +238,7 @@ export default function PaymentFlow({ reservationId, grandTotal, onComplete }) {
 function ScheduleList({ schedule }) {
   if (!schedule?.length) return null
   return (
-    <div className="recap-card" style={{marginBottom:20}}>
+    <div className="recap-card payment-schedule" style={{marginBottom:20}}>
       <div className="recap-row" style={{borderBottom:'1px solid var(--border)'}}>
         <span className="recap-lbl"><i className="fas fa-calendar-alt" />Échéancier</span>
         <span className="recap-val">{schedule.length} versement{schedule.length>1?'s':''}</span>

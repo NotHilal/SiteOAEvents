@@ -1,5 +1,6 @@
 import db from '../../../src/lib/sqlite-db.js';
-import { getStripe, isStripeConfigured, createInstallmentAutoCharge } from '../../../src/lib/stripe.js';
+import { getStripe, isStripeConfigured } from '../../../src/lib/stripe.js';
+import { recordCardSuccess, confirmPaidOrder } from '../../../src/lib/orders.js';
 
 // Stripe requires the exact raw request body to verify the signature —
 // Next's default JSON body parser would re-serialize it and break that,
@@ -45,43 +46,14 @@ export default async function handler(req, res) {
       const intent = event.data.object;
       const payment = await db.prepare('SELECT * FROM payments WHERE stripe_payment_intent_id = ?').get(intent.id);
       if (payment) {
-        await db.prepare("UPDATE payments SET status = 'paid', paid_at = ? WHERE id = ?").run(new Date().toISOString(), payment.id);
-
-        // First installment: remember the payment method as the customer's
-        // default (needed for the auto-charges below to work off-session),
-        // then schedule every remaining installment as its own independent
-        // Stripe Subscription Schedule — only done now, once we know the
-        // card actually works and is saved, never before.
-        if (payment.installment_index === 0 && intent.customer && intent.payment_method) {
-          await stripe.customers.update(intent.customer, {
-            invoice_settings: { default_payment_method: intent.payment_method },
-          });
-
-          const remaining = await db.prepare(
-            "SELECT * FROM payments WHERE reservation_id = ? AND installment_index > 0 AND method = 'card' AND status = 'pending'"
-          ).all(payment.reservation_id);
-          for (const installment of remaining) {
-            try {
-              const schedule = await createInstallmentAutoCharge({
-                customerId: intent.customer,
-                amount: installment.amount,
-                dueDateStr: installment.due_date,
-                reservationId: payment.reservation_id,
-                installmentId: installment.id,
-              });
-              await db.prepare('UPDATE payments SET stripe_subscription_id = ? WHERE id = ?').run(schedule.id, installment.id);
-            } catch (err) {
-              console.error('[Stripe Webhook] Échec de la planification du versement', installment.id, err.message);
-            }
-          }
-        }
+        await recordCardSuccess(intent);
       }
     } else if (event.type === 'payment_intent.payment_failed') {
       const intent = event.data.object;
       const payment = await db.prepare('SELECT * FROM payments WHERE stripe_payment_intent_id = ?').get(intent.id);
       if (payment) {
         const message = intent.last_payment_error?.message || 'Paiement refusé';
-        await db.prepare("UPDATE payments SET status = 'failed', failure_message = ? WHERE id = ?").run(message, payment.id);
+        await db.prepare("UPDATE payments SET status = 'failed', failure_message = ? WHERE id = ? AND status != 'paid'").run(message, payment.id);
       }
     } else if (event.type === 'invoice.paid' || event.type === 'invoice.payment_failed') {
       // Later installments are billed through a per-installment Subscription
@@ -97,10 +69,12 @@ export default async function handler(req, res) {
           : null;
         if (payment) {
           if (event.type === 'invoice.paid') {
-            await db.prepare("UPDATE payments SET status = 'paid', paid_at = ? WHERE id = ?").run(new Date().toISOString(), payment.id);
+            if (invoice.currency !== 'eur' || invoice.amount_paid !== Math.round(payment.amount * 100)) throw new Error('Montant du versement Stripe incohérent');
+            await db.prepare("UPDATE payments SET status = 'paid', paid_at = COALESCE(paid_at, ?) WHERE id = ?").run(new Date().toISOString(), payment.id);
+            await confirmPaidOrder(payment.reservation_id);
           } else {
             const message = invoice.last_finalization_error?.message || 'Prélèvement automatique refusé';
-            await db.prepare("UPDATE payments SET status = 'failed', failure_message = ? WHERE id = ?").run(message, payment.id);
+            await db.prepare("UPDATE payments SET status = 'failed', failure_message = ? WHERE id = ? AND status != 'paid'").run(message, payment.id);
           }
         }
       }
@@ -110,6 +84,6 @@ export default async function handler(req, res) {
     console.error('[Stripe Webhook Handler Error]', error);
     // Still 200 here would hide real bugs from Stripe's retry mechanism —
     // return 500 so Stripe retries delivery.
-    return res.status(500).json({ message: 'Erreur de traitement du webhook' });
+    return res.status(error.status || 500).json({ message: 'Erreur de traitement du webhook' });
   }
 }

@@ -1,4 +1,5 @@
 import db from '../../../src/lib/sqlite-db';
+import { expireUnpaidOrders } from '../../../src/lib/orders.js';
 
 // Public, PII-free view of active reservations — used by the booking wizard
 // (anonymous visitors) to know which days are already booked and how much
@@ -12,8 +13,9 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ message: 'Method Not Allowed' });
 
   try {
+    await expireUnpaidOrders();
     const { before } = req.query;
-    let sql = `SELECT date, dates, materials FROM reservations WHERE status IN ('confirmed', 'pending')`;
+    let sql = `SELECT date, dates, materials FROM reservations WHERE status IN ('confirmed', 'pending', 'awaiting_payment')`;
     const args = [];
     if (before && /^\d{4}-\d{2}-\d{2}$/.test(before)) {
       sql += ' AND date <= ?';

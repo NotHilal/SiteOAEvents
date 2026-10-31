@@ -1,4 +1,6 @@
-import { useEffect, useState, useRef } from 'react'
+import RealisationsGrid from '../src/components/RealisationsGrid.jsx'
+import { getRealisations } from '../src/lib/realisations-server.js'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Seo, { ORGANIZATION_LD } from '../src/components/Seo.jsx'
 import { useRouter } from 'next/router'
@@ -66,17 +68,8 @@ const ASSURANCES = [
 const ETAPES = [
   { title: 'Faites votre sélection', text: 'Mobilier, art de la table et décoration : ajoutez vos pièces au panier depuis le catalogue.' },
   { title: 'Indiquez la date et le lieu', text: "Choisissez le ou les jours de votre événement et l'adresse de livraison." },
-  { title: 'Recevez votre estimation', text: 'Le devis indicatif est calculé en ligne, livraison comprise.' },
-  { title: 'Confirmez et suivez', text: 'Notre équipe valide votre demande, puis vous réglez et suivez votre commande en ligne.' },
-]
-
-const REALISATIONS = [
-  { slotKey: 'realisation_1', src: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&q=70&auto=format&fit=crop', label: 'Mariage' },
-  { slotKey: 'realisation_2', src: 'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=600&q=70&auto=format&fit=crop', label: 'Mariage' },
-  { slotKey: 'realisation_3', src: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=600&q=70&auto=format&fit=crop', label: 'Anniversaire' },
-  { slotKey: 'realisation_4', src: 'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=600&q=70&auto=format&fit=crop', label: 'Anniversaire' },
-  { slotKey: 'realisation_5', src: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=600&q=70&auto=format&fit=crop', label: 'Événement Pro' },
-  { slotKey: 'realisation_6', src: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=600&q=70&auto=format&fit=crop', label: 'Location Déco' },
+  { title: 'Vérifiez votre total', text: 'Le prix de la location et de la livraison est calculé en ligne.' },
+  { title: 'Confirmez et suivez', text: 'Réglez le premier versement pour confirmer automatiquement la location, puis suivez votre commande en ligne.' },
 ]
 
 const STATS = [
@@ -86,7 +79,11 @@ const STATS = [
   { count: '99%', label: 'Satisfaction Client' },
 ]
 
-export default function Home() {
+export async function getServerSideProps() {
+  return { props: { realisations: (await getRealisations()).slice(0, 6) } }
+}
+
+export default function Home({ realisations }) {
   const router = useRouter()
   // The hero's entrance animation is pure CSS (see .hero-reveal in
   // index.css) — it starts on first paint, no JS flag needed.
@@ -153,89 +150,6 @@ export default function Home() {
     track('Ajout panier', { emplacement: 'accueil' })
     setAddedId(m.id)
     setTimeout(() => setAddedId(id => id === m.id ? null : id), 1600)
-  }
-
-  // Réalisations carousel — a true infinite loop, not a scroll or a single
-  // fixed track: REALISATIONS is rendered three times back to back, and
-  // `position` starts at the first index of the middle copy. Stepping past
-  // either end of that middle copy always slides into a REAL adjacent photo
-  // (a copy of it) — never blank space — and once that slide's transition
-  // finishes, the track snaps instantly (transition briefly switched off)
-  // back to the equivalent position inside the middle copy, so the loop
-  // never runs out of copies to slide into no matter how many times it's
-  // clicked. Auto-advances by one photo every 5s; using either arrow steps
-  // immediately and restarts that 5s timer, so manual navigation never gets
-  // undone by an auto-advance landing right after it.
-  const REALISATIONS_N = REALISATIONS.length
-  const realisationsTrackRef = useRef(null)
-  const realisationsTimerRef = useRef(null)
-  // Blocks a new step from starting until the current one has fully
-  // resolved — slide transition finished AND (if needed) the invisible
-  // snap-back applied. Without this, spam-clicking an arrow queues up
-  // position changes faster than they can resolve, drifting `realisationPos`
-  // past the single copy of buffer photos on each side of the middle third,
-  // which is what was producing blank space / multiple photos flashing.
-  const realisationsAnimatingRef = useRef(false)
-  const [realisationPos, setRealisationPos] = useState(REALISATIONS_N)
-  const [realisationTransition, setRealisationTransition] = useState(true)
-  const [realisationStep, setRealisationStep] = useState(278)
-
-  useEffect(() => {
-    const measure = () => {
-      const track = realisationsTrackRef.current
-      const firstItem = track?.querySelector('.oa-realisation-item')
-      if (!firstItem) return
-      // Reads the actual CSS gap instead of a hardcoded number, so the
-      // slide math stays correct if the gap ever changes at a breakpoint
-      // (e.g. the smaller mobile gap) without needing a matching JS edit.
-      const gap = parseFloat(getComputedStyle(track).columnGap) || 0
-      setRealisationStep(firstItem.offsetWidth + gap)
-    }
-    measure()
-    window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
-  }, [])
-
-  function stepRealisations(direction) {
-    if (realisationsAnimatingRef.current) return
-    realisationsAnimatingRef.current = true
-    setRealisationTransition(true)
-    setRealisationPos(p => p + direction)
-  }
-
-  function handleRealisationsTransitionEnd() {
-    const outOfBounds = realisationPos >= 2 * REALISATIONS_N || realisationPos < REALISATIONS_N
-    if (!outOfBounds) {
-      realisationsAnimatingRef.current = false
-      return
-    }
-    setRealisationTransition(false)
-    setRealisationPos(p => p >= 2 * REALISATIONS_N ? p - REALISATIONS_N : p + REALISATIONS_N)
-    // Double rAF: let the transition:none frame actually paint before
-    // switching it back on, same technique as the hero entrance animation —
-    // otherwise the browser can coalesce both style changes into one frame
-    // and animate the "snap" instead of cutting it instantly.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setRealisationTransition(true)
-        realisationsAnimatingRef.current = false
-      })
-    })
-  }
-
-  function restartRealisationsAutoplay() {
-    clearInterval(realisationsTimerRef.current)
-    realisationsTimerRef.current = setInterval(() => stepRealisations(1), 5000)
-  }
-
-  useEffect(() => {
-    restartRealisationsAutoplay()
-    return () => clearInterval(realisationsTimerRef.current)
-  }, [])
-
-  function handleRealisationsArrow(direction) {
-    stepRealisations(direction)
-    restartRealisationsAutoplay()
   }
 
   return (
@@ -448,45 +362,9 @@ export default function Home() {
                 <span className="oa-eyebrow">Réalisations</span>
                 <h2 className="oa-section-title">Quelques instants capturés</h2>
               </div>
-              <Link href="/galerie" className="oa-univers-link">Voir la galerie <i className="fas fa-arrow-right" /></Link>
+              <Link href="/nos-realisations" className="oa-univers-link">Voir toutes nos réalisations <i className="fas fa-arrow-right" /></Link>
             </div>
-            <div className="oa-realisations-carousel">
-              <button
-                type="button"
-                className="oa-carousel-arrow oa-carousel-arrow-left"
-                aria-label="Photo précédente"
-                onClick={() => handleRealisationsArrow(-1)}
-              >
-                <i className="fas fa-chevron-left" />
-              </button>
-              <div className="oa-realisations-strip">
-                <div
-                  className="oa-realisations-track"
-                  data-reveal-group
-                  ref={realisationsTrackRef}
-                  onTransitionEnd={handleRealisationsTransitionEnd}
-                  style={{
-                    transform: `translateX(-${realisationPos * realisationStep}px)`,
-                    transition: realisationTransition ? 'transform .55s cubic-bezier(.16,.84,.44,1)' : 'none',
-                  }}
-                >
-                  {[...REALISATIONS, ...REALISATIONS, ...REALISATIONS].map((r, i) => (
-                    <Link href="/galerie" key={i} className="oa-realisation-item">
-                      <img src={images[r.slotKey] || r.src} alt="" loading="lazy" decoding="async" />
-                      <span>{r.label}</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-              <button
-                type="button"
-                className="oa-carousel-arrow oa-carousel-arrow-right"
-                aria-label="Photo suivante"
-                onClick={() => handleRealisationsArrow(1)}
-              >
-                <i className="fas fa-chevron-right" />
-              </button>
-            </div>
+            <RealisationsGrid items={realisations} />
           </div>
         </section>
 

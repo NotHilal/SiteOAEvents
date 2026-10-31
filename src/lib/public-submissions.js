@@ -57,7 +57,9 @@ export async function sanitizeReservation(item) {
     .slice(0, 31)
     .sort();
   if (!dates.length) return { error: 'Date manquante.' };
-  const today = new Date().toISOString().slice(0, 10);
+  if (Array.isArray(item.dates) && dates.length !== item.dates.length) return { error: 'Dates invalides.' };
+  if (dates.some(d => !Number.isFinite(Date.parse(d)) || new Date(d).toISOString().slice(0, 10) !== d) || new Set(dates).size !== dates.length) return { error: 'Dates invalides.' };
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
   if (dates[0] < today) return { error: 'La date choisie est déjà passée.' };
 
   const nb = parseInt(item.nb_persons, 10);
@@ -69,21 +71,28 @@ export async function sanitizeReservation(item) {
     .map(m => ({ id: String(m?.id ?? ''), quantity: parseInt(m?.quantity, 10) }))
     .filter(m => m.id && Number.isFinite(m.quantity) && m.quantity > 0 && m.quantity <= 100000)
     .slice(0, 200);
+  const direct = Array.isArray(item.materials) && item.materials.length > 0;
+  if (direct && (requested.length !== item.materials.length || new Set(requested.map(m => m.id)).size !== requested.length || item.materials.some(m => !Number.isInteger(Number(m.quantity))))) return { error: 'Quantités ou articles invalides.' };
+  if (direct && (!str(item.prenom, 80) || !str(item.nom, 80) || !str(item.phone, 30))) return { error: 'Nom, prénom et téléphone requis pour commander.' };
+  const maxRow = await db.prepare("SELECT value FROM site_content WHERE key = 'max_consecutive_days'").get();
+  const maxDays = Math.min(30, Math.max(1, Number(maxRow?.value) || 7));
+  if (dates.length > maxDays || dates.some((d, i) => i > 0 && Date.parse(d) - Date.parse(dates[i - 1]) !== 86400000)) return { error: `Choisissez au maximum ${maxDays} jours consécutifs.` };
 
   let materials = [];
   let materialsTotal = 0;
   if (requested.length) {
     const ids = [...new Set(requested.map(m => m.id))];
     const placeholders = ids.map(() => '?').join(',');
-    const rows = await db.prepare(`SELECT id, name FROM materials WHERE id IN (${placeholders})`).all(...ids);
+    const rows = await db.prepare(`SELECT id, name, available FROM materials WHERE id IN (${placeholders})`).all(...ids);
     const tierRows = await db.prepare(`SELECT * FROM material_price_tiers WHERE material_id IN (${placeholders})`).all(...ids);
     const tiersByMaterial = groupTiersByMaterial(tierRows);
     const byId = new Map(rows.map(r => [String(r.id), r]));
     const dayType = getDayType(dates[0]);
     for (const m of requested) {
       const row = byId.get(m.id);
-      if (!row) continue;
+      if (!row || !row.available) return { error: 'Un article n’est plus disponible. Actualisez votre panier.' };
       const price = getUnitPriceTtc(tiersByMaterial[m.id], dayType, m.quantity);
+      if (!Number.isFinite(price) || price <= 0) return { error: `Quantité ou tarif indisponible pour ${row.name}.` };
       materials.push({ id: m.id, name: row.name, quantity: m.quantity, price });
       materialsTotal += price * m.quantity;
     }
@@ -98,6 +107,7 @@ export async function sanitizeReservation(item) {
   if (address) {
     try { quote = await computeDeliveryQuote(address); } catch { quote = null; }
   }
+  if (direct && (!quote || !Number.isFinite(quote.fee) || quote.fee < 0)) return { error: 'Impossible de confirmer les frais de livraison. Vérifiez votre adresse et réessayez avant de commander.' };
   const grandTotal = Math.round((materialsTotal + (quote?.fee || 0)) * 100) / 100;
 
   return {

@@ -1211,6 +1211,14 @@
   word-break: break-word;
 }
 
+.payment-schedule .recap-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+}
+.payment-schedule .recap-lbl { min-width: 0; display: block; overflow-wrap: anywhere; }
+.payment-schedule .recap-val { white-space: nowrap; word-break: normal; }
+
 /* DEVIS / FRAIS DE LIVRAISON */
 .res-quote-box {
   background: var(--cream);

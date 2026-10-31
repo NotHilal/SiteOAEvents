@@ -11,7 +11,7 @@ const EVENT_LABELS = {
   'evenement-pro':'Événement professionnel',
   'location-deco':'Location décoration','autre':'Autre'
 }
-const STATUS_LABEL = { pending:'En attente', awaiting_payment:'En attente de paiement', confirmed:'Confirmée', terminee:'Terminée', refused:'Refusée' }
+const STATUS_LABEL = { pending:'En attente', awaiting_payment:'En attente de paiement', confirmed:'Confirmée', terminee:'Terminée', refused:'Refusée', expired:'Expirée' }
 const STATUS_CLASS = { pending:'badge-pending', awaiting_payment:'badge-awaiting', confirmed:'badge-confirmed', terminee:'badge-terminee', refused:'badge-refused' }
 
 function fmtDate(ds) {
@@ -202,6 +202,7 @@ export default function Suivi() {
 
                 {order.status === 'awaiting_payment' && (
                   <div className="mt-4">
+                    {order.expires_at && <p>Premier versement à recevoir avant le {new Date(order.expires_at).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })} (heure de Paris). Sans réception, le matériel est libéré.</p>}
                     {paidJustNow ? (
                       <div className="resa-success-msg" style={{padding:'32px 16px'}}>
                         <span className="success-icon"><i className="fas fa-check-circle" /></span>
@@ -223,12 +224,12 @@ export default function Suivi() {
                       </div>
                     ) : order.fullyPaid ? (
                       <div className="resa-alert" style={{background:'#f0fdf4',color:'#166534',borderColor:'#86efac'}}>
-                        <i className="fas fa-check-circle" />Tous les versements ont été reçus — votre réservation sera définitivement confirmée sous peu.
+                        <i className="fas fa-check-circle" />Paiement reçu. La confirmation se met à jour automatiquement.
                       </div>
                     ) : (
                       <>
                         <h4 className="res-quote-title" style={{marginBottom:16}}><i className="fas fa-credit-card" style={{marginRight:8}} />Paiement</h4>
-                        <PaymentFlow reservationId={order.id} grandTotal={order.grand_total || 0} onComplete={handlePaymentComplete} />
+                        <PaymentFlow reservationId={order.id} grandTotal={order.grand_total || 0} orderReference={order.reference} onComplete={handlePaymentComplete} onPrepared={data => setOrder(current => ({ ...current, expires_at: data.expiresAt }))} />
                       </>
                     )}
                   </div>
@@ -236,7 +237,7 @@ export default function Suivi() {
 
                 {order.status === 'confirmed' && (
                   <div className="resa-alert mt-4" style={{background:'#f0fdf4',color:'#166534',borderColor:'#86efac'}}>
-                    <i className="fas fa-check-circle" />Réservation définitivement confirmée et réglée — à très bientôt !
+                    <i className="fas fa-check-circle" />Commande confirmée après réception du premier versement. Consultez l’échéancier pour les versements restants.
                   </div>
                 )}
 
@@ -245,6 +246,7 @@ export default function Suivi() {
                     <i className="fas fa-check-circle" />Événement terminé — merci d'avoir fait confiance à OA Événementiel !
                   </div>
                 )}
+                {order.status === 'expired' && <div className="resa-alert mt-4">Le délai de paiement a expiré et le matériel a été libéré. <Link href="/catalogue">Recommencer une commande</Link>. Si vous avez déjà envoyé un virement, contactez-nous avant tout nouveau paiement.</div>}
               </div>
             )}
           </div>

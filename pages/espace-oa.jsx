@@ -1,3 +1,4 @@
+import RealisationsManager from '../src/components/admin/RealisationsManager.jsx'
 ﻿import { useEffect, useState, useRef } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
@@ -10,7 +11,7 @@ import CatalogueManager from '../src/components/admin/CatalogueManager.jsx'
 const HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
 const TYPE_LABELS = { mariage:'Mariage', anniversaire:'Anniversaire', 'evenement-pro':'Événement professionnel', 'location-deco':'Location de décoration', autre:'Autre' }
-const STATUS_LABEL = { pending:'En attente', awaiting_payment:'En attente de paiement', confirmed:'Confirmée', terminee:'Terminée', refused:'Refusée' }
+const STATUS_LABEL = { pending:'En attente', awaiting_payment:'En attente de paiement', confirmed:'Confirmée', terminee:'Terminée', refused:'Refusée', expired:'Expirée' }
 const STATUS_CLASS = { pending:'badge-pending', awaiting_payment:'badge-awaiting', confirmed:'badge-confirmed', terminee:'badge-terminee', refused:'badge-refused' }
 // Fixed icons for the "Nos valeurs" blocks on /a-propos — kept in sync with
 // the same 4 icons already reused on the homepage's "Pourquoi OA" section;
@@ -24,12 +25,6 @@ const HOME_SLOTS = [
   { key:'univers_1', label:'Mariages & Réceptions' },
   { key:'univers_2', label:'Anniversaires & Fêtes' },
   { key:'univers_3', label:'Location de Décoration' },
-  { key:'realisation_1', label:'Réalisation 1' },
-  { key:'realisation_2', label:'Réalisation 2' },
-  { key:'realisation_3', label:'Réalisation 3' },
-  { key:'realisation_4', label:'Réalisation 4' },
-  { key:'realisation_5', label:'Réalisation 5' },
-  { key:'realisation_6', label:'Réalisation 6' },
 ]
 // Same images_home row as HOME_SLOTS, shown in its own tab — keys match
 // CATEGORY_TILES in pages/index.jsx.
@@ -47,15 +42,6 @@ const SERVICES_SLOTS = [
   { key:'service_3', label:'Événements Professionnels' },
   { key:'service_4', label:'Location de Décoration' },
 ]
-// Galerie is a dynamic add/remove list (GalerieManager below), not fixed
-// slots like the other Visuel Site tabs — this just drives its category
-// dropdown, kept in sync with the filter labels on pages/galerie.jsx.
-const GALERIE_CATEGORIES = [
-  { key:'mariage', label:'Mariages' },
-  { key:'anniversaire', label:'Anniversaires' },
-  { key:'pro', label:'Événements Pro' },
-  { key:'deco', label:'Location Déco' },
-]
 const CONTACT_SLOTS = [
   { key:'page_header', label:'Bannière de page' },
 ]
@@ -66,7 +52,6 @@ const VISUEL_TABS = [
   { key:'accueil', label:'Accueil' },
   { key:'accueil-categories', label:'Accueil — Catégories' },
   { key:'prestations', label:'Prestations' },
-  { key:'galerie', label:'Galerie' },
   { key:'apropos', label:'À Propos' },
   { key:'contact', label:'Contact' },
 ]
@@ -445,7 +430,8 @@ export default function AdminDashboard() {
   const unreadCount = messages.filter(m => !m.read).length
 
   async function updateResaStatus(id, status) {
-    await supabase.from('reservations').update({ status }).eq('id', id)
+    const { error } = await supabase.from('reservations').update({ status }).eq('id', id)
+    if (error) { alert(error.message); return }
     setReservations(prev => prev.map(r => r.id === id ? { ...r, status } : r))
     if (status === 'awaiting_payment' || status === 'confirmed' || status === 'refused') {
       notifyReservationStatus(id)
@@ -605,6 +591,7 @@ export default function AdminDashboard() {
     { key:'comptes',    icon:'fas fa-users',        label:'Comptes',    badge:customerAccounts.length, blink:false },
     { key:'catalogue',  icon:'fas fa-box',          label:'Catalogue',  badge:0,             blink:false },
     { key:'materiaux',  icon:'fas fa-boxes',        label:'Matériel',   badge:0,             blink:false },
+    { key:'realisations', icon:'fas fa-images',    label:'Nos réalisations', badge:0,         blink:false },
     { key:'visuel',     icon:'fas fa-images',       label:'Visuel Site', badge:0,            blink:false },
     { key:'reglages',   icon:'fas fa-cog',          label:'Réglages',   badge:0,             blink:false },
   ]
@@ -681,7 +668,7 @@ export default function AdminDashboard() {
                 <h1 className="adm-title">Demandes de réservation</h1>
               </div>
               <div className="adm-filters">
-                {['all','pending','awaiting_payment','confirmed','terminee','refused'].map(f => {
+                {['all','pending','awaiting_payment','confirmed','terminee','refused','expired'].map(f => {
                   const count = f==='all' ? reservations.length : reservations.filter(r => r.status===f).length
                   return (
                     <button key={f} className={`filter-btn${resaFilter===f?' active':''}`} onClick={() => setResaFilter(f)}>
@@ -860,6 +847,13 @@ export default function AdminDashboard() {
             />
           </div>
 
+          <div className={`tab-content${activeTab==='realisations'?' active':''}`} id="tab-realisations">
+            <div className="adm-header">
+              <h1 className="adm-title">Nos réalisations</h1>
+            </div>
+            {activeTab==='realisations' && <RealisationsManager />}
+          </div>
+
           {/* VISUEL SITE */}
           <div className={`tab-content${activeTab==='visuel'?' active':''}`} id="tab-visuel">
             <div className="adm-header">
@@ -873,7 +867,6 @@ export default function AdminDashboard() {
               <button className={`block-tab${visuelTab==='accueil'?' active':''}`} onClick={() => setVisuelTab('accueil')}>Accueil</button>
               <button className={`block-tab${visuelTab==='accueil-categories'?' active':''}`} onClick={() => setVisuelTab('accueil-categories')}>Accueil — Catégories</button>
               <button className={`block-tab${visuelTab==='prestations'?' active':''}`} onClick={() => setVisuelTab('prestations')}>Prestations</button>
-              <button className={`block-tab${visuelTab==='galerie'?' active':''}`} onClick={() => setVisuelTab('galerie')}>Galerie</button>
               <button className={`block-tab${visuelTab==='apropos'?' active':''}`} onClick={() => setVisuelTab('apropos')}>À Propos</button>
               <button className={`block-tab${visuelTab==='contact'?' active':''}`} onClick={() => setVisuelTab('contact')}>Contact</button>
             </div>
@@ -903,7 +896,6 @@ export default function AdminDashboard() {
             {visuelTab==='accueil' && <ImageSlotGrid contentKey="images_home" slots={HOME_SLOTS} bucket="home" />}
             {visuelTab==='accueil-categories' && <><HomeCategoryStyleEditor /><ImageSlotGrid contentKey="images_home" slots={HOME_CATEGORY_SLOTS} bucket="home" /></>}
             {visuelTab==='prestations' && <ImageSlotGrid contentKey="images_services" slots={SERVICES_SLOTS} bucket="services" />}
-            {visuelTab==='galerie' && <GalerieManager />}
             {visuelTab==='contact' && <ImageSlotGrid contentKey="images_contact" slots={CONTACT_SLOTS} bucket="contact" />}
 
             {visuelTab==='apropos' && (
@@ -1164,6 +1156,7 @@ export default function AdminDashboard() {
                   backDate={resaDetail.backDate}
                   onBack={resaDetail.backDate ? () => { setResaDetail(null); setDayModal({ dateStr: resaDetail.backDate, mode:'calendar', page:0 }) } : null}
                   onStatus={updateResaStatus}
+                  onPaymentReceived={() => Promise.all([loadReservations(), loadPaymentSummaries()])}
                   onDelete={id => deleteResa(id, null)}
                 />
               )}
@@ -1268,6 +1261,9 @@ const STRIPE_DASHBOARD_URL = (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 
 // swapping between cards) so that state resets on switch.
 function StatusChanger({ resa, onStatus }) {
   const [open, setOpen] = useState(false)
+  if (resa.order_kind === 'rental') return resa.status === 'confirmed'
+    ? <button type="button" className="adm-btn-ghost btn-sm" onClick={() => onStatus(resa.id, 'terminee')}>Marquer terminée</button>
+    : <span>Statut géré automatiquement par le paiement.</span>
   return (
     <div className={`status-changer${open ? ' is-open' : ''}`} onClick={e => e.stopPropagation()}>
       <button type="button" className="status-changer-trigger" onClick={() => setOpen(o => !o)}>
@@ -1362,12 +1358,13 @@ function ResaList({ reservations, paymentSummaries, filter, search, onStatus, on
                       <span className="resa-payment-notice">
                         <i className="fas fa-bell" /><i className="fas fa-check" /> Paiement de {s.paidAmount.toFixed(2)} € reçu ({s.paidCount}/{s.total})
                       </span>
-                      <div className="resa-payment-verify">
+                      {r.payment_method === 'card' && <div className="resa-payment-verify">
                         <span>Cliquer ici pour vérifier :</span>
                         <a href={STRIPE_DASHBOARD_URL} target="_blank" rel="noopener noreferrer" className="resa-verify-btn" onClick={e => e.stopPropagation()}>
                           Stripe <i className="fas fa-arrow-right" />
                         </a>
-                      </div>
+                      </div>}
+                      {r.payment_method === 'virement' && <span>Virement marqué reçu par l’équipe.</span>}
                     </div>
                   )
                 })()}
@@ -1388,7 +1385,7 @@ function ResaList({ reservations, paymentSummaries, filter, search, onStatus, on
             <div className="resa-card-actions" onClick={e => e.stopPropagation()}>
               <div className="detail-actions-block">
                 <StatusChanger resa={r} onStatus={onStatus} />
-                {r.status!=='confirmed' && <button className="detail-delete-link" onClick={() => onDelete(r.id)}><i className="fas fa-trash" />Supprimer la demande</button>}
+                {r.order_kind !== 'rental' && r.status!=='confirmed' && <button className="detail-delete-link" onClick={() => onDelete(r.id)}><i className="fas fa-trash" />Supprimer la demande</button>}
               </div>
             </div>
           </div>
@@ -1445,7 +1442,7 @@ function CalGrid({ year, month, reservations, blockedDatesMap, blockedHoursMap, 
   for(let i=0;i<firstDay;i++) cells.push({ empty:true })
   for(let d=1;d<=daysInMonth;d++) {
     const ds=monthStr+'-'+String(d).padStart(2,'0')
-    cells.push({ d, ds, isPast:ds<today, isToday:ds===today, isBlocked:!!blockedDatesMap[ds], dayHours:blockedHoursMap[ds]||[], dayEvents:(eventMap[ds]||[]).filter(e=>e.r.status!=='refused'), reason:blockedDatesMap[ds]?.reason })
+    cells.push({ d, ds, isPast:ds<today, isToday:ds===today, isBlocked:!!blockedDatesMap[ds], dayHours:blockedHoursMap[ds]||[], dayEvents:(eventMap[ds]||[]).filter(e=>!['refused','expired'].includes(e.r.status)), reason:blockedDatesMap[ds]?.reason })
   }
 
   return (
@@ -1504,8 +1501,8 @@ function YearGrid({ year, reservations, blockedDatesMap, blockedHoursMap, onDayC
               {Array.from({length:daysInMonth},(_,i)=>{
                 const d=i+1; const ds=monthStr+'-'+String(d).padStart(2,'0')
                 const isBlocked=!!blockedDatesMap[ds]; const hours=blockedHoursMap[ds]||[]
-                const dayRes=(eventMap[ds]||[]).filter(r=>r.status!=='refused')
-                const hasConf=dayRes.some(r=>r.status==='confirmed'), hasPend=dayRes.some(r=>r.status==='pending')
+                const dayRes=(eventMap[ds]||[]).filter(r=>!['refused','expired'].includes(r.status))
+                const hasConf=dayRes.some(r=>r.status==='confirmed'), hasPend=dayRes.some(r=>['pending','awaiting_payment'].includes(r.status))
                 let cls='cal-mini-day'+(ds<today?' is-past':'')+(ds===today?' is-today':'')+(isBlocked?' is-blocked':hours.length>0?' is-partial':'')
                 return (
                   <div key={d} className={cls} onClick={()=>onDayClick(ds)}>
@@ -1639,7 +1636,7 @@ function DayBlocModal({ dateStr, reservations, blockedDatesMap, blockedHoursMap,
 const PAY_STATUS_LABEL = { pending:'En attente', paid:'Payé', failed:'Échoué' }
 const PAY_STATUS_CLASS = { pending:'badge-pending', paid:'badge-confirmed', failed:'badge-refused' }
 
-function PaymentsBlock({ reservationId }) {
+function PaymentsBlock({ reservationId, onReceived }) {
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState(null)
@@ -1653,8 +1650,10 @@ function PaymentsBlock({ reservationId }) {
 
   async function markReceived(paymentId) {
     setUpdatingId(paymentId)
-    await supabase.from('payments').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', paymentId)
+    const { error } = await supabase.from('payments').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', paymentId)
+    if (error) { alert(error.message); setUpdatingId(null); return }
     await load()
+    await onReceived?.()
     setUpdatingId(null)
   }
 
@@ -1692,7 +1691,7 @@ function PaymentsBlock({ reservationId }) {
   )
 }
 
-function ResaDetail({ resa, backDate, onBack, onStatus, onDelete }) {
+function ResaDetail({ resa, backDate, onBack, onStatus, onDelete, onPaymentReceived }) {
   if (!resa) return null
   const rd = getRDates(resa)
   const dateDisplay = rd.length<=1
@@ -1780,7 +1779,7 @@ function ResaDetail({ resa, backDate, onBack, onStatus, onDelete }) {
           </div>
         </div>
       )}
-      <PaymentsBlock reservationId={resa.id} />
+      <PaymentsBlock reservationId={resa.id} onReceived={onPaymentReceived} />
       {resa.message&&<div className="detail-block"><h4 className="detail-block-title"><i className="fas fa-comment" style={{marginRight:8}} />Message / Créneau</h4><p className="detail-message">{resa.message}</p></div>}
       {/* Same status-change/delete actions as the card footer — added so the
           mobile compact-tile flow (tap tile -> this popup) can actually
@@ -1790,7 +1789,7 @@ function ResaDetail({ resa, backDate, onBack, onStatus, onDelete }) {
       {onStatus && (
         <div className="detail-actions-block">
           <StatusChanger key={resa.id} resa={resa} onStatus={onStatus} />
-          {onDelete && resa.status!=='confirmed' && (
+          {onDelete && resa.order_kind !== 'rental' && resa.status!=='confirmed' && (
             <button className="detail-delete-link" onClick={() => onDelete(resa.id)}><i className="fas fa-trash" />Supprimer la demande</button>
           )}
         </div>
@@ -2075,173 +2074,6 @@ function HomeCategoryStyleEditor() {
         <button className="adm-btn-ghost" style={{ marginLeft:8 }} onClick={() => save(CAT_COLOR_DEFAULTS)} disabled={saving}>Couleurs par défaut</button>
         {saved && <span style={{marginLeft:12,color:'#2e7d32',fontWeight:700,fontSize:'.85rem'}}><i className="fas fa-check" style={{marginRight:4}} />Enregistré</span>}
       </div>
-    </div>
-  )
-}
-
-// Galerie tab of Visuel Site — unlike the other pages' fixed image slots,
-// the gallery is a real add/remove list: admin picks a photo + a category,
-// it's appended to the site_content "images_galerie" row's `photos` array,
-// and pages/galerie.jsx renders whatever's in that array (with its own
-// hardcoded DEFAULT_PHOTOS only as a fallback for a never-touched row).
-function GalerieManager() {
-  const [pageHeaderUrl, setPageHeaderUrl] = useState('')
-  const [pageHeaderPreview, setPageHeaderPreview] = useState(null)
-  const headerInputRef = useRef(null)
-  const [photos, setPhotos] = useState([])
-  const [loaded, setLoaded] = useState(false)
-  const [newFile, setNewFile] = useState(null)
-  const [newPreview, setNewPreview] = useState(null)
-  const [newCat, setNewCat] = useState(GALERIE_CATEGORIES[0].key)
-  const newFileInputRef = useRef(null)
-  const [adding, setAdding] = useState(false)
-  const [busyId, setBusyId] = useState(null)
-
-  async function load() {
-    setLoaded(false)
-    const { data } = await supabase.from('site_content').select('*').eq('key', 'images_galerie')
-    const row = data && data[0]
-    let parsed = { page_header: null, photos: [] }
-    try { parsed = row ? JSON.parse(row.value) : parsed } catch {}
-    setPageHeaderUrl(parsed.page_header || '')
-    setPageHeaderPreview(parsed.page_header || null)
-    setPhotos(Array.isArray(parsed.photos) ? parsed.photos : [])
-    setLoaded(true)
-  }
-  useEffect(() => { load() }, [])
-
-  async function persist(nextPageHeader, nextPhotos) {
-    const value = JSON.stringify({ page_header: nextPageHeader || null, photos: nextPhotos })
-    await supabase.from('site_content').update({ value }).eq('key', 'images_galerie')
-  }
-
-  async function uploadFile(file) {
-    const ext = file.name.split('.').pop().toLowerCase()
-    const path = Date.now()+'-'+Math.random().toString(36).slice(2)+'.'+ext
-    const { error } = await supabase.storage.from('galerie').upload(path, file, { upsert: false })
-    if (error) throw error
-    return supabase.storage.from('galerie').getPublicUrl(path).data.publicUrl
-  }
-
-  function handleHeaderFile(file) {
-    if (!file) return
-    if (file.size > 5*1024*1024) { alert('Image trop lourde (max 5 Mo).'); return }
-    const reader = new FileReader()
-    reader.onload = async () => {
-      setPageHeaderPreview(reader.result)
-      try {
-        const url = await uploadFile(file)
-        setPageHeaderUrl(url)
-        setPageHeaderPreview(url)
-        await persist(url, photos)
-      } catch (err) { alert('Erreur : ' + (err.message || err)) }
-    }
-    reader.readAsDataURL(file)
-  }
-
-  function handleNewFile(file) {
-    if (!file) return
-    if (file.size > 5*1024*1024) { alert('Image trop lourde (max 5 Mo).'); return }
-    setNewFile(file)
-    const reader = new FileReader()
-    reader.onload = () => setNewPreview(reader.result)
-    reader.readAsDataURL(file)
-  }
-
-  async function addPhoto() {
-    if (!newFile) return
-    setAdding(true)
-    try {
-      const url = await uploadFile(newFile)
-      const catInfo = GALERIE_CATEGORIES.find(c => c.key === newCat)
-      const nextPhotos = [...photos, { id: 'g-'+Date.now(), src: url, cat: newCat, label: catInfo?.label || newCat }]
-      await persist(pageHeaderUrl, nextPhotos)
-      setPhotos(nextPhotos)
-      setNewFile(null)
-      setNewPreview(null)
-      if (newFileInputRef.current) newFileInputRef.current.value = ''
-    } catch (err) {
-      alert('Erreur : ' + (err.message || err))
-    } finally {
-      setAdding(false)
-    }
-  }
-
-  async function deletePhoto(id) {
-    setBusyId(id)
-    try {
-      const photo = photos.find(p => p.id === id)
-      if (photo?.src?.startsWith('/uploads/')) {
-        try { await supabase.storage.from('galerie').remove([photo.src.slice('/uploads/'.length)]) } catch {}
-      }
-      const nextPhotos = photos.filter(p => p.id !== id)
-      await persist(pageHeaderUrl, nextPhotos)
-      setPhotos(nextPhotos)
-    } catch (err) {
-      alert('Erreur : ' + (err.message || err))
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  if (!loaded) return <div className="adm-empty"><i className="fas fa-circle-notch fa-spin" /><p>Chargement…</p></div>
-
-  return (
-    <div className="mat-form-card">
-      <div className="adm-form-group">
-        <label>Bannière de page <span className="adm-label-opt">(optionnel)</span></label>
-        <div className="img-upload-area" onClick={() => headerInputRef.current?.click()}>
-          {pageHeaderPreview
-            ? <img src={pageHeaderPreview} alt="" className="img-preview-thumb" />
-            : <div className="img-upload-placeholder"><i className="fas fa-image" /><p>Image par défaut</p><span>JPG, PNG, WEBP — max 5 Mo</span></div>
-          }
-        </div>
-        <input ref={headerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{display:'none'}} onChange={e => handleHeaderFile(e.target.files[0])} />
-        <div className="img-upload-btns">
-          <button className="adm-btn-ghost btn-sm" onClick={() => headerInputRef.current?.click()}><i className="fas fa-upload" style={{marginRight:4}} />Choisir</button>
-        </div>
-      </div>
-
-      <p style={{fontWeight:700, fontSize:'.85rem', margin:'24px 0 10px'}}>Ajouter une photo</p>
-      <div className="galerie-add-row">
-        <div className="img-upload-area galerie-add-preview" onClick={() => newFileInputRef.current?.click()}>
-          {newPreview
-            ? <img src={newPreview} alt="" className="img-preview-thumb" />
-            : <div className="img-upload-placeholder"><i className="fas fa-plus" /><p>Choisir une photo</p></div>
-          }
-        </div>
-        <input ref={newFileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{display:'none'}} onChange={e => handleNewFile(e.target.files[0])} />
-        <div className="galerie-add-controls">
-          <select className="adm-input" value={newCat} onChange={e => setNewCat(e.target.value)}>
-            {GALERIE_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
-          </select>
-          <button className="adm-btn-primary" onClick={addPhoto} disabled={!newFile || adding}>
-            {adding ? <><i className="fas fa-circle-notch fa-spin" style={{marginRight:8}} />Ajout…</> : <><i className="fas fa-plus" style={{marginRight:8}} />Ajouter à la galerie</>}
-          </button>
-        </div>
-      </div>
-
-      <p style={{fontWeight:700, fontSize:'.85rem', margin:'28px 0 10px'}}>Photos actuelles ({photos.length})</p>
-      {!photos.length && <p style={{color:'var(--gray)', fontSize:'.85rem'}}>Aucune photo pour l'instant.</p>}
-      {GALERIE_CATEGORIES.map(cat => {
-        const catPhotos = photos.filter(p => p.cat === cat.key)
-        if (!catPhotos.length) return null
-        return (
-          <div key={cat.key} className="galerie-cat-group">
-            <h4 className="img-slot-group-title" style={{marginTop:0}}>{cat.label} ({catPhotos.length})</h4>
-            <div className="galerie-photo-row">
-              {catPhotos.map(p => (
-                <div key={p.id} className="galerie-photo-card">
-                  <img src={p.src} alt={p.label} />
-                  <button className="galerie-photo-delete" onClick={() => deletePhoto(p.id)} disabled={busyId===p.id} aria-label="Supprimer">
-                    {busyId===p.id ? <i className="fas fa-circle-notch fa-spin" /> : <i className="fas fa-trash" />}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })}
     </div>
   )
 }

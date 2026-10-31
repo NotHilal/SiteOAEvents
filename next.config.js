@@ -25,6 +25,7 @@ const csp = [
   "img-src 'self' data: blob: https://images.unsplash.com https://cdn.prod.website-files.com https://*.stripe.com",
   `connect-src 'self' https://api.web3forms.com https://api.stripe.com https://*.stripe.com ${analyticsOrigin}${isDev ? ' ws: wss:' : ''}`,
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
+  "media-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -68,6 +69,9 @@ const nextConfig = {
   // are served by pages/api/files at their /uploads/<path> URL. Rewrites
   // run after the public/ folder is checked, so committed files under
   // public/uploads/ (the catalogue photos) are still served as static files.
+  async redirects() {
+    return ['/galerie', '/nos-experiences'].map(source => ({ source, destination: '/nos-realisations', permanent: true }));
+  },
   async rewrites() {
     return [
       { source: '/uploads/:path*', destination: '/api/files/:path*' },
@@ -82,6 +86,8 @@ const nextConfig = {
       { source: '/((?!example|catalogue-reference\\.html).*)', headers: securityHeaders },
       // Admin, API and order tracking never belong in search results.
       { source: '/espace-oa', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
+      { source: '/mon-compte/reinitialiser-mot-de-passe', headers: [{ key: 'Referrer-Policy', value: 'no-referrer' }, { key: 'Cache-Control', value: 'no-store' }, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
+      { source: '/mon-compte/mot-de-passe-oublie', headers: [{ key: 'Cache-Control', value: 'no-store' }, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
       { source: '/api/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex' }, { key: 'Cache-Control', value: 'no-store' }] },
       // Long-lived caching for static icons/images in /public.
       { source: '/:file(.*\\.(?:png|jpg|jpeg|webp|avif|svg|ico))', headers: [{ key: 'Cache-Control', value: 'public, max-age=604800, stale-while-revalidate=86400' }] },

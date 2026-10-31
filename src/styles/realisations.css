@@ -1,0 +1,24 @@
+.realisations-heading { margin: 32px 0 48px; max-width: 75ch; overflow-wrap: anywhere; }
+.realisations-heading h1 { font-family: var(--oa-font-heading); font-size: var(--oa-size-h1); margin-bottom: 20px; }
+.realisations-heading p, .realisation-card p { color: var(--oa-muted); }
+.realisations-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 28px; }
+.realisation-card { min-width: 0; overflow-wrap: anywhere; }
+.realisation-card a { color: var(--oa-text); text-decoration: none; display: block; }
+.realisation-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.realisation-card h2 { font-family: var(--oa-font-heading); font-size: var(--oa-size-h3); margin: 22px 0 12px; }
+.realisations-empty { padding: 48px 0; border-top: 1px solid var(--oa-border); }
+.realisations-empty h2 { font-size: var(--oa-size-h3); }
+.realisation-cover, .realisation-media button { display: block; padding: 0; border: 0; background: transparent; width: 100%; cursor: zoom-in; }
+.realisation-cover img { width: 100%; max-height: 680px; object-fit: contain; background: var(--oa-surface); }
+.realisation-body { max-width: 75ch; margin: 48px auto; white-space: pre-line; overflow-wrap: anywhere; line-height: 1.8; }
+.realisation-media { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; margin-bottom: 48px; }
+.realisation-media img, .realisation-media video { display: block; width: 100%; max-height: 580px; object-fit: contain; background: #16140f; }
+.realisation-media figcaption { color: var(--oa-muted); margin-top: 10px; overflow-wrap: anywhere; }
+.realisation-card a:focus-visible, .realisation-cover:focus-visible, .realisation-media button:focus-visible { outline: 3px solid var(--oa-accent-ink); outline-offset: 6px; }
+.realisation-editor-actions { display: flex; gap: 12px; flex-wrap: wrap; margin: 20px 0; }
+.realisation-admin-list { display: grid; gap: 24px; margin-top: 24px; }
+.realisation-admin-item { border-top: 1px solid var(--oa-border); padding-top: 24px; overflow-wrap: anywhere; }
+.realisation-admin-item img, .realisation-editor-media img, .realisation-editor-media video { width: 180px; max-width: 100%; max-height: 140px; object-fit: contain; }
+.realisation-editor-media { margin: 24px 0; }
+@media (max-width: 991px) { .realisations-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .realisations-grid, .realisation-media { grid-template-columns: minmax(0, 1fr); } .realisations-heading { margin-bottom: 32px; } }

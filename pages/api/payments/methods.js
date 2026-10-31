@@ -1,11 +1,10 @@
 import db from '../../../src/lib/sqlite-db.js';
-import { isStripeConfigured, getAllInstallmentTiers } from '../../../src/lib/stripe.js';
+import { isCardCheckoutConfigured, getAllInstallmentTiers } from '../../../src/lib/stripe.js';
 
 // Public, read-only, booleans only — lets the reservation page know whether
 // to show a payment step at all, and which option(s) to offer, without
-// exposing the IBAN or any secret. Until an admin fills in Stripe keys
-// and/or a bank IBAN in Réglages, both are false and the reservation flow
-// falls back to its original "just submit the request" behavior.
+// exposing the IBAN or any secret. With no configured payment provider,
+// the rental form directs clients to contact OA instead of taking an order.
 //
 // An optional ?reservationId= adds `installmentTiers` (2x/3x/4x eligibility)
 // for that specific reservation, based on its event date and total — so the
@@ -17,7 +16,7 @@ export default async function handler(req, res) {
   }
   const row = await db.prepare("SELECT value FROM settings WHERE key = 'bank_iban'").get();
   const data = {
-    card: isStripeConfigured(),
+    card: isCardCheckoutConfigured(),
     virement: !!(row && row.value),
   };
 
@@ -29,6 +28,8 @@ export default async function handler(req, res) {
         try { return (JSON.parse(reservation.dates) || [])[0] || reservation.date; } catch { return reservation.date; }
       })();
       data.installmentTiers = await getAllInstallmentTiers(reservation.grand_total, eventDate);
+      const payments = await db.prepare('SELECT method FROM payments WHERE reservation_id = ? ORDER BY installment_index').all(reservationId);
+      if (payments.length) data.prepared = { method: payments[0].method, count: payments.length };
     }
   }
 

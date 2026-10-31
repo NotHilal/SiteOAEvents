@@ -31,10 +31,10 @@ export default function Cgv() {
       <p>La réservation s'effectue en ligne, en plusieurs étapes :</p>
       <ol>
         <li>le Client sélectionne son matériel, la ou les dates de son événement et l'adresse de livraison ;</li>
-        <li>une estimation indicative, livraison comprise, est calculée en ligne ;</li>
-        <li>le Client envoie sa demande, qui reçoit un numéro de commande ;</li>
-        <li>l'équipe du Prestataire vérifie la disponibilité et confirme ou refuse la demande par email ;</li>
-        <li>la réservation devient ferme après <ToFill>réception du paiement intégral ou de l'acompte ? à préciser</ToFill>.</li>
+        <li>le total de la location et de la livraison est calculé et vérifié avant paiement ;</li>
+        <li>le Client enregistre sa commande de matériel, qui reçoit un numéro et réserve temporairement le stock ;</li>
+        <li>le Client règle son premier versement en ligne ou par virement dans le délai affiché ;</li>
+        <li>la commande est confirmée automatiquement après réception du premier versement prévu à l’échéancier. Les prestations sur mesure font l’objet d’un devis distinct.</li>
       </ol>
       <p>
         La « simulation de devis » ne constitue pas une commande. Le Client peut suivre sa demande à tout moment

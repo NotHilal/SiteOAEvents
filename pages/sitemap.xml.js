@@ -1,3 +1,4 @@
+import { getRealisations } from '../src/lib/realisations-server.js'
 import { SITE_URL, PUBLIC_PAGES } from '../src/lib/site.js'
 import db from '../src/lib/sqlite-db.js'
 
@@ -33,8 +34,9 @@ ${urls}
 
 export async function getServerSideProps({ res }) {
   res.setHeader('Content-Type', 'application/xml; charset=utf-8')
-  res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=86400')
-  res.write(buildSitemap([...PUBLIC_PAGES, ...(await productPages())]))
+  res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate')
+  const realisations = await getRealisations()
+  res.write(buildSitemap([...PUBLIC_PAGES, ...(await productPages()), ...realisations.map(item => ({ path: `/nos-realisations/${item.slug}`, priority: 0.6, changefreq: 'monthly' }))]))
   res.end()
   return { props: {} }
 }
