@@ -1,5 +1,6 @@
 import db from '../../src/lib/sqlite-db.js';
 import { rateLimit } from '../../src/lib/rate-limit.js';
+import { expireUnpaidOrders, flushOrderEmails } from '../../src/lib/orders.js';
 
 // Public lookup, deliberately requiring BOTH the reference and the email
 // used on the request — the reference alone (6 chars, ~1 billion
@@ -18,6 +19,8 @@ export default async function handler(req, res) {
   }
 
   try {
+    await expireUnpaidOrders();
+    await flushOrderEmails();
     const resa = await db.prepare(`
       SELECT * FROM reservations
       WHERE lower(email) = lower(?) AND upper(reference) = upper(?)
@@ -42,6 +45,7 @@ export default async function handler(req, res) {
         id: resa.id,
         reference: resa.reference,
         status: resa.status,
+        expires_at: resa.expires_at,
         dates: dates.length ? dates : [resa.date],
         event_type: resa.event_type,
         nb_persons: resa.nb_persons,

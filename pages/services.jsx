@@ -120,7 +120,7 @@ export default function Services() {
                     <ul className="service-includes">
                       {s.items.map((item, j) => <li key={j}>{item}</li>)}
                     </ul>
-                    <Link href="/reservation" className="btn btn-rose-gold">Demander un devis</Link>
+                    <Link href={s.slotKey === 'service_4' ? '/catalogue' : '/contact'} className="btn btn-rose-gold">{s.slotKey === 'service_4' ? 'Louer du matériel' : 'Demander un devis sur mesure'}</Link>
                   </div>
                 </div>
               </div>

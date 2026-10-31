@@ -5,6 +5,7 @@ import { PUBLIC_SANITIZERS, isSpam } from '../../src/lib/public-submissions';
 import { rateLimit } from '../../src/lib/rate-limit';
 import { slugify } from '../../src/lib/slug';
 import { normalizeCategoryTitle } from '../../src/lib/catalogue-pages';
+import { createRentalOrder, confirmPaidOrder, expireUnpaidOrders } from '../../src/lib/orders.js';
 
 // URL slug for a new material or product (/catalogue/[slug]), unique across
 // BOTH tables: the product page resolves product slugs first, so a material
@@ -126,6 +127,7 @@ export default async function handler(req, res) {
     const filters = filtersStr ? JSON.parse(filtersStr) : [];
 
     if (method === 'GET') {
+      if (table === 'reservations') await expireUnpaidOrders();
       let sql = `SELECT * FROM ${table}`;
       const whereClauses = [];
       const params = [];
@@ -197,6 +199,10 @@ export default async function handler(req, res) {
           // Pretend success so bots don't learn to adapt.
           return res.status(200).json({ data: { id: crypto.randomUUID() } });
         }
+        if (table === 'reservations' && Array.isArray(payload.materials) && payload.materials.length) {
+          const data = await createRentalOrder(payload);
+          return res.status(201).json({ data });
+        }
         const { record, error } = await sanitize(payload);
         if (error) return res.status(400).json({ message: error });
         payload = record;
@@ -258,6 +264,30 @@ export default async function handler(req, res) {
 
       const actualPayload = payload.payload ? payload.payload : payload;
       const actualFilters = payload.filters ? payload.filters : filters;
+
+      if (table === 'reservations') {
+        const id = actualFilters.find(f => f.type === 'eq' && f.field === 'id')?.value;
+        const directOrders = id
+          ? await db.prepare("SELECT status FROM reservations WHERE id = ? AND order_kind = 'rental'").all(id)
+          : await db.prepare("SELECT status FROM reservations WHERE order_kind = 'rental' LIMIT 1").all();
+        if (directOrders.length && (!id || actualPayload.status !== 'terminee' || Object.keys(actualPayload).length !== 1 || directOrders[0].status !== 'confirmed')) return res.status(409).json({ message: 'Le statut de cette commande est géré par le paiement. Seule une commande confirmée peut être marquée terminée.' });
+      }
+
+      if (table === 'payments' && actualPayload.status === 'paid') {
+        const id = actualFilters.find(f => f.type === 'eq' && f.field === 'id')?.value;
+        if (!id) return res.status(400).json({ message: 'Un versement précis est requis.' });
+        const currentPayment = await db.prepare('SELECT reservation_id FROM payments WHERE id = ?').get(id);
+        if (currentPayment) await expireUnpaidOrders(currentPayment.reservation_id);
+        const payment = await db.writeTransaction(async tx => {
+          const p = await tx.prepare('SELECT * FROM payments WHERE id = ?').get(id);
+          const order = p && await tx.prepare('SELECT status, expires_at FROM reservations WHERE id = ?').get(p.reservation_id);
+          if (!p || p.method !== 'virement' || !['awaiting_payment', 'confirmed'].includes(order?.status) || (order.status === 'awaiting_payment' && order.expires_at && Date.parse(order.expires_at) <= Date.now())) throw Object.assign(new Error('Ce virement ne peut pas être confirmé : vérifiez le statut de la commande et la disponibilité avant de traiter un versement tardif.'), { status: 409 });
+          await tx.prepare("UPDATE payments SET status = 'paid', paid_at = COALESCE(paid_at, ?) WHERE id = ?").run(new Date().toISOString(), id);
+          return p;
+        });
+        await confirmPaidOrder(payment.reservation_id);
+        return res.json({ data: await db.prepare('SELECT * FROM payments WHERE id = ?').all(id) });
+      }
 
       if (table === 'categories' && (actualPayload.name || actualPayload.label)) {
         const idFilter = (actualFilters || []).find(f => f.field === 'id' && f.type === 'eq')
@@ -331,6 +361,13 @@ export default async function handler(req, res) {
     if (method === 'DELETE') {
       const payload = req.body;
       const actualFilters = payload && payload.filters ? payload.filters : filters;
+      if (table === 'reservations' || table === 'payments') {
+        const id = actualFilters.find(f => f.type === 'eq' && f.field === 'id')?.value;
+        const direct = table === 'reservations'
+          ? await db.prepare("SELECT id FROM reservations WHERE order_kind = 'rental'" + (id ? ' AND id = ?' : '') + ' LIMIT 1').get(...(id ? [id] : []))
+          : await db.prepare("SELECT p.id FROM payments p JOIN reservations r ON r.id = p.reservation_id WHERE r.order_kind = 'rental'" + (id ? ' AND p.id = ?' : '') + ' LIMIT 1').get(...(id ? [id] : []));
+        if (direct) return res.status(409).json({ message: 'Les commandes directes et leurs paiements sont conservés pour le suivi.' });
+      }
 
       let sql = `DELETE FROM ${table}`;
       const whereClauses = [];
@@ -365,6 +402,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method Not Allowed' });
   } catch (error) {
     console.error(`[API DB Error for ${table}]`, error);
-    return res.status(500).json({ message: 'Internal Server Error' });
+    return res.status(error.status || (/SQLITE_BUSY|SQLITE_LOCKED/.test(String(error.code)) ? 409 : 500)).json({ message: error.status ? error.message : /SQLITE_BUSY|SQLITE_LOCKED/.test(String(error.code)) ? 'Une autre commande est en cours. Réessayez dans quelques instants.' : 'Internal Server Error' });
   }
 }

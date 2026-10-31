@@ -23,7 +23,7 @@ const depotCoordsCache = new Map();
 
 export async function geocodeAddress(address) {
   const url = `${NOMINATIM_URL}?format=json&limit=1&q=${encodeURIComponent(address)}`;
-  const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
+  const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error('Le service de géocodage est indisponible.');
   const data = await res.json();
   if (!data.length) throw new Error("Adresse introuvable. Vérifiez l'adresse saisie.");
@@ -32,7 +32,7 @@ export async function geocodeAddress(address) {
 
 async function getDrivingDistanceKm(origin, dest) {
   const url = `${OSRM_URL}/${origin.lon},${origin.lat};${dest.lon},${dest.lat}?overview=false`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
   if (!res.ok) throw new Error("Le service d'itinéraire est indisponible.");
   const data = await res.json();
   if (data.code !== 'Ok' || !data.routes?.length) throw new Error('Itinéraire introuvable pour cette adresse.');

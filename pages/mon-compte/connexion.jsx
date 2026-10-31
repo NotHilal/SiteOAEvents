@@ -76,7 +76,7 @@ export default function ConnexionCompte() {
               </div>
               <div className="oa-auth-actions">
                 <button type="submit" className="oa-auth-primary" disabled={loading}>{loading ? 'Connexion…' : 'Me connecter'}</button>
-                <Link href="/contact" className="oa-auth-text-link">Mot de passe oublié ?</Link>
+                <Link href="/mon-compte/mot-de-passe-oublie" className="oa-auth-text-link">Mot de passe oublié ?</Link>
               </div>
             </form>
           </div>

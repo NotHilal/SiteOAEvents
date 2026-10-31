@@ -54,7 +54,7 @@ export default function Footer() {
                 <ul role="list" className="list-style-one">
                   <li className="list-item"><Link href="/" className="list-text-link">Accueil</Link></li>
                   <li className="list-item"><Link href="/services" className="list-text-link">Prestations</Link></li>
-                  <li className="list-item"><Link href="/galerie" className="list-text-link">Galerie</Link></li>
+                  <li className="list-item"><Link href="/nos-realisations" className="list-text-link">Nos réalisations</Link></li>
                   <li className="list-item"><Link href="/devis" className="list-text-link">Simulation de Devis</Link></li>
                 </ul>
                 <ul role="list" className="list-style-one">

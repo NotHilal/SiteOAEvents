@@ -45,6 +45,23 @@ export function hashCustomerPassword(password) {
   return `scrypt$${salt}$${hash}`
 }
 
+export function customerPasswordError(password) {
+  return typeof password !== 'string' || password.length < 8 || password.length > 128 || !/[A-Za-zÀ-ÿ]/.test(password) || !/\d/.test(password)
+    ? 'Le mot de passe doit contenir entre 8 et 128 caractères, dont une lettre et un chiffre.' : null
+}
+
+// Reconstruct a reset token only on the server. A database copy contains
+// its random request id and hash, but cannot recreate the bearer token.
+export function createPasswordResetToken(requestId) {
+  const secret = getSecret()
+  if (!secret) throw new Error('Customer authentication unavailable')
+  return crypto.createHmac('sha256', secret).update(`password-reset:${requestId}`).digest('hex')
+}
+
+export function isCurrentCustomerSession(session, account) {
+  return !!(session && account?.active && Number(session.sv || 0) === Number(account.session_version || 0))
+}
+
 export function verifyCustomerPassword(password, stored) {
   try {
     const [algorithm, salt, expected] = String(stored || '').split('$')
@@ -63,6 +80,7 @@ export function createCustomerToken(account) {
     sub: String(account.id),
     email: account.email,
     role: 'customer',
+    sv: Number(account.session_version || 0),
     exp: Date.now() + SESSION_DURATION_MS,
   })).toString('base64url')
   return `${payload}.${sign(payload, secret)}`

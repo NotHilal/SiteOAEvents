@@ -23,8 +23,18 @@ npm-debug.log*
 *.sqlite
 *.sqlite.bak
 *.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
 data/.jwt_dev_secret
 data/.customer_jwt_dev_secret
 
 # ───── Serveur local ─────
 serveur-local.ps1
+
+# Sauvegardes privées (base, médias et manifestes)
+backups/
+restores/
+
+# ───── Agents & Outils locaux ─────
+.agents/
+.codex/

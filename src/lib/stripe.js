@@ -12,13 +12,17 @@ export function getStripe() {
     throw new Error('STRIPE_SECRET_KEY manquant — configurez les clés Stripe dans .env pour activer le paiement en ligne.');
   }
   if (!_stripe) {
-    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20', timeout: 10000, maxNetworkRetries: 2 });
   }
   return _stripe;
 }
 
 export function isStripeConfigured() {
   return !!process.env.STRIPE_SECRET_KEY;
+}
+
+export function isCardCheckoutConfigured() {
+  return isStripeConfigured() && !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && !!process.env.STRIPE_WEBHOOK_SECRET;
 }
 
 async function getSetting(key, fallback) {
@@ -149,7 +153,7 @@ export async function getOrCreateCustomer(reservation) {
     name,
     phone: reservation.phone || undefined,
     metadata: { reservation_id: reservation.id },
-  });
+  }, { idempotencyKey: `customer:${reservation.id}` });
   return customer.id;
 }
 
@@ -172,7 +176,7 @@ export async function createFirstInstallmentIntent({ customerId, amount, reserva
     ...(needsFutureUsage ? { setup_future_usage: 'off_session' } : {}),
     payment_method_types: ['card'],
     metadata: { reservation_id: reservationId, installment_id: installmentId },
-  });
+  }, { idempotencyKey: `first-payment:${installmentId}` });
 }
 
 // A Subscription Schedule phase needs a real Product (inline product data
@@ -183,7 +187,7 @@ async function getInstallmentProductId() {
   const row = await db.prepare("SELECT value FROM settings WHERE key = 'stripe_installment_product_id'").get();
   if (row?.value) return row.value;
   const stripe = getStripe();
-  const product = await stripe.products.create({ name: 'Versement de réservation' });
+  const product = await stripe.products.create({ name: 'Versement de réservation' }, { idempotencyKey: 'oa-installment-product-v1' });
   await db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('stripe_installment_product_id', ?, ?)")
     .run(product.id, new Date().toISOString());
   return product.id;
@@ -221,5 +225,5 @@ export async function createInstallmentAutoCharge({ customerId, amount, dueDateS
       collection_method: 'charge_automatically',
     }],
     metadata: { reservation_id: reservationId, installment_id: installmentId },
-  });
+  }, { idempotencyKey: `installment:${installmentId}` });
 }

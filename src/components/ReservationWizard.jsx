@@ -7,6 +7,8 @@ import { supabase } from '../lib/supabase.js'
 import { getDayType, getUnitPriceTtc, groupTiersByMaterial, getMinOrderQty } from '../lib/pricing.js'
 import Seo from './Seo.jsx'
 import { track } from '../lib/analytics.js'
+import dynamic from 'next/dynamic'
+const PaymentFlow = dynamic(() => import('./PaymentFlow.jsx'), { ssr: false })
 
 const HOURS =['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
@@ -81,11 +83,16 @@ export default function ReservationWizard({ simulation = false }) {
   const [rangeAnchor, setRangeAnchor] = useState(null)
   const wizardRef = useRef(null)
 
-  // Shown on the success screen once the request is submitted — the order
-  // reference the client will need on /suivi to check status and pay once
-  // confirmed (payment happens there, not here — see PaymentFlow.jsx).
+  // Direct checkout receipt; the same reference resumes payment on /suivi.
   // Stays null in simulation mode since nothing is ever created.
   const [orderReference, setOrderReference] = useState(null)
+  const [createdOrder, setCreatedOrder] = useState(null)
+  const [paymentSummary, setPaymentSummary] = useState(null)
+  const checkoutKeyRef = useRef(null)
+  const [checkoutAvailable, setCheckoutAvailable] = useState(null)
+  useEffect(() => {
+    if (!simulation) fetch('/api/payments/methods').then(r => r.json()).then(result => setCheckoutAvailable(!!(result.data?.card || result.data?.virement))).catch(() => setCheckoutAvailable(false))
+  }, [simulation])
 
   useEffect(() => {
     if (!simulation) track('Début réservation')
@@ -187,14 +194,13 @@ export default function ReservationWizard({ simulation = false }) {
       // overlap instead of stack, which could oversell stock once more than
       // one reservation landed on the same day).
       const used = {}
-      ;(res.data||[]).forEach(r => {
-        const rDates = r.dates || [r.date]
-        if (!dates.some(d => rDates.includes(d))) return
-        ;(r.materials||[]).forEach(m => {
-          const k = String(m.id)
-          used[k] = (used[k]||0) + (parseInt(m.quantity)||0)
+      for (const date of dates) {
+        const daily = {}
+        ;(res.data || []).filter(r => (r.dates?.length ? r.dates : [r.date]).includes(date)).forEach(r => {
+          ;(r.materials || []).forEach(m => { const k = String(m.id); daily[k] = (daily[k] || 0) + Number(m.quantity) })
         })
-      })
+        for (const [id, quantity] of Object.entries(daily)) used[id] = Math.max(used[id] || 0, quantity)
+      }
       setStockUsed(used)
     } catch {}
   }
@@ -268,7 +274,6 @@ export default function ReservationWizard({ simulation = false }) {
       if (range.length >= maxConsecutiveDays) return null
       const candidate = addDays(cursor, 1)
       if (isDateDisabled(candidate)) return null
-      if (busyDates.has(candidate)) return null
       range.push(candidate)
       cursor = candidate
     }
@@ -389,12 +394,15 @@ export default function ReservationWizard({ simulation = false }) {
     // Infos moved to step 3 (was step 2) — validation stays tied to the
     // Infos fields themselves, not the step number, so it moves with it.
     if (n === 3) {
-      const { prenom, nom, email, address, type, nb } = form
-      if (!prenom||!nom||!email.includes('@')||!address.trim()||!type||!nb||parseInt(nb)<1) {
+      const { prenom, nom, email, address, type, nb, phone } = form
+      if (!prenom||!nom||!email.includes('@')||!address.trim()||!type||!nb||parseInt(nb)<1||(!simulation && !phone.trim())) {
         setStep2Error(true)
         return false
       }
       return true
+    }
+    if (n === 2 && !simulation && !Object.values(cart).some(q => q > 0)) {
+      setSubmitError('Ajoutez du matériel pour commander. Pour une prestation sur mesure, contactez-nous.'); return false
     }
     return true
   }
@@ -502,7 +510,7 @@ export default function ReservationWizard({ simulation = false }) {
   async function submitForm() {
     if (submitting) return
     setSubmitting(true)
-    setSubmitError(false)
+    setSubmitError('')
     let message = form.message
     if (timeType === 'hours' && selectedHours.length) {
       const line = 'Créneaux demandés : ' + [...selectedHours].sort().join(', ')
@@ -519,6 +527,9 @@ export default function ReservationWizard({ simulation = false }) {
       })
     try {
       const { data, error } = await supabase.from('reservations').insert({
+        checkout_key: checkoutKeyRef.current || (checkoutKeyRef.current = crypto.randomUUID()),
+        time_type: timeType,
+        hours: selectedHours,
         prenom: form.prenom.trim() || null,
         nom: form.nom.trim() || null,
         email: form.email.trim(),
@@ -542,15 +553,16 @@ export default function ReservationWizard({ simulation = false }) {
         website: form.website,
       })
       if (error) throw error
-      track('Demande envoyée', { articles: mats.length })
+      track('Commande créée', { articles: mats.length })
 
       setOrderReference(data.reference || null)
+      setCreatedOrder(data)
       setSuccess(true)
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }
-    } catch {
-      setSubmitError(true)
+    } catch (error) {
+      setSubmitError(error.message || 'La commande n’a pas pu être enregistrée. Réessayez.')
     } finally {
       setSubmitting(false)
     }
@@ -607,7 +619,7 @@ export default function ReservationWizard({ simulation = false }) {
       const cIsBlk = blockedDates.has(candidate)
       const cBlkH = blockedHours[candidate] || []
       const cAllBlk = cBlkH.length >= HOURS.length
-      if (cIsPast || cIsBlk || cAllBlk || busyDates.has(candidate)) break
+      if (cIsPast || cIsBlk || cAllBlk) break
       reachableForward.add(candidate)
       cursor = candidate
     }
@@ -668,7 +680,7 @@ export default function ReservationWizard({ simulation = false }) {
     return (
       <>
         <Head>
-          <title>{(simulation ? 'Votre Devis' : 'Réservation Réussie') + ' — OA Événementiel'}</title>
+          <title>{(simulation ? 'Votre Devis' : 'Commande à régler') + ' — OA Événementiel'}</title>
         </Head>
         <div className="site-wrap">
           <section className="resa-section">
@@ -715,17 +727,20 @@ export default function ReservationWizard({ simulation = false }) {
                 </div>
               ) : (
                 <div className="resa-success-msg">
-                  <span className="success-icon"><i className="fas fa-check-circle" /></span>
-                  <h3>Demande envoyée !</h3>
-                  <p>Votre demande de réservation a bien été reçue. Nous vous répondrons dans les plus brefs délais pour confirmer les détails.</p>
+                  <span className="success-icon"><i className="fas fa-clock" /></span>
+                  <h1 className="h3">Finalisez votre commande</h1>
+                  <p>Votre matériel est réservé temporairement. Le premier versement confirme automatiquement votre commande.</p>
                   {orderReference && (
                     <p className="recap-card" style={{display:'inline-block',padding:'14px 24px',margin:'16px 0'}}>
                       Numéro de commande : <strong style={{letterSpacing:'1px'}}>{orderReference}</strong>
                     </p>
                   )}
-                  <p>Vous recevrez un email dès que votre demande sera confirmée, avec un lien pour régler votre réservation. Conservez votre numéro de commande — il vous permet de suivre votre demande à tout moment.</p>
+                  {createdOrder?.expires_at && !paymentSummary && <p>Réglez avant le {new Date(createdOrder.expires_at).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })} (heure de Paris). Un délai spécifique est indiqué si vous choisissez le virement.</p>}
+                  {createdOrder?.id && !paymentSummary && <PaymentFlow reservationId={createdOrder.id} grandTotal={createdOrder.grand_total} orderReference={orderReference} onComplete={setPaymentSummary} onPrepared={data => setCreatedOrder(order => ({ ...order, expires_at: data.expiresAt }))} />}
+                  {paymentSummary && <p role="status">{paymentSummary.method === 'card' ? 'Paiement transmis. La confirmation sera affichée dans le suivi dès validation bancaire.' : 'Votre commande sera confirmée dès réception du premier virement. Retrouvez les instructions et le délai dans le suivi.'}</p>}
+                  <p>Conservez votre numéro de commande et utilisez votre email pour retrouver la commande dans le suivi.</p>
                   <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap',marginTop:8}}>
-                    <Link href="/suivi" className="btn btn-rose-gold mt-3">Suivre ma demande</Link>
+                    <Link href="/suivi" className="btn btn-rose-gold mt-3">Suivre ma commande</Link>
                     <Link href="/" className="step-prev-btn mt-3" style={{padding:'14px 38px'}}>Retour à l'accueil</Link>
                   </div>
                 </div>
@@ -773,6 +788,7 @@ export default function ReservationWizard({ simulation = false }) {
               </div>
             )}
             <div id="resa-wizard" ref={wizardRef}>
+              {!simulation && checkoutAvailable === false && <div className="resa-alert" role="status">La commande en ligne est momentanément indisponible. <Link href="/contact">Contactez-nous pour votre location ou un devis</Link>.</div>}
               {/* Stepper */}
               <div className="resa-stepper">
                 {['Date', 'Matériel', 'Infos', 'Récap'].map((label, i) => {
@@ -998,7 +1014,7 @@ export default function ReservationWizard({ simulation = false }) {
                       <input type="email" className="form-control" value={form.email} onChange={e => setForm(f=>({...f,email:e.target.value}))} style={step2Error && !form.email.includes('@') ? {borderColor:'#e53e3e'} : {}} />
                     </div>
                     <div className="form-group">
-                      <label>Téléphone</label>
+                      <label>Téléphone {!simulation && <span className="req">*</span>}</label>
                       <input
                         type="tel"
                         inputMode="numeric"
@@ -1084,6 +1100,8 @@ export default function ReservationWizard({ simulation = false }) {
                   <span className="step-tag">Étape {currentStep} / 4</span>
                   <h2 className="step-title">Matériaux & Décoration</h2>
                   <p className="step-desc">Sélectionnez les articles que vous souhaitez louer pour votre événement.</p>
+                  {!simulation && <p>Pour l’organisation de votre événement, <Link href="/contact">demandez un devis sur mesure</Link>. La commande directe concerne la location de matériel.</p>}
+                  {submitError && <p role="alert">{submitError}</p>}
 
                   {!materialsData.length && (
                     <p className="no-mat-msg"><i className="fas fa-info-circle me-2" />Aucun matériel disponible pour le moment.</p>
@@ -1254,7 +1272,7 @@ export default function ReservationWizard({ simulation = false }) {
                   <h2 className="step-title">Récapitulatif</h2>
 
                   <>
-                      <p className="step-desc">{simulation ? 'Vérifiez les informations de votre simulation.' : "Vérifiez les informations avant d'envoyer votre demande."}</p>
+                      <p className="step-desc">{simulation ? 'Vérifiez les informations de votre simulation.' : 'Vérifiez votre commande de matériel et les frais de livraison avant de passer au paiement.'}</p>
 
                       <div className="recap-card">
                         {[
@@ -1324,14 +1342,14 @@ export default function ReservationWizard({ simulation = false }) {
                           <span>Livraison</span><strong>{quote ? quote.fee.toFixed(2) + ' €' : '—'}</strong>
                         </div>
                         <div className="res-total-row res-total-grand">
-                          <span>Total estimé</span><strong>{grandTotal.toFixed(2)} €</strong>
+                          <span>{simulation ? 'Total estimé' : 'Total TTC'}</span><strong>{grandTotal.toFixed(2)} €</strong>
                         </div>
-                        <p className="res-quote-disclaimer">Estimation indicative — le montant définitif vous sera confirmé par notre équipe.</p>
+                        <p className="res-quote-disclaimer">{simulation ? 'Estimation indicative.' : 'Les prix et disponibilités sont vérifiés à nouveau au moment de commander. La commande est confirmée après réception du premier versement.'}</p>
                       </div>
 
                       {submitError && (
                         <div className="resa-alert mt-3">
-                          <i className="fas fa-exclamation-circle" />Une erreur est survenue. Veuillez réessayer.
+                          <i className="fas fa-exclamation-circle" />{submitError}
                         </div>
                       )}
 
@@ -1348,12 +1366,12 @@ export default function ReservationWizard({ simulation = false }) {
 
                       <div className="step-nav">
                         <button className="step-prev-btn" onClick={goPrev}><i className="fas fa-arrow-left me-1" />Retour</button>
-                        <button className="btn btn-rose-gold step-next-btn" onClick={goNext} disabled={submitting}>
+                        <button className="btn btn-rose-gold step-next-btn" onClick={goNext} disabled={submitting || (!simulation && (!quote || quoteLoading || !materialsTotal || checkoutAvailable === false))}>
                           {submitting
                             ? <><i className="fas fa-circle-notch fa-spin me-1" />Envoi…</>
                             : simulation
                               ? <>Voir mon devis <i className="fas fa-receipt ms-1" /></>
-                              : <>Envoyer ma demande <i className="fas fa-paper-plane ms-1" /></>
+                              : <>Commander et passer au paiement <i className="fas fa-credit-card ms-1" /></>
                           }
                         </button>
                       </div>

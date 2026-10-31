@@ -8,7 +8,7 @@ export function isEmailConfigured() {
   return !!process.env.RESEND_API_KEY;
 }
 
-export async function sendEmail({ to, subject, html }) {
+export async function sendEmail({ to, subject, html, idempotencyKey, timeoutMs = 10000 }) {
   if (!isEmailConfigured()) {
     console.warn(`[email] RESEND_API_KEY manquant — email "${subject}" à ${to} non envoyé.`);
     return { skipped: true };
@@ -19,14 +19,37 @@ export async function sendEmail({ to, subject, html }) {
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
     },
     body: JSON.stringify({ from, to, subject, html }),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) {
     const errText = await res.text().catch(() => '');
     throw new Error(`Resend API error (${res.status}): ${errText}`);
   }
   return res.json();
+}
+
+export function passwordResetEmail({ name, resetUrl }) {
+  const subject = 'Réinitialiser votre mot de passe — OA Événementiel';
+  return { subject, html: layout(subject, `<p>Bonjour ${escapeHtml(name)},</p><p>Vous avez demandé à réinitialiser le mot de passe de votre compte client.</p><p><a href="${escapeHtml(resetUrl)}">Choisir un nouveau mot de passe</a></p><p>Ce lien est valable 30 minutes et ne peut être utilisé qu’une fois.</p><p>Si vous n’êtes pas à l’origine de cette demande, ignorez cet email. Votre mot de passe reste inchangé.</p>`) };
+}
+
+export function customerWelcomeEmail({ name, accountUrl, trackingUrl }) {
+  const subject = 'Bienvenue chez OA Événementiel';
+  return { subject, html: layout(subject, `<p>Bonjour ${escapeHtml(name)},</p><p>Votre compte client OA Événementiel a bien été créé.</p><p>Vous pouvez accéder à votre espace personnel et gérer vos coordonnées.</p><p><a href="${escapeHtml(accountUrl)}">Accéder à mon espace client</a></p><p>Pour retrouver une commande, utilisez votre adresse email et son numéro de référence sur la <a href="${escapeHtml(trackingUrl)}">page de suivi</a>.</p><p>Une question ? Écrivez-nous à <a href="mailto:contact@oa-evenementiel.fr">contact@oa-evenementiel.fr</a>.</p>`) };
+}
+
+export function passwordChangedEmail({ name }) {
+  const subject = 'Votre mot de passe a été modifié — OA Événementiel';
+  return { subject, html: layout(subject, `<p>Bonjour ${escapeHtml(name)},</p><p>Le mot de passe de votre compte client vient d’être modifié. Les anciennes sessions ont été déconnectées.</p><p>Si vous n’êtes pas à l’origine de ce changement, contactez-nous à <a href="mailto:contact@oa-evenementiel.fr">contact@oa-evenementiel.fr</a>.</p>`) };
+}
+
+export function orderCreatedEmail({ name, reference, grandTotal, trackingUrl, expiresAt }) {
+  const subject = `Votre commande ${reference} — paiement à finaliser — OA Événementiel`;
+  const deadline = new Date(expiresAt).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
+  return { subject, html: layout(subject, `<p>Bonjour ${escapeHtml(name)},</p><p>Votre commande de location <strong>${escapeHtml(reference)}</strong> est enregistrée.</p><p>Total TTC, livraison comprise : <strong>${grandTotal.toFixed(2)} €</strong>.</p><p>Votre matériel est réservé temporairement jusqu’au ${escapeHtml(deadline)} (heure de Paris). Réglez le premier versement pour confirmer votre commande. Si vous choisissez le virement, le délai de réception sera indiqué dans le suivi.</p>${trackingButton(trackingUrl)}`) };
 }
 
 function layout(preheader, bodyHtml) {

@@ -23,6 +23,23 @@ function normalizeArgs(args) {
 // db.prepare(sql).get/all/run(...) shape, so call sites only needed `await`
 // added rather than a full rewrite to client.execute({ sql, args }).
 const db = {
+  close() { client.close(); },
+  async writeTransaction(fn) {
+    await ready();
+    const tx = await client.transaction('write');
+    const scoped = {
+      prepare(sql) {
+        const execute = args => tx.execute({ sql, args: normalizeArgs(args) });
+        return {
+          async get(...args) { return (await execute(args)).rows[0]; },
+          async all(...args) { return (await execute(args)).rows; },
+          async run(...args) { const r = await execute(args); return { changes: r.rowsAffected }; },
+        };
+      },
+    };
+    try { const result = await fn(scoped); await tx.commit(); return result; }
+    finally { tx.close(); }
+  },
   prepare(sql) {
     return {
       async get(...args) {
@@ -85,6 +102,8 @@ function ready() {
 }
 
 async function init() {
+  // Local readers (availability/admin) must not block a checkout writer.
+  if (!process.env.TURSO_DATABASE_URL || process.env.TURSO_DATABASE_URL.startsWith('file:')) await client.execute('PRAGMA journal_mode = WAL');
   await client.executeMultiple(`
     CREATE TABLE IF NOT EXISTS categories (
       id TEXT PRIMARY KEY,
@@ -223,6 +242,33 @@ async function init() {
   await ensureColumn('reservations', 'delivery_fee', 'REAL');
   await ensureColumn('reservations', 'materials_total', 'REAL');
   await ensureColumn('reservations', 'grand_total', 'REAL');
+  await ensureColumn('reservations', 'order_kind', 'TEXT');
+  await ensureColumn('reservations', 'expires_at', 'TEXT');
+  await ensureColumn('reservations', 'payment_lock', 'TEXT');
+  await ensureColumn('reservations', 'payment_lock_until', 'TEXT');
+  await ensureColumn('reservations', 'checkout_key', 'TEXT');
+  await ensureColumn('reservations', 'checkout_fingerprint', 'TEXT');
+  await ensureColumn('reservations', 'rental_hours', "TEXT DEFAULT '[]'");
+  await ensureColumn('customer_accounts', 'session_version', 'INTEGER NOT NULL DEFAULT 0');
+  await client.executeMultiple(`
+    CREATE TABLE IF NOT EXISTS customer_password_resets (
+      id TEXT PRIMARY KEY, account_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE,
+      session_version INTEGER NOT NULL, expires_at TEXT NOT NULL, created_at TEXT NOT NULL,
+      used_at TEXT, sent_at TEXT, changed_notice_sent_at TEXT, last_error TEXT
+    );
+    CREATE INDEX IF NOT EXISTS customer_reset_account ON customer_password_resets(account_id, created_at);
+    CREATE TABLE IF NOT EXISTS customer_welcome_emails (
+      account_id TEXT PRIMARY KEY, created_at TEXT NOT NULL,
+      sent_at TEXT, last_error TEXT
+    );
+  `);
+  await client.executeMultiple(`
+    CREATE UNIQUE INDEX IF NOT EXISTS reservation_checkout_key ON reservations(checkout_key) WHERE checkout_key IS NOT NULL;
+    CREATE TABLE IF NOT EXISTS order_emails (
+      id TEXT PRIMARY KEY, recipient TEXT NOT NULL, subject TEXT NOT NULL,
+      html TEXT NOT NULL, sent_at TEXT, last_error TEXT
+    );
+  `);
   await ensureColumn('reservations', 'stripe_customer_id', 'TEXT');
   await ensureColumn('reservations', 'payment_method', 'TEXT'); // 'card' | 'virement'
   await ensureColumn('reservations', 'reference', 'TEXT'); // human-facing order number, e.g. OA-K7M2QX

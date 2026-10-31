@@ -1,6 +1,7 @@
 import { isAuthorized } from '../../../src/lib/auth';
 import db from '../../../src/lib/sqlite-db.js';
 import { sendEmail, awaitingPaymentEmail, confirmationEmail, refusalEmail } from '../../../src/lib/email.js';
+import { flushOrderEmails } from '../../../src/lib/orders.js';
 
 
 function getSiteUrl(req) {
@@ -30,6 +31,10 @@ export default async function handler(req, res) {
     const resa = await db.prepare('SELECT * FROM reservations WHERE id = ?').get(reservationId);
     if (!resa) {
       return res.status(404).json({ message: 'Réservation introuvable' });
+    }
+    if (resa.order_kind === 'rental') {
+      await flushOrderEmails();
+      return res.json({ data: { skipped: true } });
     }
     if (!['awaiting_payment', 'confirmed', 'refused'].includes(resa.status)) {
       return res.status(400).json({ message: 'Cette réservation n\'est ni acceptée, ni confirmée, ni refusée.' });

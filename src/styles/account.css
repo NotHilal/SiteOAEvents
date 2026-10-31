@@ -1,4 +1,12 @@
 /* Account area — editorial client workspace, adapted to OA's existing tokens. */
+.oa-recovery-container { max-width: 760px; padding-top: 32px; padding-bottom: 72px; }
+.oa-recovery-container .oa-auth-panel { padding-right: 0; }
+.oa-recovery-fields { border: 0; padding: 0; margin: 0 0 24px; min-width: 0; }
+.oa-auth-form .oa-recovery-fields input { display: block; width: 100%; margin-bottom: 18px; }
+.oa-recovery-fields label { display: block; }
+.oa-recovery-fields p { font-size: .9rem; color: var(--oa-muted); }
+.oa-recovery-visibility { display: block; margin: 8px 0 20px; border: 0; background: transparent; padding: 0; }
+.oa-recovery-container .oa-auth-primary { white-space: normal; text-align: center; }
 .oa-account-page {
   min-height: calc(100vh - var(--oa-header-h));
   background: #fbfaf7;
@@ -258,6 +266,7 @@
 .oa-auth-panel > p { max-width: 520px; margin: 0 0 30px; color: var(--oa-muted); line-height: 1.7; }
 .oa-auth-form { display: flex; flex-direction: column; align-items: stretch; }
 .oa-auth-form > label,
+.oa-recovery-fields > label,
 .oa-register-grid > label {
   display: flex; flex-direction: column; gap: 8px; color: var(--oa-text);
   font-size: .82rem; font-weight: 700;
@@ -266,6 +275,7 @@
 .oa-auth-form label > span,
 .oa-register-grid label > span[aria-hidden="true"] { color: var(--oa-accent-dark); }
 .oa-auth-form > input,
+.oa-recovery-fields > input,
 .oa-auth-password input,
 .oa-register-grid input,
 .oa-register-grid select {
@@ -274,6 +284,7 @@
   font-size: .95rem; font-weight: 400; outline: none; transition: border-color .2s ease, box-shadow .2s ease;
 }
 .oa-auth-form > input:focus,
+.oa-recovery-fields > input:focus,
 .oa-auth-password input:focus,
 .oa-register-grid input:focus,
 .oa-register-grid select:focus { border-color: var(--oa-text); box-shadow: 0 0 0 3px rgba(201,161,90,.18); }
@@ -373,6 +384,13 @@
 }
 
 @media (max-width: 560px) {
+  /* Keep focused fields at 16px to avoid automatic zoom in iOS Safari. */
+  .oa-auth-page input,
+  .oa-auth-page select,
+  .oa-auth-page textarea,
+  .oa-account-page input,
+  .oa-account-page select,
+  .oa-account-page textarea { font-size: 16px; }
   .oa-account-intro { padding-top: 34px; }
   .oa-account-breadcrumb { gap: 7px; font-size: .7rem; }
   .oa-account-sidebar nav { display: block; }
