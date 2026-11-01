@@ -9,7 +9,7 @@ L’activation du domaine et des emails est **mise en attente à la demande du c
 | Emails | Resend intégré, clé API enregistrée dans la configuration privée, adresse contact configurée, domaine ajouté dans Resend | Propriété/activation du domaine, DNS vérifiés, boîte mail et tests d’envoi réels | [Emails](01-emails.md) |
 | Mentions légales | Identité de la société, siège, SAS, capital, SIREN, RCS, président, email repris du Kbis | Téléphone professionnel, TVA, hébergeur, hébergement de la base, crédits photos éventuels | [Mentions légales](02-mentions-legales.md) |
 | Conditions commerciales et confidentialité | Pages existantes et parcours de commande documenté | Décisions de l’entreprise sur les conditions de location, validation des textes et compléments de confidentialité | [CGV et confidentialité](03-cgv-et-confidentialite.md) |
-| Mise en service | Fonctionnalités développées et tests locaux effectués ; RIB enregistré dans les réglages de l’environnement actuel | Carte bancaire, hébergement, configuration de production, vrais contenus et validation finale | [Mise en service](04-mise-en-service.md) |
+| Mise en service | Fonctionnalités développées et tests locaux effectués ; tunnel de commande avec paiement Stripe | Compte et clés Stripe, hébergement, configuration de production, vrais contenus et validation finale | [Mise en service](04-mise-en-service.md) |
 
 ## Répartition des informations à fournir
 

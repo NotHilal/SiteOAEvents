@@ -5,8 +5,8 @@ Ce document recense les points encore signalés dans les pages existantes. Il ne
 ## Conditions générales de vente — `/cgv`
 
 - [ ] Caution / dépôt de garantie : demandé ou non, montant, mode de perception, délai et conditions de restitution.
-- [ ] Nature du premier versement et traitement des sommes versées en cas d’annulation, à arrêter dans les conditions commerciales.
-- [ ] Conséquences d’un défaut ou retard de paiement et règles pour les échéances impayées.
+- [ ] Paiement intégral à la commande (Stripe : carte, Apple / Google Pay, PayPal selon les moyens activés) : refléter ce fonctionnement dans les CGV et retirer toute mention de virement, d’acompte ou de paiement en plusieurs fois.
+- [ ] Remboursement en cas d’annulation : l’Espace OA permet uniquement un remboursement total ; préciser si des frais ou remboursements partiels doivent être prévus.
 - [ ] Zone de livraison exacte et conditions hors zone.
 - [ ] Créneaux et modalités de livraison / reprise, délai de prévenance et conditions d’accès : étage, ascenseur, stationnement, etc.
 - [ ] Installation et démontage : inclus, optionnels, et prix éventuels.

@@ -10,7 +10,7 @@
 - Réception des notifications de commandes configurée sur **contact@oa-evenementiel.fr**.
 - Identifiant de connexion admin séparé de l’adresse des notifications.
 - Domaine `oa-evenementiel.fr` ajouté dans Resend, région Irlande.
-- Préparation des emails de création de commande et de confirmation après réception du premier versement, pour le client et OA.
+- Préparation des emails de création de commande et de confirmation après paiement, et d’annulation / remboursement, pour le client et OA.
 - File d’attente des emails avec reprise des envois échoués lors de certains accès au site.
 - Tests avec services simulés. Aucun email réel n’a été envoyé pendant ces vérifications.
 
@@ -38,7 +38,7 @@ Ces éléments ne font pas partie des emails de commande déjà implémentés :
 - [ ] Activer et tester réellement l’email de bienvenue après validation du domaine et configuration de l’URL de confiance. Cet email ne vérifie pas la propriété de l’adresse du client.
 - [x] Parcours et emails de réinitialisation du mot de passe développés et testés avec un service simulé : lien temporaire, nouveau mot de passe et notification de changement. Voir [le fonctionnement](../reinitialisation-mot-de-passe.md).
 - [ ] Activer et tester réellement les emails de réinitialisation après validation du domaine Resend et configuration de l’URL de confiance. L’URL d’exemple actuellement configurée est refusée pour l’envoi de ces liens.
-- [ ] Décider des autres notifications souhaitées : rappels de paiement, échec d’une échéance, expiration, modification ou annulation, rappel avant livraison.
+- [ ] Décider des autres notifications souhaitées : expiration d’une commande impayée, modification, rappel avant livraison.
 - [ ] Fournir ou valider le texte et le destinataire de chaque notification retenue.
 
 Ne pas ajouter de secrets dans ce dossier. Les limites de la clé actuelle empêchent de consulter les domaines via l’API ; leur vérification a été poursuivie dans le navigateur.
