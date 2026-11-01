@@ -298,23 +298,6 @@
 }
 .shop-select select:focus { outline: 2px solid var(--oa-accent-ink); outline-offset: 1px; }
 
-.shop-pages ol { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 40px 0 0; padding: 0; list-style: none; }
-.shop-page {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 42px;
-  height: 42px;
-  border: 1px solid var(--oa-border);
-  color: var(--oa-text);
-  font-family: var(--oa-font-heading);
-  font-size: .85rem;
-  font-weight: 600;
-  text-decoration: none;
-}
-a.shop-page:hover { border-color: var(--oa-text); color: var(--oa-text); }
-.shop-page.is-current { background: var(--oa-text); border-color: var(--oa-text); color: #fff; }
-
 .shop-empty { padding: 60px 0; color: var(--oa-muted); text-align: center; }
 
 .shop-help {

@@ -8,10 +8,11 @@ import net from 'node:net'
 import { pathToFileURL } from 'node:url'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
-import { createClient } from '@libsql/client'
+import { createTestDatabase, sqlClient } from './lib/test-db.mjs'
 
 const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'oa-welcome-http-'))
-const databaseURL = `file:${path.join(directory, 'qa.sqlite').replaceAll('\\', '/')}`
+const testDb = await createTestDatabase()
+const databaseURL = testDb.url
 const emailsPath = path.join(directory, 'emails.json')
 const failurePath = path.join(directory, 'email-failure')
 const preloader = path.join(directory, 'providers.mjs')
@@ -34,14 +35,14 @@ const port = socket.address().port
 await new Promise(resolve => socket.close(resolve))
 const base = `http://127.0.0.1:${port}`
 const server = spawn(process.execPath, ['--import', pathToFileURL(preloader).href, 'node_modules/next/dist/bin/next', 'start', '-H', '127.0.0.1', '-p', String(port)], {
-  env: { ...process.env, TURSO_DATABASE_URL: databaseURL, TURSO_AUTH_TOKEN: '', JWT_SECRET: crypto.randomBytes(32).toString('hex'), CUSTOMER_JWT_SECRET: crypto.randomBytes(32).toString('hex'),
+  env: { ...process.env, DATABASE_URL: databaseURL, JWT_SECRET: crypto.randomBytes(32).toString('hex'), CUSTOMER_JWT_SECRET: crypto.randomBytes(32).toString('hex'),
     PASSWORD_RESET_ORIGIN: base, RESEND_API_KEY: 'qa_fake_key_no_real_email', EMAIL_FROM: 'OA Événementiel <contact@oa-evenementiel.fr>', NOTIFICATION_EMAIL: 'qa-notifications@example.test', STRIPE_SECRET_KEY: '', QA_EMAIL_FILE: emailsPath, QA_EMAIL_FAILURE_FILE: failurePath },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 let logs = ''
 server.stdout.on('data', data => { logs += data })
 server.stderr.on('data', data => { logs += data })
-const client = createClient({ url: databaseURL })
+const client = sqlClient(databaseURL)
 const emails = async () => JSON.parse(await fs.readFile(emailsPath, 'utf8').catch(() => '[]'))
 const registration = (email, firstName = 'Client') => ({ firstName, lastName: 'Test', phone: '+33612345678', email, password: 'WelcomeTest123' })
 async function request(route, body, expected, cookie, method = 'POST') {
@@ -96,12 +97,12 @@ try {
   await client.execute('ALTER TABLE qa_saved_welcome RENAME TO customer_welcome_emails')
 
   // Service checks use the same temporary DB and an in-process fake provider.
-  process.env.TURSO_DATABASE_URL=databaseURL;process.env.TURSO_AUTH_TOKEN=''
+  process.env.DATABASE_URL=databaseURL
   process.env.RESEND_API_KEY='';process.env.PASSWORD_RESET_ORIGIN=base
   const {dispatchCustomerWelcome}=await import('../src/lib/customer-welcome.js')
-  const {default:db}=await import('../src/lib/sqlite-db.js')
+  const {default:db}=await import('../src/lib/db/index.js')
   const id=crypto.randomUUID()
-  await client.execute({sql:"INSERT INTO customer_accounts (id,email,password_hash,first_name,last_name,active,created_at,updated_at) VALUES (?,?,'qa-unused-hash','Client','Test',1,?,?)",args:[id,'service@example.test',new Date().toISOString(),new Date().toISOString()]})
+  await client.execute({sql:"INSERT INTO customer_accounts (id,email,password_hash,first_name,last_name,active,created_at,updated_at) VALUES (?,?,'qa-unused-hash','Client','Test',true,?,?)",args:[id,'service@example.test',new Date().toISOString(),new Date().toISOString()]})
   await client.execute({sql:'INSERT INTO customer_welcome_emails (account_id,created_at) VALUES (?,?)',args:[id,new Date().toISOString()]})
   let calls=0
   globalThis.fetch=async()=>{calls++;return Response.json({id:'qa_delivery'})}
@@ -113,19 +114,20 @@ try {
   assert.equal(calls,0)
   assert.equal((await client.execute({sql:'SELECT last_error FROM customer_welcome_emails WHERE account_id=?',args:[id]})).rows[0].last_error,'email_configuration_incomplete')
   process.env.PASSWORD_RESET_ORIGIN=base
-  await client.execute({sql:'UPDATE customer_accounts SET active=0 WHERE id=?',args:[id]})
+  await client.execute({sql:'UPDATE customer_accounts SET active = false WHERE id=?',args:[id]})
   await dispatchCustomerWelcome(id)
   assert.equal(calls,0)
-  await client.execute({sql:'UPDATE customer_accounts SET active=1 WHERE id=?',args:[id]})
+  await client.execute({sql:'UPDATE customer_accounts SET active = true WHERE id=?',args:[id]})
   await dispatchCustomerWelcome(id);await dispatchCustomerWelcome(id)
   assert.equal(calls,1)
-  db.close()
+  await db.close()
   assert.ok(!logs.includes('WelcomeTest123'))
   console.log('PASS: welcome after signup, correct recipient/sender, safe content/links, no duplicate, account survives email outage, retry on login, atomic metadata, no provider/config false-success, disabled-account exclusion. No real emails.')
 } catch(error) { console.error(logs);throw error }
 finally {
-  client.close()
+  await client.close()
   if(server.exitCode===null){const exited=once(server,'exit');server.kill();await exited}
   if(!path.resolve(directory).startsWith(path.join(os.tmpdir(),'oa-welcome-http-')))throw Error('Unsafe QA directory')
   await fs.rm(directory,{recursive:true,force:true,maxRetries:5,retryDelay:100})
+  await testDb.drop()
 }

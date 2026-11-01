@@ -1,14 +1,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Seo from '../src/components/Seo.jsx'
-
-const EVENT_LABELS = {
-  'mariage':'Mariage','anniversaire':'Anniversaire',
-  'evenement-pro':'Événement professionnel',
-  'location-deco':'Location décoration','autre':'Autre'
-}
-const STATUS_LABEL = { awaiting_payment:'Paiement en cours', confirmed:'Confirmée', cancelled:'Annulée · remboursée', expired:'Non payée', pending:'En attente', terminee:'Terminée', refused:'Refusée' }
-const STATUS_CLASS = { pending:'badge-pending', awaiting_payment:'badge-awaiting', confirmed:'badge-confirmed', terminee:'badge-terminee', refused:'badge-refused', cancelled:'badge-refused' }
+import { OrderStatusBadge, OrderTimeline } from '../src/components/account/Orders.jsx'
 
 function fmtDate(ds) {
   return new Date(ds + 'T12:00:00').toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' })
@@ -73,7 +66,7 @@ export default function Suivi() {
     <>
       <Seo
         title="Suivi de commande"
-        description="Consultez le statut de votre demande ou commande OA Événementiel et réglez votre réservation en ligne."
+        description="Suivez la livraison de votre commande de location OA Événementiel."
         path="/suivi"
         noindex
       />
@@ -106,7 +99,10 @@ export default function Suivi() {
             {!order && (
               <form onSubmit={handleSearch}>
                 <p className="step-desc" style={{marginBottom:24}}>
-                  Entrez l'email utilisé lors de votre demande et le numéro de commande reçu par email pour consulter son statut et régler votre paiement.
+                  Entrez l’email utilisé lors de votre commande et le numéro de commande reçu par email pour suivre sa livraison.
+                </p>
+                <p className="step-desc" style={{marginBottom:24}}>
+                  Commandé en étant connecté ? Toutes vos commandes sont dans <Link href="/mon-compte/commandes">Mon compte</Link>.
                 </p>
                 <div className="form-group">
                   <label>Email <span className="req">*</span></label>
@@ -138,25 +134,15 @@ export default function Suivi() {
                   </div>
                   <div className="recap-row">
                     <span className="recap-lbl"><i className="fas fa-flag" />Statut</span>
-                    <span className="recap-val"><span className={`status-badge ${STATUS_CLASS[order.status]||''}`}>{STATUS_LABEL[order.status]||order.status}</span></span>
+                    <span className="recap-val"><OrderStatusBadge order={order} /></span>
                   </div>
                   <div className="recap-row">
                     <span className="recap-lbl"><i className="fas fa-calendar" />Date(s)</span>
                     <span className="recap-val">{order.dates.map(fmtDate).join(' · ')}</span>
                   </div>
-                  <div className="recap-row">
-                    <span className="recap-lbl"><i className="fas fa-tag" />Événement</span>
-                    <span className="recap-val">{EVENT_LABELS[order.event_type] || order.event_type || '—'}</span>
-                  </div>
-                  {order.nb_persons && (
-                    <div className="recap-row">
-                      <span className="recap-lbl"><i className="fas fa-users" />Personnes</span>
-                      <span className="recap-val">{order.nb_persons}</span>
-                    </div>
-                  )}
                   {order.materials?.length > 0 && (
                     <div className="recap-row">
-                      <span className="recap-lbl"><i className="fas fa-boxes" />Matériaux</span>
+                      <span className="recap-lbl"><i className="fas fa-boxes" />Articles</span>
                       <span className="recap-val">{order.materials.map(m => m.name + ' × ' + m.quantity).join(', ')}</span>
                     </div>
                   )}
@@ -174,13 +160,13 @@ export default function Suivi() {
 
                 {order.status === 'pending' && (
                   <div className="resa-alert mt-3" style={{background:'#fffbeb',color:'#92400e',borderColor:'#fcd34d'}}>
-                    <i className="fas fa-clock" />Votre demande est en attente de confirmation. Vous recevrez un email dès qu'elle sera traitée.
+                    <i className="fas fa-clock" />Votre commande est en attente de confirmation. Vous recevrez un email dès qu’elle sera traitée.
                   </div>
                 )}
 
                 {order.status === 'refused' && (
                   <div className="resa-alert mt-3">
-                    <i className="fas fa-exclamation-circle" />Cette demande n'a malheureusement pas pu être acceptée. N'hésitez pas à nous contacter pour explorer d'autres dates.
+                    <i className="fas fa-exclamation-circle" />Cette commande n’a malheureusement pas pu être honorée. N’hésitez pas à nous contacter pour trouver d’autres dates.
                   </div>
                 )}
 
@@ -191,8 +177,9 @@ export default function Suivi() {
                 )}
 
                 {order.status === 'confirmed' && (
-                  <div className="resa-alert mt-4" style={{background:'#f0fdf4',color:'#166534',borderColor:'#86efac'}}>
-                    <i className="fas fa-check-circle" />Commande payée et confirmée. Nous vous contacterons avant l’événement pour l’horaire de livraison.
+                  <div className="mt-4">
+                    <OrderTimeline order={order} />
+                    <p className="oa-account-note">Nous vous contactons avant la livraison et avant la reprise du matériel pour convenir des horaires.</p>
                   </div>
                 )}
 
@@ -204,7 +191,7 @@ export default function Suivi() {
 
                 {order.status === 'terminee' && (
                   <div className="resa-alert mt-4" style={{background:'#f0fdf4',color:'#166534',borderColor:'#86efac'}}>
-                    <i className="fas fa-check-circle" />Événement terminé — merci d'avoir fait confiance à OA Événementiel !
+                    <i className="fas fa-check-circle" />Location terminée — merci d’avoir fait confiance à OA Événementiel !
                   </div>
                 )}
                 {order.status === 'expired' && <div className="resa-alert mt-4">Le paiement n’a pas été finalisé : la commande a été abandonnée et rien n’a été débité. <Link href="/catalogue">Refaire une commande</Link>.</div>}
@@ -268,7 +255,7 @@ export default function Suivi() {
                 )}
                 {order.grand_total != null && (
                   <div className="price-detail-row price-detail-total">
-                    <span className="price-detail-label">Total estimé</span>
+                    <span className="price-detail-label">Total</span>
                     <span className="price-detail-amount">{order.grand_total.toFixed(2)} €</span>
                   </div>
                 )}

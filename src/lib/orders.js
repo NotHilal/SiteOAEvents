@@ -1,5 +1,5 @@
 import crypto from 'node:crypto'
-import db, { generateReservationReference } from './sqlite-db.js'
+import db, { generateReservationReference } from './db/index.js'
 import { sanitizeReservation } from './public-submissions.js'
 import { getDayType, getUnitPriceTtc, groupTiersByMaterial } from './pricing.js'
 import { getStripe, isStripeConfigured, isCheckoutConfigured, createOrderPaymentIntent, refundOrderPayment } from './stripe.js'
@@ -29,7 +29,7 @@ async function queueEmails(tx, order, event) {
   const emails = [{ to: order.email, ...content, suffix: 'client' }]
   const notificationEmail = process.env.NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL
   if (notificationEmail) emails.push({ to: notificationEmail, subject: `${event === 'confirmed' ? 'Nouvelle commande payée' : 'Commande annulée et remboursée'} — ${order.reference}`, html: content.html, suffix: 'admin' })
-  for (const email of emails) await tx.prepare('INSERT OR IGNORE INTO order_emails (id, recipient, subject, html) VALUES (?, ?, ?, ?)').run(`${order.id}:${event}:${email.suffix}`, email.to, email.subject, email.html)
+  for (const email of emails) await tx.prepare('INSERT INTO order_emails (id, recipient, subject, html) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO NOTHING').run(`${order.id}:${event}:${email.suffix}`, email.to, email.subject, email.html)
 }
 
 // Durable outbox: an email failure never rolls back a booking/payment. Retries
@@ -68,8 +68,8 @@ export async function recordPaymentSuccess(intent) {
 // lets the return page confirm the order even before the webhook arrives.
 export async function syncOrderPayment(reservationId) {
   const payment = await db.prepare('SELECT stripe_payment_intent_id FROM payments WHERE reservation_id = ? AND stripe_payment_intent_id IS NOT NULL').get(reservationId)
-  if (!payment || !isStripeConfigured()) return null
-  const intent = await getStripe().paymentIntents.retrieve(payment.stripe_payment_intent_id)
+  if (!payment || !(await isStripeConfigured())) return null
+  const intent = await (await getStripe()).paymentIntents.retrieve(payment.stripe_payment_intent_id)
   if (intent.status === 'succeeded') await recordPaymentSuccess(intent)
   return intent
 }
@@ -90,8 +90,8 @@ export async function expireUnpaidOrders(reservationId) {
       if (payment?.stripe_payment_intent_id) {
         // Without the keys the intent can't be checked: keep the stock
         // held rather than risk releasing a paid order.
-        if (!isStripeConfigured()) continue
-        const stripe = getStripe()
+        if (!(await isStripeConfigured())) continue
+        const stripe = (await getStripe())
         const intent = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id)
         if (intent.status === 'succeeded') { await recordPaymentSuccess(intent); continue }
         if (intent.status === 'processing') continue
@@ -115,7 +115,7 @@ async function releaseReplacedOrder(checkoutKey) {
   await withPaymentLock(old.id, async () => {
     const payment = await db.prepare('SELECT * FROM payments WHERE reservation_id = ?').get(old.id)
     if (payment?.stripe_payment_intent_id) {
-      const stripe = getStripe()
+      const stripe = (await getStripe())
       const intent = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id)
       if (intent.status === 'succeeded') { await recordPaymentSuccess(intent); throw orderError('Votre commande précédente a déjà été payée. Consultez vos emails ou le suivi de commande.') }
       if (intent.status === 'processing') throw orderError('Un paiement est en cours de traitement pour cette commande. Patientez quelques instants.')
@@ -129,7 +129,7 @@ async function releaseReplacedOrder(checkoutKey) {
 // Validates the basket server-side (prices, stock, dates, delivery) and
 // holds the stock for HOLD_MINUTES. Idempotent on `checkout_key`: the same
 // checkout retried returns the same order.
-async function createRentalOrder(input) {
+async function createRentalOrder(input, accountId) {
   if (!Array.isArray(input.materials) || !input.materials.length || input.materials.some(m => !m || typeof m !== 'object')) throw orderError('Votre panier est vide.', 400)
   const checkoutKey = input.checkout_key
   if (typeof checkoutKey !== 'string' || !/^[a-zA-Z0-9-]{32,80}$/.test(checkoutKey)) throw orderError('Actualisez la page avant de commander.', 400)
@@ -144,7 +144,7 @@ async function createRentalOrder(input) {
   const { record, error } = await sanitizeReservation(input)
   if (error) throw orderError(error, 400)
   if (!record.materials.length) throw orderError('Votre panier est vide.', 400)
-  if (!isCheckoutConfigured()) throw orderError('Le paiement en ligne est momentanément indisponible. Contactez-nous pour réserver.', 503)
+  if (!(await isCheckoutConfigured())) throw orderError('Le paiement en ligne est momentanément indisponible. Contactez-nous pour réserver.', 503)
   if (typeof input.replaces_checkout_key === 'string') await releaseReplacedOrder(input.replaces_checkout_key)
   await expireUnpaidOrders()
   const id = crypto.randomUUID()
@@ -181,7 +181,7 @@ async function createRentalOrder(input) {
     record.materials_total = total / 100
     record.grand_total = (total + Math.round(record.delivery_fee * 100)) / 100
     if (!Number.isFinite(Number(input.grand_total)) || Math.abs(Number(input.grand_total) - record.grand_total) > 0.011) throw orderError('Le total a changé. Vérifiez le récapitulatif puis réessayez.')
-    const result = { ...record, id, reference, rental_hours: '[]', status: 'awaiting_payment', order_kind: 'rental', payment_method: 'stripe', checkout_key: checkoutKey, checkout_fingerprint: fingerprint, expires_at: new Date(Date.now() + HOLD_MINUTES * 60000).toISOString(), created_at: new Date().toISOString() }
+    const result = { ...record, id, reference, account_id: accountId || null, rental_hours: '[]', status: 'awaiting_payment', order_kind: 'rental', payment_method: 'stripe', checkout_key: checkoutKey, checkout_fingerprint: fingerprint, expires_at: new Date(Date.now() + HOLD_MINUTES * 60000).toISOString(), created_at: new Date().toISOString() }
     const stored = { ...result, dates: JSON.stringify(result.dates), materials: JSON.stringify(result.materials) }
     const keys = Object.keys(stored)
     await tx.prepare(`INSERT INTO reservations (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`).run(...keys.map(k => stored[k]))
@@ -204,13 +204,14 @@ async function withPaymentLock(id, fn) {
 }
 
 // POST /api/checkout: creates (or resumes) the order and its PaymentIntent,
-// returns what the payment form needs to confirm it.
-export async function startCheckout(input) {
-  const order = await createRentalOrder(input)
+// returns what the payment form needs to confirm it. `accountId`: the
+// signed-in customer, so the order shows up in their Mon compte.
+export async function startCheckout(input, { accountId } = {}) {
+  const order = await createRentalOrder(input, accountId)
   return withPaymentLock(order.id, async () => {
     const current = await db.prepare('SELECT * FROM reservations WHERE id = ?').get(order.id)
     const payment = await db.prepare('SELECT * FROM payments WHERE reservation_id = ?').get(current.id)
-    let intent = payment.stripe_payment_intent_id ? await getStripe().paymentIntents.retrieve(payment.stripe_payment_intent_id) : null
+    let intent = payment.stripe_payment_intent_id ? await (await getStripe()).paymentIntents.retrieve(payment.stripe_payment_intent_id) : null
     if (!intent) {
       intent = await createOrderPaymentIntent(current)
       await db.prepare('UPDATE payments SET stripe_payment_intent_id = ? WHERE id = ?').run(intent.id, payment.id)
@@ -231,14 +232,14 @@ export async function cancelOrder(reservationId) {
     const order = await db.prepare('SELECT * FROM reservations WHERE id = ?').get(reservationId)
     if (order.order_kind !== 'rental') throw orderError('Seules les commandes en ligne peuvent être annulées ici.', 400)
     const payment = await db.prepare('SELECT * FROM payments WHERE reservation_id = ?').get(reservationId)
-    const intent = payment?.stripe_payment_intent_id ? await getStripe().paymentIntents.retrieve(payment.stripe_payment_intent_id) : null
+    const intent = payment?.stripe_payment_intent_id ? await (await getStripe()).paymentIntents.retrieve(payment.stripe_payment_intent_id) : null
     let refundId = null
     if (intent?.status === 'succeeded') {
       const refund = await refundOrderPayment(intent.id, reservationId)
       if (!['succeeded', 'pending', 'requires_action'].includes(refund.status)) throw orderError(`Le remboursement a été refusé par Stripe (${refund.status}). Vérifiez dans le tableau de bord Stripe.`, 502)
       refundId = refund.id
     } else if (intent && !['canceled', 'succeeded'].includes(intent.status)) {
-      await getStripe().paymentIntents.cancel(intent.id)
+      await (await getStripe()).paymentIntents.cancel(intent.id)
     }
     await db.writeTransaction(async tx => {
       await tx.prepare("UPDATE reservations SET status = 'cancelled', expires_at = NULL WHERE id = ?").run(reservationId)

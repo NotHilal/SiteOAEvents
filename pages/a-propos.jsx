@@ -1,42 +1,57 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Seo from '../src/components/Seo.jsx'
-import { supabase } from '../src/lib/supabase.js'
+import { getContent } from '../src/lib/public-api.js'
+import { SITE } from '../src/lib/site.js'
 
 // Fixed icons for the "Nos valeurs" blocks — same 4 icons reused on the
 // homepage's "Pourquoi OA" section. Only the title/text come from the DB.
 const VALUE_ICONS = ['/return.avif', '/delivery-truck.avif', '/customer-service.avif', '/money-back.avif']
 
-// Matches the seed row in src/lib/sqlite-db.js — used as the initial state
+// Matches the seed row in src/lib/db/seed.js — used as the initial state
 // so there's no flash of empty content before the fetch resolves.
 const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1600&q=75&auto=format&fit=crop'
 
 const DEFAULT_CONTENT = {
-  founderName: "[Prénom Nom], fondateur d'OA Événementiel",
-  story: "[Votre histoire ici — pourquoi ce métier vous anime, depuis quand vous organisez des événements, ce qui rend votre approche différente. Deux ou trois phrases suffisent, je les mettrai en forme.]",
+  headline: "Location et décoration d'événements en Île-de-France",
+  story: "OA Événementiel est née en 2026 d'une conviction simple : chaque réception mérite un décor à la hauteur de ce qu'elle célèbre. Installée à Chanteloup-les-Vignes, dans les Yvelines, l'entreprise accompagne particuliers et professionnels partout en Île-de-France.\n\nMariages, anniversaires, baptêmes, séminaires ou soirées d'entreprise : nous louons le mobilier, la vaisselle et la décoration de vos événements, et nous pouvons aussi les imaginer, les coordonner et les installer de A à Z. Vous composez votre sélection en ligne, nous livrons, montons et reprenons le matériel.\n\nUne question, un projet ? Écrivez-nous à contact@oa-evenementiel.fr, nous vous répondons rapidement.",
   photoUrl: null,
   headerImg: null,
   counters: [
-    { count: '[X]+', label: "[Ex : Ans d'expérience]" },
-    { count: '[X]+', label: '[Ex : Événements réalisés]' },
+    { count: "2026", label: "Année de création" },
+    { count: "7j/7", label: "À votre écoute" },
   ],
   values: [
-    { title: '[Créativité sur-mesure]', text: '[Description à personnaliser.]' },
-    { title: '[Logistique maîtrisée]', text: '[Description à personnaliser.]' },
-    { title: '[Écoute & Accompagnement]', text: '[Description à personnaliser.]' },
-    { title: '[Confiance & Transparence]', text: '[Description à personnaliser.]' },
+    { title: "Créativité sur-mesure", text: "Chaque décor est pensé pour votre événement : vos couleurs, votre lieu, votre style. Nous composons avec vous une ambiance qui vous ressemble." },
+    { title: "Logistique maîtrisée", text: "Livraison, montage, démontage et reprise du matériel : nous organisons chaque étape pour que le jour J se déroule sans imprévu." },
+    { title: "Écoute & Accompagnement", text: "Du premier échange à la fin de l'événement, un interlocuteur unique vous conseille et répond à vos questions." },
+    { title: "Confiance & Transparence", text: "Des prix affichés en ligne et un total calculé avant de commander, livraison comprise : vous savez exactement ce que vous payez." },
   ],
+}
+
+// The story is plain text edited in Espace OA: blank lines start a new
+// paragraph and the contact address becomes a mailto link.
+function StoryText({ text }) {
+  return text.split(/\n\s*\n/).map((paragraph, i) => (
+    <p className="section-text" key={i}>
+      {paragraph.split(SITE.email).map((part, j) => (
+        <span key={j}>{j > 0 && <a href={`mailto:${SITE.email}`}>{SITE.email}</a>}{part}</span>
+      ))}
+    </p>
+  ))
 }
 
 export default function APropos() {
   const [content, setContent] = useState(DEFAULT_CONTENT)
 
   useEffect(() => {
-    supabase.from('site_content').select('*').eq('key', 'about_page').then(({ data }) => {
-      const row = data && data[0]
-      if (!row) return
+    getContent('about_page').then(value => {
+      if (!value) return
+      const row = { value }
       try {
-        const parsed = JSON.parse(row.value)
+        // founderName is a legacy field (the section used to present the
+        // founder): the page now only presents the company.
+        const { founderName, ...parsed } = JSON.parse(row.value)
         setContent(c => ({ ...c, ...parsed }))
       } catch {}
     })
@@ -81,8 +96,8 @@ export default function APropos() {
                       <div className="section-subtitle-icon"></div>
                       <p className="section-subtitle">Qui sommes-nous</p>
                     </div>
-                    <h2 className="section-title">{content.founderName}</h2>
-                    <p className="section-text">{content.story}</p>
+                    <h2 className="section-title">{content.headline}</h2>
+                    <StoryText text={content.story} />
                   </div>
                   <div className="why-us-counter-outer">
                     {content.counters.map((c, i) => (
@@ -99,11 +114,10 @@ export default function APropos() {
 
                 <div className="why-us-image-box">
                   {content.photoUrl ? (
-                    <img src={content.photoUrl} alt={content.founderName} className="apropos-photo" loading="lazy" decoding="async" />
+                    <img src={content.photoUrl} alt="OA Événementiel" className="apropos-photo" loading="lazy" decoding="async" />
                   ) : (
-                    <div className="apropos-photo-placeholder">
-                      <i className="fas fa-camera" />
-                      <p>Votre photo ici</p>
+                    <div className="apropos-logo-box">
+                      <img src="/logo-mark.png" alt="OA Événementiel — Événementiel, location" width="859" height="922" loading="lazy" decoding="async" />
                     </div>
                   )}
                 </div>
@@ -141,6 +155,7 @@ export default function APropos() {
             <h2 className="apropos-cta-title">Discutons de votre événement</h2>
             <p className="apropos-cta-text">Parlons de votre projet et voyons comment lui donner vie ensemble.</p>
             <Link href="/contact" className="btn btn-rose-gold">Demander un devis</Link>
+            <p className="apropos-cta-mail">ou écrivez-nous à <a href={`mailto:${SITE.email}`}>{SITE.email}</a></p>
           </div>
         </section>
       </div>

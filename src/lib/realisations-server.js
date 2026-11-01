@@ -1,4 +1,4 @@
-import db from './sqlite-db.js'
+import db from './db/index.js'
 import { REALISATION_PREFIX, validateRealisation } from './realisations.js'
 
 export async function getRealisations() {

@@ -8,10 +8,11 @@ import net from 'node:net'
 import { pathToFileURL } from 'node:url'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
-import { createClient } from '@libsql/client'
+import { createTestDatabase, sqlClient } from './lib/test-db.mjs'
 
 const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'oa-reset-http-'))
-const databaseURL = `file:${path.join(directory, 'qa.sqlite').replaceAll('\\', '/')}`
+const testDb = await createTestDatabase()
+const databaseURL = testDb.url
 const emailsPath = path.join(directory, 'emails.json')
 const failurePath = path.join(directory, 'email-failure')
 const preloader = path.join(directory, 'providers.mjs')
@@ -37,14 +38,14 @@ const port = preview ? 3100 : socket.address().port
 await new Promise(resolve => socket.close(resolve))
 const base = `http://127.0.0.1:${port}`
 const server = spawn(process.execPath, ['--import', pathToFileURL(preloader).href, 'node_modules/next/dist/bin/next', 'start', '-H', '127.0.0.1', '-p', String(port)], {
-  env: { ...process.env, TURSO_DATABASE_URL: databaseURL, TURSO_AUTH_TOKEN: '', JWT_SECRET: crypto.randomBytes(32).toString('hex'), CUSTOMER_JWT_SECRET: crypto.randomBytes(32).toString('hex'),
+  env: { ...process.env, DATABASE_URL: databaseURL, JWT_SECRET: crypto.randomBytes(32).toString('hex'), CUSTOMER_JWT_SECRET: crypto.randomBytes(32).toString('hex'),
     NEXT_PUBLIC_SITE_URL: base, PASSWORD_RESET_ORIGIN: base, RESEND_API_KEY: 'qa_fake_key_no_external_calls', EMAIL_FROM: 'OA Événementiel <contact@oa-evenementiel.fr>', NOTIFICATION_EMAIL: 'qa-notifications@example.test', STRIPE_SECRET_KEY: '', QA_EMAIL_FILE: emailsPath, QA_EMAIL_FAILURE_FILE: failurePath },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 let logs = ''
 server.stdout.on('data', data => { logs += data })
 server.stderr.on('data', data => { logs += data })
-const client = createClient({ url: databaseURL })
+const client = sqlClient(databaseURL)
 const emails = async () => JSON.parse(await fs.readFile(emailsPath, 'utf8').catch(() => '[]')).filter(mail => !mail.key?.startsWith('customer-welcome:'))
 async function request(route, body, expected, cookie, method = 'POST') {
   const start = Date.now()
@@ -110,7 +111,7 @@ try {
   const concurrent = await Promise.all([0, 1].map(() => fetch(base + '/api/account/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: onceOnly, password: 'Concurrent123', confirmation: 'Concurrent123' }) })))
   assert.equal(concurrent.filter(r => r.status === 200).length, 1, 'only one concurrent reset can succeed')
   assert.ok(concurrent.filter(r => r.status !== 200).every(r => [400, 503].includes(r.status)))
-  await client.execute('UPDATE customer_accounts SET active = 0')
+  await client.execute('UPDATE customer_accounts SET active = false')
   const beforeDisabled = (await emails()).length
   const disabled = await forgot('client@example.test')
   assert.deepEqual(disabled.data, unknown.data)
@@ -138,7 +139,7 @@ try {
   await reset(extractToken(deliverable), 'Replacement123')
   await request('/api/account/login', {email:'delivery@example.test',password:'Replacement123'},200)
   await fs.unlink(failurePath)
-  process.env.TURSO_DATABASE_URL=databaseURL
+  process.env.DATABASE_URL=databaseURL
   const {passwordResetOrigin}=await import('../src/lib/password-reset.js')
   for(const origin of ['https://www.exemple.fr','http://oa-evenementiel.fr','https://user:secret@oa-evenementiel.fr','not-a-url']) {
     process.env.PASSWORD_RESET_ORIGIN=origin
@@ -146,18 +147,19 @@ try {
   }
   process.env.PASSWORD_RESET_ORIGIN=base
   assert.equal(passwordResetOrigin(),base)
-  const {default: importedDb}=await import('../src/lib/sqlite-db.js'); importedDb.close()
+  const {default: importedDb}=await import('../src/lib/db/index.js'); await importedDb.close()
   assert.ok(!logs.includes(token) && !logs.includes('Concurrent123'), 'tokens and passwords must not be logged')
   console.log('PASS: reset email, generic responses/timing, password validation, hashed token storage, single use/expiry/concurrency, revoked sessions, new login, disabled account, rate limits, no-store/no-referrer, no secrets in responses/logs. Simulated email only.')
   if (preview) {
-    await client.execute('UPDATE customer_accounts SET active = 1')
+    await client.execute('UPDATE customer_accounts SET active = true')
     console.log(`QA preview: ${base}/mon-compte/mot-de-passe-oublie — test database and fake email only.`)
     await new Promise(resolve => process.once('SIGINT', resolve))
   }
 } catch (error) { console.error(logs); throw error }
 finally {
-  client.close()
+  await client.close()
   if (server.exitCode === null) { const exited = once(server, 'exit'); server.kill(); await exited }
   if (!path.resolve(directory).startsWith(path.join(os.tmpdir(), 'oa-reset-http-'))) throw new Error('Unsafe QA directory')
   await fs.rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+  await testDb.drop()
 }

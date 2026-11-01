@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import db from '../../src/lib/sqlite-db.js'
+import db from '../../src/lib/db/index.js'
 import { isAuthorized } from '../../src/lib/auth.js'
 import { REALISATION_PREFIX, validateRealisation } from '../../src/lib/realisations.js'
 import { getRealisations } from '../../src/lib/realisations-server.js'
@@ -26,9 +26,9 @@ export default async function handler(req, res) {
     const now = new Date().toISOString()
     // Check and write in one statement to reject simultaneous slug collisions.
     const result = await db.prepare(`INSERT INTO site_content (key, value, updated_at)
-      SELECT ?, ?, ? WHERE NOT EXISTS (
+      SELECT ?, ?, ?::timestamptz WHERE NOT EXISTS (
         SELECT 1 FROM site_content WHERE key LIKE ? AND key != ?
-        AND json_extract(CASE WHEN json_valid(value) THEN value ELSE '{}' END, '$.slug') = ?
+        AND CASE WHEN value IS JSON OBJECT THEN value::jsonb ->> 'slug' END = ?
       ) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`)
       .run(key, JSON.stringify(item), now, `${REALISATION_PREFIX}%`, key, item.slug)
     if (!result.changes) return res.status(409).json({ message: 'Cette adresse existe déjà. Choisissez une autre adresse.' })

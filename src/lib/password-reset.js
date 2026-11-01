@@ -1,5 +1,5 @@
 import crypto from 'node:crypto'
-import db from './sqlite-db.js'
+import db from './db/index.js'
 import { createPasswordResetToken, customerPasswordError, hashCustomerPassword } from './customer-auth.js'
 import { isEmailConfigured, sendEmail, passwordResetEmail, passwordChangedEmail } from './email.js'
 
@@ -47,7 +47,7 @@ export async function requestPasswordReset(email) {
   const tokenHash = hashToken(createPasswordResetToken(id))
   const now = new Date().toISOString()
   const requestId = await db.writeTransaction(async tx => {
-    const account = await tx.prepare('SELECT id, session_version FROM customer_accounts WHERE email = ? COLLATE NOCASE AND active = 1').get(email)
+    const account = await tx.prepare('SELECT id, session_version FROM customer_accounts WHERE email = ? AND active = true').get(email)
     if (!account) return null
     const recent = await tx.prepare('SELECT id FROM customer_password_resets WHERE account_id = ? AND created_at > ?').all(account.id, new Date(Date.now() - 3600000).toISOString())
     const cooldown = await tx.prepare('SELECT id FROM customer_password_resets WHERE account_id = ? AND created_at > ?').get(account.id, new Date(Date.now() - 60000).toISOString())

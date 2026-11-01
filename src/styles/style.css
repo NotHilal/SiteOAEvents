@@ -76,6 +76,14 @@ body { font-family: var(--oa-font-body); }
   padding-left: var(--oa-container-pad);
   padding-right: var(--oa-container-pad);
 }
+/* Bootstrap/Webflow .container (contact, à propos, CTA…) follows the same
+   width and gutters as .oa-container, so every page lines up on one grid —
+   furnish.css made it 1570px wide with 15px gutters, i.e. edge to edge. */
+.container {
+  max-width: var(--oa-container-max);
+  padding-left: var(--oa-container-pad);
+  padding-right: var(--oa-container-pad);
+}
 
 .oa-section { padding-top: var(--oa-section-pad); padding-bottom: var(--oa-section-pad); }
 .oa-section-tight { padding-top: calc(var(--oa-section-pad) * .5); padding-bottom: calc(var(--oa-section-pad) * .5); }
@@ -729,9 +737,32 @@ body {
    where a "washed" element meets an "unwashed" one — since the marble
    image itself is very pale, that edge reads as a visible bar even at
    small opacity differences. One layer, one wash, no edges anywhere. */
-/* Plain white page background (options.fr look) — the old global
-   .marble-layer texture was removed from _app.jsx. */
+/* Marble is back, as a viewport-sized position:fixed layer instead of the
+   old full-document-height .marble-layer: a fixed element is promoted to
+   its own compositor layer and simply stays put while the page scrolls
+   over it — no repaint per scroll frame, unlike background-attachment:
+   fixed (repaints the whole viewport every frame, and is ignored on iOS)
+   or the former filter:blur() layer (the lag). Sized to 100lvh, the
+   viewport with the mobile URL bar hidden, so the layer never resizes —
+   and re-scales its cover image — as that bar slides in and out.
+   z-index:-1 puts it under all page content but above the canvas, which
+   still gets body's white (shown until the image loads). */
 body { background-color: var(--oa-background); }
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100vh;
+  height: 100lvh;
+  background:
+    linear-gradient(var(--oa-marble-tint), var(--oa-marble-tint)),
+    url('/fondMarbre.jpg') center / cover no-repeat;
+  pointer-events: none;
+  transform: translateZ(0);
+}
 
 /* No section or card below should set its own background-color — that's
    what caused the seams. Cards get their separation from a border/shadow,
@@ -880,22 +911,20 @@ body { background-color: var(--oa-background); }
 .footer-copyright-link:hover { color: var(--gray); }
 .footer-shape { display: none; }
 
-/* ===== À PROPOS (mockup placeholders) ===== */
-.apropos-photo-placeholder {
+/* ===== À PROPOS ===== */
+/* No photo chosen in Espace OA > À Propos: the OA logo stands in. */
+.apropos-logo-box {
   width: 100%;
   min-height: 380px;
   border-radius: 20px;
-  border: 1.5px dashed rgba(0,0,0,.2);
-  background: rgba(0,0,0,.02);
+  border: 1px solid var(--oa-border);
+  background: rgba(255,255,255,.75);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  color: var(--gray);
+  padding: 48px;
 }
-.apropos-photo-placeholder i { font-size: 2.2rem; opacity: .35; }
-.apropos-photo-placeholder p { font-size: .9rem; font-weight: 600; margin: 0; }
+.apropos-logo-box img { width: auto; height: auto; max-width: 70%; max-height: 300px; }
 
 .apropos-photo {
   width: 100%;
@@ -908,6 +937,8 @@ body { background-color: var(--oa-background); }
 .apropos-cta-section { padding: clamp(40px, 5vw, 64px) 20px clamp(56px, 6vw, 88px); text-align: center; }
 .apropos-cta-title { font-family: 'Montserrat', sans-serif; font-size: clamp(1.8rem, 3vw, 2.4rem); margin-bottom: 12px; color: #000; }
 .apropos-cta-text { color: var(--gray); margin-bottom: 28px; }
+.apropos-cta-mail { margin: 22px 0 0; color: var(--gray); }
+.apropos-cta-mail a, .why-us-title-box .section-text a { color: var(--oa-accent-dark); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 
 /* ===== HOMEPAGE UNIFICATION =====
    pages/index.jsx is a mostly-untouched Webflow "Furnish" template export —
@@ -1017,18 +1048,29 @@ body { background-color: var(--oa-background); }
   border-bottom-color: var(--oa-border);
   box-shadow: 0 6px 20px rgba(22, 20, 15, .06);
 }
+/* Grid, not three flex:1 columns: the logo gets its own `auto` track and
+   the two side tracks are strictly equal, so the logo sits dead centre and
+   the sides can never spill under it. On desktop each side column is a
+   size container — what it shows (full CTA label, "Menu" label, Catalogue
+   button) is decided by the room it actually has, see the @container
+   rules below, instead of guessing from viewport breakpoints. */
 .oah-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
+  column-gap: clamp(16px, 2.2vw, 32px);
   min-height: var(--oa-header-h);
   padding: 0 var(--oa-container-pad);
   transition: min-height .45s var(--oa-ease-out);
 }
 .oah-scrolled .oah-bar { min-height: var(--oa-header-h-compact); }
-.oah-left, .oah-center, .oah-right { flex: 1 1 0; display: flex; align-items: center; min-width: 0; }
-.oah-left { gap: 28px; }
+.oah-left, .oah-center, .oah-right { display: flex; align-items: center; min-width: 0; }
+.oah-left { gap: 22px; }
 .oah-center { justify-content: center; }
 .oah-right { justify-content: flex-end; gap: clamp(0px, 1.1vw, 16px); }
+@media (min-width: 992px) {
+  .oah-left { container: oah-left / inline-size; }
+}
 
 .oah a:focus-visible,
 .oah button:focus-visible {
@@ -1076,13 +1118,28 @@ body { background-color: var(--oa-background); }
   transition: color .2s ease;
 }
 .oah-cta svg { color: var(--oa-accent-dark); }
-.oah-cta span {
+.oah-cta-short { display: none; }
+.oah-cta-text {
   background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
   padding-bottom: 2px;
   transition: background-size .35s var(--oa-ease-out);
 }
 .oah-cta:hover { color: var(--oa-accent-ink); }
-.oah-cta:hover span { background-size: 100% 1px; }
+.oah-cta:hover .oah-cta-text { background-size: 100% 1px; }
+
+/* Left column, widest to narrowest (full set needs ~570px): the CTA label
+   shortens first, then the "Menu" label goes, then the Catalogue button
+   (it's also in the icon row and the category strip below). */
+@container oah-left (max-width: 579px) {
+  .oah-cta-full { display: none; }
+  .oah-cta-short { display: inline; }
+}
+@container oah-left (max-width: 449px) {
+  .oah-menu-label { display: none; }
+}
+@container oah-left (max-width: 379px) {
+  .oah-left .oah-shop-btn { display: none; }
+}
 
 /* Centered logo lockup — tagline folds away once scrolled, the way
    options.fr drops the text under its logo in the sticky state. */
@@ -1185,6 +1242,10 @@ body { background-color: var(--oa-background); }
   border-top-color: #000;
   border-bottom-color: transparent;
 }
+/* Cart is flush with the bar's right padding — its label opens leftwards
+   so it never runs off-screen on narrower desktops. */
+.oah:not(.oah-scrolled) .oah-icon-cart .oah-tooltip { left: auto; right: 0; }
+.oah:not(.oah-scrolled) .oah-icon-cart .oah-tooltip::before { left: auto; right: 18px; margin-left: 0; }
 .oah:not(.oah-scrolled) .oah-icon:hover .oah-tooltip,
 .oah:not(.oah-scrolled) .oah-icon:focus-visible .oah-tooltip {
   opacity: 1;
@@ -1699,39 +1760,32 @@ a.oah-cart-item-name:hover { color: var(--oa-accent-ink); }
   .oah-logo-name { font-size: .95rem; letter-spacing: .16em; }
   .oah-logo-tagline { display: none; }
   .oah-tooltip { display: none; }
-  /* Side columns shrink to their content so the logo centers on the
-     viewport instead of being squeezed into a third of it. */
-  .oah-left, .oah-right { flex: 0 0 auto; min-width: 48px; }
-  .oah-center { flex: 1 1 auto; }
+  /* Plain 1fr side tracks (min = their content: menu button / two icons)
+     — still equal whenever there's room, so the logo stays centred. */
+  .oah-bar { grid-template-columns: 1fr auto 1fr; column-gap: 12px; }
 }
 @media (max-width: 560px) {
   .oah-menu-label { display: none; }
-  /* Two icons on the right (Mon compte + cart) vs one on the left: the
-     left column takes the same 80px when there's room, so the logo stays
-     centred, and gives some back on the narrowest phones rather than
-     letting the logo overlap the menu button. */
   .oah-icon { width: 40px; }
-  /* Shrink weights: the left column gives up its spare 32px first, only
-     then does the logo column narrow (as it always has on tiny screens). */
-  .oah-left { flex: 0 20 80px; min-width: 48px; }
-  .oah-right { flex: 0 0 auto; min-width: 0; }
-  .oah-center { flex: 1 1 auto; min-width: 0; }
+  .oah-right { gap: 0; }
   .oah-logo { gap: 10px; }
   .oah-logo-name { font-size: .8rem; letter-spacing: .12em; }
 }
-/* Small phones: the full-size wordmark plus two icons no longer fit, so
-   the logo scales down a touch (same lockup, smaller) and the icon hit
-   areas narrow to 36px — the 32px glyphs themselves stay. */
-@media (max-width: 400px) {
+/* Small phones: menu (40px) | logo | 2 icons (2 × 36px). The wordmark
+   scales with the viewport so the lockup always fits between them. */
+@media (max-width: 420px) {
+  .oah-bar { padding: 0 12px; column-gap: 8px; }
   .oah-icon { width: 36px; }
-  .oah-right { gap: 2px; }
   .oah-logo { gap: 8px; }
-  .oah-logo-mark { height: 36px; }
-  .oah-scrolled .oah-logo-mark { height: 32px; }
-  .oah-logo-name { font-size: clamp(.6rem, 3vw, .8rem); letter-spacing: .1em; }
+  .oah-logo-mark { height: 34px; }
+  .oah-scrolled .oah-logo-mark { height: 30px; }
+  .oah-logo-name { font-size: clamp(.58rem, 2.85vw, .78rem); letter-spacing: .1em; }
 }
-@media (max-width: 374px) {
-  .oah-bar { padding: 0 12px; }
+@media (max-width: 360px) {
+  .oah-icon { width: 34px; }
+  .oah-logo { gap: 6px; }
+  .oah-logo-mark, .oah-scrolled .oah-logo-mark { height: 30px; }
+  .oah-logo-name { font-size: 2.7vw; }
 }
 @media (prefers-reduced-motion: reduce) {
   .oah *, .oah { transition-duration: .01ms !important; transition-delay: 0s !important; }
@@ -1966,9 +2020,7 @@ a.oah-cart-item-name:hover { color: var(--oa-accent-ink); }
   line-height: 1.6;
 }
 .oa-assurance-intro p:last-child { margin-bottom: 0; }
-/* ~45px from the intro to "Nos univers / Un événement, une histoire". */
 .oa-section-tight.oa-assurance { padding-bottom: 0; }
-.oa-assurance + .oa-section.oa-univers { padding-top: 46px; }
 
 @media (max-width: 991px) {
   .oa-assurance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 40px; }
@@ -2132,28 +2184,7 @@ html.reveal-on [data-reveal-state="shown"] {
 
 .oa-center-cta { text-align: center; margin-top: 44px; }
 
-/* Nos Univers */
-.oa-univers-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 28px;
-}
-.oa-univers-card {
-  display: block;
-  text-decoration: none;
-  border: 1px solid var(--oa-border);
-  background: var(--oa-surface);
-  transition: transform .35s ease, box-shadow .35s ease;
-}
-.oa-univers-card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(22,20,15,.1); }
-.oa-univers-image {
-  height: 260px;
-  background-size: cover;
-  background-position: center;
-}
-.oa-univers-body { padding: 28px 26px 32px; }
-.oa-univers-body h3 { margin-bottom: 10px; }
-.oa-univers-body p { margin-bottom: 18px; }
+/* Gold uppercase text link with arrow (réalisations, 404…). */
 .oa-univers-link {
   display: inline-flex;
   align-items: center;
@@ -2177,17 +2208,13 @@ html.reveal-on [data-reveal-state="shown"] {
 }
 .oa-univers-link i { transition: transform .5s var(--oa-ease-out); }
 a.oa-univers-link:hover,
-a.oa-univers-link:focus-visible,
-.oa-univers-card:hover .oa-univers-link,
-.oa-univers-card:focus-visible .oa-univers-link {
+a.oa-univers-link:focus-visible {
   background-color: rgba(201, 161, 90, .16);
   color: var(--oa-accent-ink);
   transition-duration: .25s;
 }
 a.oa-univers-link:hover i,
-a.oa-univers-link:focus-visible i,
-.oa-univers-card:hover .oa-univers-link i,
-.oa-univers-card:focus-visible .oa-univers-link i { transform: translateX(4px); transition-duration: .3s; }
+a.oa-univers-link:focus-visible i { transform: translateX(4px); transition-duration: .3s; }
 a.oa-univers-link:focus-visible { outline: 2px solid var(--oa-accent-ink); outline-offset: 2px; }
 
 /* Catalogue teaser (homepage) — quick "add to cart" preview of a few
@@ -2467,13 +2494,8 @@ a.oa-univers-link:focus-visible { outline: 2px solid var(--oa-accent-ink); outli
 .oa-temoignage-tag { font-size: .82rem; margin-top: 2px; }
 
 @media (max-width: 991px) {
-  .oa-univers-grid { grid-template-columns: repeat(2, 1fr); }
   .oa-temoignages-grid { grid-template-columns: 1fr; }
   .oa-stats-grid { grid-template-columns: repeat(2, 1fr); row-gap: 32px; }
-}
-@media (max-width: 640px) {
-  .oa-univers-grid { grid-template-columns: 1fr; }
-  .oa-section-head-split { flex-direction: column; align-items: flex-start; }
 }
 
 /* ===== LEGAL PAGES (src/components/LegalPage.jsx) ===== */

@@ -1,4 +1,4 @@
-import db from '../../../src/lib/sqlite-db';
+import db from '../../../src/lib/db/index.js';
 
 export const config = { api: { responseLimit: false } }
 

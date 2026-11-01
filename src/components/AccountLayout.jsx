@@ -5,11 +5,9 @@ import Icon from './Icon.jsx'
 import { CUSTOMER_AUTH_EVENT, fetchCustomerSession } from '../lib/customer-session.js'
 
 export const ACCOUNT_NAV = [
-  { href: '/mon-compte', label: 'Tableau de bord du compte', icon: 'person', exact: true },
+  { href: '/mon-compte', label: 'Tableau de bord', icon: 'grid', exact: true },
+  { href: '/mon-compte/commandes', label: 'Mes commandes', icon: 'package' },
   { href: '/mon-compte/informations', label: 'Informations du compte', icon: 'person' },
-  { href: '/mon-compte/demandes-de-devis', label: 'Mes demandes de devis', icon: 'calculator' },
-  { href: '/mon-compte/newsletter', label: 'Newsletter', icon: 'mail' },
-  { href: '/mon-compte/liste-envies', label: 'Ma liste d’envies', icon: 'bag' },
   { href: '/mon-compte/deconnexion', label: 'Se déconnecter', icon: 'logOut' },
 ]
 
@@ -17,7 +15,9 @@ function isActive(router, item) {
   return item.exact ? router.pathname === item.href : router.pathname.startsWith(item.href)
 }
 
-export default function AccountLayout({ title, description, children, requireAuth = true }) {
+// `parent`: optional { href, label } breadcrumb step between Mon compte and
+// the page (an order's page sits under Mes commandes).
+export default function AccountLayout({ title, description, parent, children, requireAuth = true }) {
   const router = useRouter()
   const [authLoading, setAuthLoading] = useState(requireAuth)
   const [user, setUser] = useState(null)
@@ -51,6 +51,7 @@ export default function AccountLayout({ title, description, children, requireAut
             <Link href="/">Accueil</Link>
             <span aria-hidden="true">/</span>
             <Link href="/mon-compte">Mon compte</Link>
+            {parent && <><span aria-hidden="true">/</span><Link href={parent.href}>{parent.label}</Link></>}
             <span aria-hidden="true">/</span>
             <span aria-current="page">{title}</span>
           </nav>

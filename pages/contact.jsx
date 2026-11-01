@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Seo from '../src/components/Seo.jsx'
 import PhoneInput from '../src/components/PhoneInput.jsx'
-import { supabase } from '../src/lib/supabase.js'
+import { getJsonContent, sendContact } from '../src/lib/public-api.js'
 import { track } from '../src/lib/analytics.js'
 
 const WEB3FORMS_KEY = '380ad0e4-4abc-4a00-81d1-d81067d54129'
@@ -38,11 +38,7 @@ export default function Contact() {
 
 
   useEffect(() => {
-    supabase.from('site_content').select('*').eq('key', 'images_contact').then(({ data }) => {
-      const row = data && data[0]
-      if (!row) return
-      try { setImages(JSON.parse(row.value)) } catch {}
-    })
+    getJsonContent('images_contact').then(v => { if (v) setImages(v) })
   }, [])
 
   const clearError = (name) => setErrors(prev => (prev[name] ? { ...prev, [name]: undefined } : prev))
@@ -83,7 +79,7 @@ export default function Contact() {
     let saved = false
     let emailed = false
     try {
-      const { error } = await supabase.from('contacts').insert({
+      const error = await sendContact({
         prenom: form.prenom.trim() || null,
         nom: form.nom.trim() || null,
         email: form.email.trim(),
@@ -91,7 +87,7 @@ export default function Contact() {
         type_evenement: form.typeEvenement || null,
         message: form.message.trim(),
         website: form.website,
-      })
+      }).then(() => null, e => e)
       if (error) {
         // Validation message from the server (e.g. invalid email): show it
         // and stop — the email would fail the same way.

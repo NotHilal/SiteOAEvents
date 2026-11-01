@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Seo from '../src/components/Seo.jsx'
 import Lightbox from 'yet-another-react-lightbox'
-import { supabase } from '../src/lib/supabase.js'
+import { getJsonContent } from '../src/lib/public-api.js'
 
 const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=1600&q=75&auto=format&fit=crop'
 
 // Used only as a fallback for a brand-new DB whose images_galerie row hasn't
 // been migrated to the { page_header, photos: [...] } shape yet (see
-// src/lib/sqlite-db.js seed) — the real, editable list lives in the DB from
+// src/lib/db/seed.js seed) — the real, editable list lives in the DB from
 // then on (Espace OA > Visuel Site > Galerie), not here.
 const DEFAULT_PHOTOS = [
   { id: 'photo_1', src: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=800&q=75&auto=format&fit=crop', cat: 'mariage', label: 'Mariage' },
@@ -42,14 +42,10 @@ export default function Galerie() {
 
 
   useEffect(() => {
-    supabase.from('site_content').select('*').eq('key', 'images_galerie').then(({ data }) => {
-      const row = data && data[0]
-      if (!row) return
-      try {
-        const parsed = JSON.parse(row.value)
-        setPageHeader(parsed.page_header || null)
-        if (Array.isArray(parsed.photos) && parsed.photos.length) setPhotos(parsed.photos)
-      } catch {}
+    getJsonContent('images_galerie').then(parsed => {
+      if (!parsed) return
+      setPageHeader(parsed.page_header || null)
+      if (Array.isArray(parsed.photos) && parsed.photos.length) setPhotos(parsed.photos)
     })
   }, [])
 

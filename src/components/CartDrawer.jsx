@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import Icon from './Icon.jsx'
-import { supabase } from '../lib/supabase.js'
+import { getCatalogueItems } from '../lib/public-api.js'
 import { getMinOrderQty, getUnitPriceTtc, groupTiersByMaterial } from '../lib/pricing.js'
 import { goToCheckout, setCatalogueCart } from '../lib/cart.js'
 import { slugify } from '../lib/slug.js'
@@ -35,13 +35,10 @@ export default function CartDrawer({ cart, closeRef, onClose, open }) {
 
     let cancelled = false
     setLoading(true)
-    Promise.all([
-      supabase.from('materials').select('*').in('id', ids),
-      supabase.from('material_price_tiers').select('*').in('material_id', ids),
-    ]).then(([materialResult, tierResult]) => {
+    getCatalogueItems(ids).then(({ materials: m, tiers: t }) => {
       if (cancelled) return
-      setMaterials(materialResult.data || [])
-      setTiersByMaterial(groupTiersByMaterial(tierResult.data || []))
+      setMaterials(m)
+      setTiersByMaterial(groupTiersByMaterial(t))
       setLoading(false)
     })
 

@@ -134,42 +134,6 @@
 /* Category saved without a photo: plain warm panel behind the title. */
 .oa-cat-tile-empty { background: #f4efe6; }
 
-/* Arrows + page numbers between /catalogue, /catalogue-2… */
-.oa-cat-pager {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin-top: clamp(32px, 4vw, 44px);
-}
-.oa-cat-pager-pages {
-  display: flex;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.oa-cat-pager-arrow,
-.oa-cat-pager-page {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--oa-text);
-  color: var(--oa-text);
-  font-family: var(--oa-font-heading);
-  font-size: .85rem;
-  font-weight: 700;
-  text-decoration: none;
-  transition: background .2s ease, color .2s ease, border-color .2s ease;
-}
-.oa-cat-pager-page { border-color: transparent; }
-.oa-cat-pager-arrow:hover,
-.oa-cat-pager-page:hover { background: var(--oa-text); border-color: var(--oa-text); color: #fff; }
-.oa-cat-pager-page.is-active { background: var(--oa-accent); border-color: var(--oa-accent); color: var(--oa-text); }
-.oa-cat-pager-arrow.is-disabled { opacity: .25; pointer-events: none; }
-
 /* Tablet: 2 equal columns in reading order (mixed heights would leave
    holes in a plain grid, so every tile becomes 4:5). Phone: 1 column. */
 @media (max-width: 991px) {

@@ -1,4 +1,4 @@
-import db from './sqlite-db.js'
+import db from './db/index.js'
 import { customerWelcomeEmail, isEmailConfigured, sendEmail } from './email.js'
 import { passwordResetOrigin } from './password-reset.js'
 

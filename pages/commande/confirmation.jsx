@@ -10,17 +10,17 @@ import { clearCatalogueCart, setCartDates } from '../../src/lib/cart.js'
 // the one who paid; without it nothing is shown.
 export async function getServerSideProps({ query, res }) {
   res.setHeader('Cache-Control', 'no-store')
-  const { default: db } = await import('../../src/lib/sqlite-db.js')
+  const { default: db } = await import('../../src/lib/db/index.js')
   const { getStripe, isStripeConfigured } = await import('../../src/lib/stripe.js')
   const { recordPaymentSuccess } = await import('../../src/lib/orders.js')
   const intentId = typeof query.payment_intent === 'string' ? query.payment_intent : ''
   const secret = typeof query.payment_intent_client_secret === 'string' ? query.payment_intent_client_secret : ''
-  if (!/^pi_[A-Za-z0-9_]+$/.test(intentId) || !secret || !isStripeConfigured()) return { notFound: true }
+  if (!/^pi_[A-Za-z0-9_]+$/.test(intentId) || !secret || !(await isStripeConfigured())) return { notFound: true }
 
   const payment = await db.prepare('SELECT reservation_id FROM payments WHERE stripe_payment_intent_id = ?').get(intentId)
   if (!payment) return { notFound: true }
   let intent
-  try { intent = await getStripe().paymentIntents.retrieve(intentId) } catch { return { notFound: true } }
+  try { intent = await (await getStripe()).paymentIntents.retrieve(intentId) } catch { return { notFound: true } }
   if (intent.client_secret !== secret) return { notFound: true }
   if (intent.status === 'succeeded') {
     try { await recordPaymentSuccess(intent) } catch (error) { console.error('[confirmation]', error.message) }
@@ -41,6 +41,8 @@ export async function getServerSideProps({ query, res }) {
         delivery: order.delivery_fee || 0,
         address: order.delivery_address || '',
         total: order.grand_total,
+        // Placed while signed in: tracked from Mon compte > Mes commandes.
+        inAccount: !!order.account_id,
       },
     },
   }
@@ -98,7 +100,7 @@ export default function Confirmation({ state, order }) {
 
           {state !== 'failed' && (
             <div className="ck-confirm-actions">
-              <Link href="/suivi" className="shop-btn shop-btn-dark">Suivre ma commande</Link>
+              <Link href={order.inAccount ? `/mon-compte/commandes/${encodeURIComponent(order.reference)}` : '/suivi'} className="shop-btn shop-btn-dark">Suivre ma commande</Link>
               <Link href="/catalogue/complet" className="shop-btn shop-btn-ghost">Continuer mes achats</Link>
             </div>
           )}

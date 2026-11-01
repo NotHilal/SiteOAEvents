@@ -8,11 +8,10 @@ import { categoryTitle } from '../../src/lib/catalogue-pages.js'
 import { useCatalogueCart } from '../../src/components/product/productUtils.js'
 
 // Shop listing: every rentable article (or one category with
-// ?categorie=CHAISES), category chips, sorting, pages, and a quick view on
-// every card. Cards come from src/lib/catalogue-cards.js.
+// ?categorie=CHAISES), category chips, sorting and a quick view on every
+// card. No pagination: the whole selection is on one scrolling page.
+// Cards come from src/lib/catalogue-cards.js.
 
-const LIMITS = [24, 48, 'all']
-const DEFAULT_LIMIT = 24
 const SORTS = [
   { key: '', label: 'Pertinence' },
   { key: 'prix', label: 'Prix croissant' },
@@ -48,22 +47,10 @@ export async function getServerSideProps({ query }) {
   if (sort === 'prix-desc') filtered.sort((a, b) => (b.fromPrice || 0) - (a.fromPrice || 0))
   if (sort === 'nom') filtered.sort((a, b) => a.name.localeCompare(b.name, 'fr'))
 
-  const limit = query.limit === 'all' ? 'all' : (LIMITS.includes(Number(query.limit)) ? Number(query.limit) : DEFAULT_LIMIT)
-  const perPage = limit === 'all' ? Math.max(1, filtered.length) : limit
-  const pageCount = Math.max(1, Math.ceil(filtered.length / perPage))
-  const page = Math.min(pageCount, Math.max(1, Number.parseInt(String(query.p || '1'), 10) || 1))
-  const start = (page - 1) * perPage
-
   return {
     props: {
-      cards: filtered.slice(start, start + perPage),
-      total: filtered.length,
+      cards: filtered,
       allTotal: cards.length,
-      first: filtered.length ? start + 1 : 0,
-      last: Math.min(start + perPage, filtered.length),
-      page,
-      pageCount,
-      limit,
       sort,
       chips,
       categoryKey: requested || null,
@@ -73,31 +60,11 @@ export async function getServerSideProps({ query }) {
   }
 }
 
-function Pages({ page, pageCount, hrefFor }) {
-  if (pageCount < 2) return null
-  return (
-    <nav className="shop-pages" aria-label="Pages">
-      <ol>
-        {page > 1 && <li><Link href={hrefFor(page - 1)} className="shop-page" aria-label="Page précédente"><i className="fas fa-chevron-left" /></Link></li>}
-        {Array.from({ length: pageCount }, (_, i) => i + 1).map(n => (
-          <li key={n}>
-            {n === page
-              ? <strong className="shop-page is-current" aria-current="page">{n}</strong>
-              : <Link href={hrefFor(n)} className="shop-page">{n}</Link>}
-          </li>
-        ))}
-        {page < pageCount && <li><Link href={hrefFor(page + 1)} className="shop-page" aria-label="Page suivante"><i className="fas fa-chevron-right" /></Link></li>}
-      </ol>
-    </nav>
-  )
-}
-
-export default function CatalogueListing({ cards, total, allTotal, first, last, page, pageCount, limit, sort, chips, categoryKey, title, intro }) {
+export default function CatalogueListing({ cards, allTotal, sort, chips, categoryKey, title, intro }) {
   const router = useRouter()
   const cart = useCatalogueCart()
   const [quick, setQuick] = useState(null)
-  const base = { categorie: categoryKey, tri: sort || null, limit: limit === DEFAULT_LIMIT ? null : limit }
-  const hrefFor = n => queryString({ ...base, p: n > 1 ? n : null })
+  const base = { categorie: categoryKey, tri: sort || null }
   const path = queryString({ categorie: categoryKey })
   const go = patch => router.push(queryString({ ...base, ...patch }), undefined, { scroll: false })
   const inCartOf = card => card.variants.reduce((n, v) => n + (cart[v.id] || 0), 0)
@@ -137,18 +104,12 @@ export default function CatalogueListing({ cards, total, allTotal, first, last, 
           </div>
 
           <div className="shop-toolbar">
-            <p className="shop-amount">{total > 0 ? <><strong>{total}</strong> article{total > 1 ? 's' : ''}{pageCount > 1 && <> · {first}–{last}</>}</> : 'Aucun article'}</p>
+            <p className="shop-amount">{cards.length > 0 ? <><strong>{cards.length}</strong> article{cards.length > 1 ? 's' : ''}</> : 'Aucun article'}</p>
             <div className="shop-toolbar-controls">
               <label className="shop-select">
                 <span>Trier</span>
-                <select value={sort} onChange={e => go({ tri: e.target.value || null, p: null })}>
+                <select value={sort} onChange={e => go({ tri: e.target.value || null })}>
                   {SORTS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-                </select>
-              </label>
-              <label className="shop-select">
-                <span>Afficher</span>
-                <select value={String(limit)} onChange={e => go({ limit: e.target.value === String(DEFAULT_LIMIT) ? null : e.target.value, p: null })}>
-                  {LIMITS.map(l => <option key={l} value={String(l)}>{l === 'all' ? 'Tout' : `${l} par page`}</option>)}
                 </select>
               </label>
             </div>
@@ -163,8 +124,6 @@ export default function CatalogueListing({ cards, total, allTotal, first, last, 
           ) : (
             <p className="shop-empty">Aucun article disponible dans cette catégorie pour le moment.</p>
           )}
-
-          <Pages page={page} pageCount={pageCount} hrefFor={hrefFor} />
 
           <aside className="shop-help">
             <div>

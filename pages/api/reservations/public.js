@@ -1,4 +1,4 @@
-import db from '../../../src/lib/sqlite-db';
+import db from '../../../src/lib/db/index.js';
 import { expireUnpaidOrders } from '../../../src/lib/orders.js';
 
 // Public, PII-free view of active reservations — used by the booking wizard

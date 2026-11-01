@@ -1,4 +1,4 @@
-import db from '../../../src/lib/sqlite-db.js'
+import db from '../../../src/lib/db/index.js'
 import { isAuthorized } from '../../../src/lib/auth.js'
 
 export default async function handler(req, res) {

@@ -8,6 +8,7 @@ function buildRobots() {
   return `User-agent: *
 Allow: /
 Disallow: /espace-oa
+Disallow: /admin
 Disallow: /api/
 Disallow: /example
 Disallow: /catalogue-reference.html

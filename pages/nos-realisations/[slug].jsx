@@ -37,8 +37,7 @@ export default function Realisation({ item }) {
   return <>
     <Seo title={item.title} description={item.summary} image={item.cover} imageAlt={item.title} type="article" jsonLd={articleLd(item)} path={`/nos-realisations/${item.slug}`} breadcrumb={[{ name: 'Nos réalisations', path: '/nos-realisations' }, { name: item.title, path: `/nos-realisations/${item.slug}` }]} />
     <div className="site-wrap"><article className="oa-section"><div className="oa-container">
-      <Link href="/nos-realisations" className="oa-univers-link">← Toutes nos réalisations</Link>
-      <header className="realisations-heading"><h1>{item.title}</h1><p>{item.summary}</p></header>
+      <header className="realisations-heading"><Link href="/nos-realisations" className="oa-univers-link">← Toutes nos réalisations</Link><h1>{item.title}</h1><p>{item.summary}</p></header>
       <button type="button" className="realisation-cover" onClick={() => setIndex(0)} aria-label="Agrandir la photo de couverture"><img src={item.cover} alt={item.title} fetchPriority="high" /></button>
       <div className="realisation-body">{item.body.split(/\n\s*\n/).map((paragraph, i) => <p key={i}>{paragraph}</p>)}</div>
       {item.media.length > 0 && <section aria-label="Photos et vidéos" className="realisation-media">{item.media.map((media, i) => {

@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import db from '../../../src/lib/sqlite-db.js'
+import db from '../../../src/lib/db/index.js'
 import { createCustomerToken, hashCustomerPassword, publicCustomer, setCustomerCookie, customerPasswordError } from '../../../src/lib/customer-auth.js'
 import { rateLimit } from '../../../src/lib/rate-limit.js'
 import { normalizeFrenchPhone } from '../../../src/lib/french-phone.js'
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
   if (accountType === 'professionnel' && !companyName) return res.status(400).json({ message: "Le nom de l’entreprise est requis." })
 
   try {
-    const existing = await db.prepare('SELECT id FROM customer_accounts WHERE email = ? COLLATE NOCASE').get(email)
+    const existing = await db.prepare('SELECT id FROM customer_accounts WHERE email = ?').get(email)
     if (existing) return res.status(409).json({ message: 'Un compte existe déjà avec cette adresse email.' })
 
     const id = crypto.randomUUID()
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
       await tx.prepare(`
         INSERT INTO customer_accounts
           (id, email, password_hash, first_name, last_name, phone, civility, account_type, company_name, active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, true, ?, ?)
       `).run(id, email, passwordHash, firstName, lastName, phone || null, civility || null, accountType, companyName || null, now, now)
       await tx.prepare('INSERT INTO customer_welcome_emails (account_id, created_at) VALUES (?, ?)').run(id, now)
     })

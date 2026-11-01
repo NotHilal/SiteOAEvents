@@ -1,5 +1,5 @@
 // Geocodage (Nominatim/OpenStreetMap) + distance routière (OSRM) — services publics gratuits, sans clé API.
-import db from './sqlite-db.js';
+import db from './db/index.js';
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 const OSRM_URL = 'https://router.project-osrm.org/route/v1/driving';

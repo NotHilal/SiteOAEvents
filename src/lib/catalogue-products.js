@@ -1,10 +1,10 @@
-import db from './sqlite-db.js'
+import db from './db/index.js'
 import { slugify } from './slug.js'
 import { imagesOf } from './catalogue-cards.js'
 
 // Server-only (imported from getServerSideProps): resolves a /catalogue/[slug]
 // URL to a product and its variants. See the products table comment in
-// sqlite-db.js for the model.
+// src/lib/db/migrations.js for the model.
 //
 // The slug can be:
 //   - a product's slug (/catalogue/poids-de-lestage) → that product;
@@ -64,7 +64,7 @@ async function relatedProducts(category, excludeIds) {
   const rows = await db.prepare(
     `SELECT m.*, p.slug AS product_slug, p.name AS product_name FROM materials m
      LEFT JOIN products p ON p.id = m.product_id
-     WHERE m.category = ? AND m.available = 1 ORDER BY m.variant_order, m.name`
+     WHERE m.category = ? AND m.available = true ORDER BY m.variant_order, m.name`
   ).all(category)
   const seen = new Set()
   const out = []

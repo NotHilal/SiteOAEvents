@@ -1,0 +1,17 @@
+# Local development database: `npm run db:up`, then in .env.local:
+#   DATABASE_URL=postgres://oa:oa_dev_pw@localhost:5432/oa
+#   TEST_DATABASE_URL=postgres://oa:oa_dev_pw@localhost:5432/oa   (for `npm test`)
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: oa
+      POSTGRES_USER: oa
+      POSTGRES_PASSWORD: oa_dev_pw
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - oa_dev_pgdata:/var/lib/postgresql/data
+volumes:
+  oa_dev_pgdata:

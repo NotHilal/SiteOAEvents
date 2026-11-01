@@ -85,12 +85,13 @@ export default function AccountMenu() {
       <div id="oah-account-menu" className="oah-account-menu" inert={open ? undefined : ''}>
         <ul className="oah-account-list">
           {user ? <>
-            <li><Link href="/mon-compte" className="oah-account-item"><Icon name="person" size={18} strokeWidth={1.5} />Mon compte</Link></li>
-            <li><Link href="/catalogue" className="oah-account-item"><Icon name="calendar" size={18} strokeWidth={1.5} />Réserver</Link></li>
-            <li><Link href="/suivi" className="oah-account-item"><Icon name="truck" size={18} strokeWidth={1.5} />Suivre commande</Link></li>
+            <li><Link href="/mon-compte" className="oah-account-item"><Icon name="grid" size={18} strokeWidth={1.5} />Mon compte</Link></li>
+            <li><Link href="/mon-compte/commandes" className="oah-account-item"><Icon name="package" size={18} strokeWidth={1.5} />Mes commandes</Link></li>
+            <li><Link href="/mon-compte/informations" className="oah-account-item"><Icon name="person" size={18} strokeWidth={1.5} />Mes informations</Link></li>
           </> : <>
             <li><Link href="/mon-compte/connexion" className="oah-account-item"><Icon name="logIn" size={18} strokeWidth={1.5} />Me connecter</Link></li>
             <li><Link href="/mon-compte/inscription" className="oah-account-item"><Icon name="person" size={18} strokeWidth={1.5} />Créer mon compte</Link></li>
+            <li><Link href="/suivi" className="oah-account-item"><Icon name="truck" size={18} strokeWidth={1.5} />Suivre une commande</Link></li>
           </>}
         </ul>
         {user && <><div className="oah-account-sep" role="presentation" /><Link href="/mon-compte/deconnexion" className="oah-account-item"><Icon name="logOut" size={18} strokeWidth={1.5} />Déconnecter</Link></>}

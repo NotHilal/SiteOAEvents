@@ -4,10 +4,13 @@ import { useState } from 'react'
 import { loadStripe } from '@stripe/stripe-js/pure'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 
+// The publishable key comes from the server (GET /api/checkout), set in
+// Espace OA > Réglages — not baked into the build.
 let stripePromise = null
-function getStripePromise() {
-  if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) return null
-  if (!stripePromise) stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+let stripeKey = null
+function getStripePromise(key) {
+  if (!key) return null
+  if (!stripePromise || stripeKey !== key) { stripePromise = loadStripe(key); stripeKey = key }
   return stripePromise
 }
 
@@ -36,8 +39,8 @@ const euro = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR'
 // (every method switched on in the Stripe dashboard — card, Apple Pay,
 // Google Pay, PayPal…). On "Payer", the order is created server-side
 // (`createPayment`), then the payment is confirmed against it.
-export default function StripePayment({ amount, ...props }) {
-  const stripe = getStripePromise()
+export default function StripePayment({ amount, publishableKey, ...props }) {
+  const stripe = getStripePromise(publishableKey)
   if (!stripe) return null
   return (
     <Elements stripe={stripe} options={{ mode: 'payment', currency: 'eur', amount: Math.max(50, Math.round(amount * 100)), locale: 'fr', appearance: APPEARANCE }}>

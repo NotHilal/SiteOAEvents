@@ -1,0 +1,14 @@
+.git
+.next
+node_modules
+data
+backups
+.env
+.env.*
+!.env.example
+photos-originales
+exemple
+pics
+catalogue_images
+*.log
+.claude

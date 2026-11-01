@@ -83,11 +83,11 @@ export default function ConnexionCompte() {
 
           <div className="oa-auth-panel oa-auth-new-customer">
             <h2>Nouveau client ?</h2>
-            <p>Créez votre compte en quelques instants afin d’effectuer et suivre vos demandes de devis et retrouver vos informations.</p>
+            <p>Créez votre compte en quelques instants pour commander plus vite et suivre vos locations.</p>
             <ul>
-              <li>Vos coordonnées enregistrées</li>
-              <li>Le suivi de vos demandes</li>
-              <li>Votre sélection et vos préférences</li>
+              <li>Vos coordonnées pré-remplies à chaque commande</li>
+              <li>Le suivi de livraison de vos commandes</li>
+              <li>L’historique de vos commandes, à recommander en un clic</li>
             </ul>
             <Link href="/mon-compte/inscription" className="oa-auth-primary">Créer mon compte</Link>
           </div>

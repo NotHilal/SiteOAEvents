@@ -1,0 +1,9 @@
+# HTTPS certificates are obtained and renewed automatically (Let's Encrypt).
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}
+
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}

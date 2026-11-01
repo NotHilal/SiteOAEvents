@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { isAuthorized } from '../../src/lib/auth';
-import db from '../../src/lib/sqlite-db';
+import db from '../../src/lib/db/index.js';
 import formidable from 'formidable';
 
 // Uploads are stored in the database (files table), not written to
@@ -77,7 +77,7 @@ export default async function handler(req, res) {
             (ext === '.webm' && data.subarray(0, 4).toString('hex') !== '1a45dfa3')) {
           return res.status(400).json({ message: 'Le fichier ne correspond pas au format vidéo annoncé.' });
         }
-        await db.prepare('INSERT OR REPLACE INTO files (path, mime, data, size, created_at) VALUES (?, ?, ?, ?, ?)')
+        await db.prepare('INSERT INTO files (path, mime, data, size, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (path) DO UPDATE SET mime = excluded.mime, data = excluded.data, size = excluded.size, created_at = excluded.created_at')
           .run(targetFilename, file.mimetype, data, data.length, new Date().toISOString());
         return res.status(200).json({ data: { path: targetFilename } });
       } catch (saveError) {

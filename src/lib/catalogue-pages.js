@@ -1,11 +1,5 @@
-// Catalogue category tiles are split into pages of 6: /catalogue holds the
-// first 6 (by position), /catalogue-2 the next 6, and so on. Shared by the
-// public page and Espace OA > Catalogue.
-export const TILES_PER_PAGE = 6
-
-export const cataloguePagePath = page => (page <= 1 ? '/catalogue' : `/catalogue-${page}`)
-
-export const cataloguePageCount = tileCount => Math.max(1, Math.ceil(tileCount / TILES_PER_PAGE))
+// Catalogue category helpers, shared by the public /catalogue page (every
+// tile on one page, in position order) and Espace OA > Catalogue.
 
 // The tile's title: its label, or the stored uppercase name for a category
 // created before titles existed ("OPTIONS & ACCESSOIRES" → "Options & accessoires").

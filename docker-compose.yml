@@ -1,0 +1,95 @@
+# OA Événementiel on a VPS: site + PostgreSQL + HTTPS (Caddy) + daily backups.
+#   cp .env.example .env   # fill it in
+#   docker compose up -d --build
+# Full guide: DEPLOIEMENT.md
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-oa}
+      POSTGRES_USER: ${POSTGRES_USER:-oa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://oa-evenementiel.fr}
+        NEXT_PUBLIC_SITE_PHONE: ${NEXT_PUBLIC_SITE_PHONE:-}
+        NEXT_PUBLIC_PLAUSIBLE_DOMAIN: ${NEXT_PUBLIC_PLAUSIBLE_DOMAIN:-}
+        NEXT_PUBLIC_PLAUSIBLE_SRC: ${NEXT_PUBLIC_PLAUSIBLE_SRC:-}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-oa}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-oa}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN manquant dans .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+  # pg_dump every night into ./backups (14 daily, 8 weekly, 12 monthly kept).
+  backup:
+    image: prodrigestivill/postgres-backup-local:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB:-oa}
+      POSTGRES_USER: ${POSTGRES_USER:-oa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SCHEDULE: "0 3 * * *"
+      BACKUP_KEEP_DAYS: 14
+      BACKUP_KEEP_WEEKS: 8
+      BACKUP_KEEP_MONTHS: 12
+      TZ: Europe/Paris
+      # Plain SQL dump that drops/recreates objects: restorable with psql over the existing base.
+      POSTGRES_EXTRA_OPTS: "-Z6 --schema=public --clean --if-exists --no-owner"
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # One-off tools (not started by `up`):
+  #   docker compose run --rm tools node scripts/migrate-sqlite-to-postgres.mjs /import/db.sqlite
+  tools:
+    profiles: ["tools"]
+    build:
+      context: .
+      target: build
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-oa}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-oa}
+    volumes:
+      - ./data:/import:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

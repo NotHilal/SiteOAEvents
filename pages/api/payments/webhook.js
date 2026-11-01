@@ -1,5 +1,5 @@
-import db from '../../../src/lib/sqlite-db.js';
-import { getStripe, isStripeConfigured } from '../../../src/lib/stripe.js';
+import db from '../../../src/lib/db/index.js';
+import { getStripe, getStripeConfig } from '../../../src/lib/stripe.js';
 import { recordPaymentSuccess, recordExternalRefund } from '../../../src/lib/orders.js';
 
 // Stripe requires the exact raw request body to verify the signature —
@@ -24,17 +24,18 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
-  if (!isStripeConfigured() || !process.env.STRIPE_WEBHOOK_SECRET) {
+  const { secretKey, webhookSecret } = await getStripeConfig();
+  if (!secretKey || !webhookSecret) {
     return res.status(503).json({ message: 'Webhook Stripe non configuré' });
   }
 
-  const stripe = getStripe();
+  const stripe = await getStripe();
   const rawBody = await readRawBody(req);
   const signature = req.headers['stripe-signature'];
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(rawBody, signature, process.env.STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (err) {
     // Signature check is what makes this endpoint trustworthy — never skip
     // it or process the body if it fails, that would let anyone fake a

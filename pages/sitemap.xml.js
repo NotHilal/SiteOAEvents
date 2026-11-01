@@ -1,6 +1,5 @@
 import { getRealisations } from '../src/lib/realisations-server.js'
 import { getCatalogueCards } from '../src/lib/catalogue-cards.js'
-import { cataloguePageCount, cataloguePagePath } from '../src/lib/catalogue-pages.js'
 import { catalogueCategoryHref } from '../src/components/product/productUtils.js'
 import { SITE_URL, PUBLIC_PAGES } from '../src/lib/site.js'
 
@@ -24,7 +23,6 @@ async function cataloguePages() {
     const { cards, categories } = await getCatalogueCards()
     const used = new Set(cards.map(c => c.category))
     return [
-      ...Array.from({ length: cataloguePageCount(categories.length) - 1 }, (_, i) => ({ path: cataloguePagePath(i + 2), priority: 0.7, changefreq: 'weekly' })),
       { path: '/catalogue/complet', priority: 0.8, changefreq: 'weekly' },
       ...categories.filter(c => used.has(c.name)).map(c => ({ path: catalogueCategoryHref(c.name), priority: 0.8, changefreq: 'weekly' })),
       ...cards.map(card => ({

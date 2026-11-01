@@ -7,8 +7,9 @@ import path from 'node:path'
 import net from 'node:net'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
-import { createClient } from '@libsql/client'
+import { createTestDatabase, sqlClient } from './lib/test-db.mjs'
 const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'oa-access-test-'))
+const testDb = await createTestDatabase()
 const socket = net.createServer()
 await new Promise(resolve => socket.listen(0, '127.0.0.1', resolve))
 const port = socket.address().port
@@ -16,12 +17,12 @@ await new Promise(resolve => socket.close(resolve))
 const base = `http://127.0.0.1:${port}`
 const secret = crypto.randomBytes(32).toString('hex')
 const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-H', '127.0.0.1', '-p', String(port)], {
-  env: { ...process.env, TURSO_DATABASE_URL: `file:${path.join(directory,'qa.sqlite').replaceAll('\\','/')}`, TURSO_AUTH_TOKEN: '', JWT_SECRET: secret, CUSTOMER_JWT_SECRET: secret, RESEND_API_KEY: '', STRIPE_SECRET_KEY: '', ADMIN_EMAIL: 'admin@example.test', ADMIN_PASSWORD: crypto.randomBytes(24).toString('hex') },
+  env: { ...process.env, DATABASE_URL: testDb.url, JWT_SECRET: secret, CUSTOMER_JWT_SECRET: secret, RESEND_API_KEY: '', STRIPE_SECRET_KEY: '', ADMIN_EMAIL: 'admin@example.test', ADMIN_PASSWORD: crypto.randomBytes(24).toString('hex') },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 let logs = ''
 server.stdout.on('data', d => { logs += d }); server.stderr.on('data', d => { logs += d })
-const db = createClient({ url: `file:${path.join(directory,'qa.sqlite').replaceAll('\\','/')}` })
+const db = sqlClient(testDb.url)
 async function request(route, { method='GET', body, cookie, bearer, status=200 }={}) {
   const response = await fetch(base+route,{method,headers:{'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{}),...(bearer?{Authorization:`Bearer ${bearer}`}:{})},...(body?{body:JSON.stringify(body)}:{})})
   const text = await response.text()
@@ -53,14 +54,15 @@ try {
   await request('/api/account/profile',{cookie:forged,status:401})
   for(const cookie of [undefined,alice.cookie]){
     const bearer=cookie?.split('=')[1]
-    for(const table of ['reservations','payments','contacts','settings'])await request(`/api/db?table=${table}`,{cookie,bearer,status:401})
+    for(const route of ['/api/admin/bookings','/api/admin/catalog','/api/admin/messages','/api/admin/settings','/api/admin/clients','/api/admin/overview'])await request(route,{cookie,bearer,status:401})
     await request('/api/admin/accounts',{cookie,bearer,status:401})
     await request('/api/realisations',{method:'POST',body:{},cookie,bearer,status:401})
-    await request('/api/db?table=site_content',{method:'PUT',body:{payload:{value:'overwrite'},filters:[{type:'eq',field:'key',value:'test'}]},cookie,bearer,status:401})
+    await request('/api/admin/content',{method:'PUT',body:{key:'about_page',value:{headline:'overwrite'}},cookie,bearer,status:401})
+    await request('/api/admin/catalog',{method:'POST',body:{action:'deleteArticle',materialId:'mat-chaise-napoleon'},cookie,bearer,status:401})
     await request('/api/upload',{method:'POST',body:{},cookie,bearer,status:401})
-    await request('/api/reservations/notify',{method:'POST',body:{},cookie,bearer,status:401})
   }
-  await request('/api/db?table=customer_accounts',{cookie:alice.cookie,status:400})
+  assert.equal((await fetch(base+'/api/db?table=customer_accounts',{headers:{Cookie:alice.cookie}})).status,404,'generic table API removed')
+  await request('/api/content?key=settings',{status:404})
   await db.execute("INSERT INTO reservations (id,reference,date,dates,materials,prenom,nom,email,phone,status,delivery_address,created_at) VALUES ('qa-private','OA-QAPRIV','2099-12-01','[\"2099-12-01\"]','[]','Bob','Test','bob@example.test','0612345678','confirmed','Adresse privée de Bob','2026-10-31T00:00:00Z')")
   const missing=await request('/api/track',{method:'POST',cookie:alice.cookie,body:{reference:'OA-QAPRIV',email:'alice@example.test'},status:404})
   const unknown=await request('/api/track',{method:'POST',body:{reference:'OA-NONE00',email:'bob@example.test'},status:404})
@@ -71,14 +73,15 @@ try {
   const tracked=await request('/api/track',{method:'POST',body:{reference:'OA-QAPRIV',email:'bob@example.test'}})
   assert.equal(tracked.data.data.status,'confirmed')
   assert.ok(!tracked.text.includes('password_hash'))
-  await db.execute({sql:'UPDATE customer_accounts SET active=0 WHERE id=?',args:[alice.id]})
+  await db.execute({sql:'UPDATE customer_accounts SET active=false WHERE id=?',args:[alice.id]})
   await request('/api/account/profile',{cookie:alice.cookie,status:401})
   await request('/api/account/session',{cookie:alice.cookie,status:401})
   console.log('PASS: two-client isolation, forged/disabled sessions rejected, profile target injection blocked, customer token cannot authorize admin routes, private tables protected, tracking requires email + reference, public availability excludes personal data.')
 } catch(error){console.error(logs);throw error}
 finally{
-  db.close()
+  await db.close()
   if(server.exitCode===null){const exited=once(server,'exit');server.kill();await exited}
   if(!path.resolve(directory).startsWith(path.join(os.tmpdir(),'oa-access-test-')))throw Error('Unsafe QA directory')
   await fs.rm(directory,{recursive:true,force:true,maxRetries:10,retryDelay:200})
+  await testDb.drop()
 }

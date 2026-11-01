@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { getCatalogueCart, CART_EVENT, OPEN_CART_EVENT } from '../lib/cart.js'
-import { supabase } from '../lib/supabase.js'
-import { categoryTitle, sortCategories } from '../lib/catalogue-pages.js'
+import { getCategories } from '../lib/public-api.js'
 import { catalogueCategoryHref } from './product/productUtils.js'
 import Icon from './Icon.jsx'
 import AccountMenu from './AccountMenu.jsx'
@@ -62,7 +61,7 @@ export default function Navbar() {
   // Catalogue), in their order.
   const [categories, setCategories] = useState([])
   useEffect(() => {
-    supabase.from('categories').select('*').then(({ data }) => setCategories(sortCategories(data || []).map(c => ({ key: c.name, label: categoryTitle(c) }))))
+    getCategories().then(rows => setCategories(rows.map(c => ({ key: c.name, label: c.label }))))
   }, [])
 
   // Other components ask for the cart drawer ("Voir mon panier").
@@ -157,7 +156,10 @@ export default function Navbar() {
           </Link>
           <Link href="/catalogue/complet" className="oah-cta" onClick={() => track('Clic Réserver', { emplacement: 'header' })}>
             <Icon name="calendar" size={30} />
-            <span>Réserver votre événement</span>
+            {/* Short label swaps in when the left column runs out of room
+                (container queries in style.css). */}
+            <span className="oah-cta-text oah-cta-full">Réserver votre événement</span>
+            <span className="oah-cta-text oah-cta-short">Réserver</span>
           </Link>
         </div>
 

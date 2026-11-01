@@ -47,6 +47,8 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Self-contained server for the Docker image (Dockerfile, DEPLOIEMENT.md).
+  output: 'standalone',
   allowedDevOrigins: ['127.0.0.1', 'localhost'],
   poweredByHeader: false,
   // Without this, Turbopack found a stray package-lock.json in the parent
@@ -80,26 +82,36 @@ const nextConfig = {
         permanent: true,
       },
       ...['/galerie', '/nos-experiences'].map(source => ({ source, destination: '/nos-realisations', permanent: true })),
+      // The old one-page admin was replaced by /admin (App Router, src/admin/).
+      { source: '/espace-oa', destination: '/admin', permanent: false },
       // The online quote simulation was removed — bookmarks land on the real booking.
       { source: '/devis', destination: '/catalogue/complet', permanent: true },
       // The booking wizard was replaced by the cart + one-page checkout.
       { source: '/reservation', destination: '/commande', permanent: true },
+      // Category tiles are no longer paginated: /catalogue-2, -3… → /catalogue.
+      { source: '/catalogue-:page(\\d{1,})', destination: '/catalogue', permanent: true },
       // The Prestations page was removed — old links land on the catalogue.
       { source: '/services', destination: '/catalogue', permanent: true },
+      // Mon compte follows the shop: orders replaced quote requests, and the
+      // never-built wishlist / newsletter placeholders were dropped.
+      { source: '/mon-compte/demandes-de-devis', destination: '/mon-compte/commandes', permanent: true },
+      ...['/mon-compte/liste-envies', '/mon-compte/newsletter'].map(source => ({ source, destination: '/mon-compte', permanent: true })),
     ];
   },
   async rewrites() {
     return [
       { source: '/uploads/:path*', destination: '/api/files/:path*' },
-      // /catalogue-2, /catalogue-3… are the next pages of category tiles.
-      { source: '/catalogue-:page(\\d{1,})', destination: '/catalogue?page=:page' },
     ];
   },
   async headers() {
     return [
       // Everything except saved third-party references that load their own
       // styles and media. They are isolated in same-origin iframes.
-      { source: '/((?!example|catalogue-reference\\.html).*)', headers: securityHeaders },
+      // /admin is excluded: it gets its own nonce-based CSP from proxy.js
+      // (the App Router needs inline scripts); the other headers still apply.
+      { source: '/((?!example|catalogue-reference\\.html|admin).*)', headers: securityHeaders },
+      { source: '/admin/:path*', headers: securityHeaders.filter(h => h.key !== 'Content-Security-Policy') },
+      { source: '/admin', headers: securityHeaders.filter(h => h.key !== 'Content-Security-Policy') },
       // Admin, API and order tracking never belong in search results.
       { source: '/espace-oa', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
       { source: '/mon-compte/reinitialiser-mot-de-passe', headers: [{ key: 'Referrer-Policy', value: 'no-referrer' }, { key: 'Cache-Control', value: 'no-store' }, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },

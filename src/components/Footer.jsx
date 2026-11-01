@@ -100,7 +100,7 @@ export default function Footer() {
         <div className="w-layout-blockcontainer container w-container">
           <div className="footer-bottom-inner-box">
             <p className="footer-copyright-text">
-              <Link href="/espace-oa" className="footer-copyright-link">
+              <Link href="/admin" prefetch={false} className="footer-copyright-link">
                 © {new Date().getFullYear()} OA Événementiel — Tous droits réservés.
               </Link>
             </p>

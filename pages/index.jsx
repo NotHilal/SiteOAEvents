@@ -3,7 +3,7 @@ import { getRealisations } from '../src/lib/realisations-server.js'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Seo, { ORGANIZATION_LD } from '../src/components/Seo.jsx'
-import { supabase } from '../src/lib/supabase.js'
+import { getJsonContent } from '../src/lib/public-api.js'
 import ShopCard from '../src/components/product/ShopCard.jsx'
 import QuickView from '../src/components/product/QuickView.jsx'
 import { useCatalogueCart } from '../src/components/product/productUtils.js'
@@ -11,29 +11,10 @@ import Icon from '../src/components/Icon.jsx'
 import HeroVideo from '../src/components/HeroVideo.jsx'
 import { track } from '../src/lib/analytics.js'
 
-const UNIVERS = [
-  {
-    slotKey: 'univers_1',
-    href: '/nos-realisations',
-    title: 'Mariages & Réceptions',
-    text: 'De la demande à la nuit de noces, une scénographie pensée dans le moindre détail.',
-    img: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=720&q=70&auto=format&fit=crop',
-  },
-  {
-    slotKey: 'univers_2',
-    href: '/nos-realisations',
-    title: 'Anniversaires & Fêtes',
-    text: "Des célébrations sur mesure, intimes ou grandioses, à votre image.",
-    img: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=720&q=70&auto=format&fit=crop',
-  },
-  {
-    slotKey: 'univers_3',
-    href: '/catalogue',
-    title: 'Location de Décoration',
-    text: 'Mobilier, art de la table et scénographie disponibles à la location, livrés et installés.',
-    img: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=720&q=70&auto=format&fit=crop',
-  },
-]
+// Fallback photo of the "Organisation sur mesure" banner, swappable from
+// Espace OA > Visuel Site > Accueil (slot key kept from the old Nos Univers
+// block so an already chosen photo stays in place).
+const BANNER_IMG = 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1600&q=70&auto=format&fit=crop'
 
 // "Nos catégories" mosaic, modelled on options.fr's home block: one tall
 // tile on the left, two stacked tiles in each of the other columns. Photos
@@ -102,21 +83,13 @@ export default function Home({ realisations, selection, productCount }) {
 
   const [images, setImages] = useState({})
   useEffect(() => {
-    supabase.from('site_content').select('*').eq('key', 'images_home').then(({ data }) => {
-      const row = data && data[0]
-      if (!row) return
-      try { setImages(JSON.parse(row.value)) } catch {}
-    })
+    getJsonContent('images_home').then(v => { if (v) setImages(v) })
   }, [])
 
   // Title colours of the "Nos catégories" tiles, set in Espace OA.
   const [catColors, setCatColors] = useState({})
   useEffect(() => {
-    supabase.from('site_content').select('*').eq('key', 'home_categories_style').then(({ data }) => {
-      const row = data && data[0]
-      if (!row) return
-      try { setCatColors(JSON.parse(row.value) || {}) } catch {}
-    })
+    getJsonContent('home_categories_style').then(v => { if (v) setCatColors(v) })
   }, [])
 
   const inCartOf = card => card.variants.reduce((n, v) => n + (cart[v.id] || 0), 0)
@@ -245,35 +218,13 @@ export default function Home({ realisations, selection, productCount }) {
         </section>
 
         {/* BANNIÈRE — custom projects */}
-        <section className="shop-banner" style={{ backgroundImage: `url(${images.univers_1 || UNIVERS[0].img})` }}>
+        <section className="shop-banner" style={{ backgroundImage: `url(${images.univers_1 || BANNER_IMG})` }}>
           <div className="shop-banner-inner" data-reveal>
             <span className="oa-eyebrow">Organisation sur mesure</span>
             <h2>Un mariage, un anniversaire, un séminaire ?</h2>
             <p>Au-delà de la location, notre équipe conçoit et installe la scénographie complète de votre événement.</p>
             <div className="shop-banner-actions">
               <Link href="/contact" className="shop-btn shop-btn-light">Demander un devis</Link>
-            </div>
-          </div>
-        </section>
-
-        {/* NOS UNIVERS */}
-        <section className="oa-section oa-univers">
-          <div className="oa-container">
-            <div className="oa-section-head" data-reveal>
-              <span className="oa-eyebrow">Nos Univers</span>
-              <h2 className="oa-section-title">Un événement, une histoire</h2>
-            </div>
-            <div className="oa-univers-grid" data-reveal>
-              {UNIVERS.map(u => (
-                <Link href={u.href} key={u.title} className="oa-univers-card">
-                  <div className="oa-univers-image" style={{ backgroundImage: `url(${images[u.slotKey] || u.img})` }} />
-                  <div className="oa-univers-body">
-                    <h3 className="oa-heading" style={{ fontSize: 'var(--oa-size-h3)' }}>{u.title}</h3>
-                    <p className="oa-text-muted">{u.text}</p>
-                    <span className="oa-univers-link">Découvrir <i className="fas fa-arrow-right" /></span>
-                  </div>
-                </Link>
-              ))}
             </div>
           </div>
         </section>

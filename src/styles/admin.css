@@ -1236,7 +1236,6 @@ a { color:var(--rose-gold); }
 .cat-mgr-page-link:hover { color:var(--dark); }
 .cat-mgr-page-link i { font-size:.7rem; margin-left:3px; }
 .cat-mgr-page-count { margin-left:auto; padding:3px 10px; border-radius:var(--r-full); background:var(--light-bg); border:1px solid var(--border); font-size:.75rem; font-weight:700; color:var(--gray); }
-.cat-mgr-page-count.is-full { background:var(--rg-pale); border-color:var(--rose-gold); color:var(--dark); }
 .cat-mgr-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:16px; margin:0; padding:0; list-style:none; }
 .cat-mgr-tile { display:flex; flex-direction:column; background:#fff; border:1px solid var(--border); border-radius:var(--r-md); overflow:hidden; box-shadow:var(--card-shadow); }
 .cat-mgr-thumb { position:relative; aspect-ratio:4 / 3; overflow:hidden; background:var(--light-bg); }
@@ -1250,8 +1249,6 @@ a { color:var(--rose-gold); }
 .cat-mgr-count { font-size:.75rem; font-weight:700; color:var(--rg-dark); }
 .cat-mgr-actions { display:flex; align-items:center; gap:6px; padding:10px 16px 14px; border-top:1px solid var(--border); }
 .cat-mgr-actions-gap { flex:1; }
-.cat-mgr-next { margin:0 0 10px; font-size:.86rem; color:var(--gray); }
-.cat-mgr-next strong { color:var(--dark); }
 .cat-mgr-modal { max-width:520px; }
 .cat-mgr-err { margin:6px 0 0; color:var(--danger); font-size:.8rem; font-weight:600; }
 .cat-mgr-hint { margin:6px 0 0; color:var(--gray); font-size:.8rem; }

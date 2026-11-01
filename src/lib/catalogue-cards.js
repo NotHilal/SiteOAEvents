@@ -1,4 +1,4 @@
-import db from './sqlite-db.js'
+import db from './db/index.js'
 import { slugify } from './slug.js'
 import { getMinOrderQty, getUnitPriceTtc } from './pricing.js'
 import { sortCategories } from './catalogue-pages.js'
@@ -21,7 +21,7 @@ export const imagesOf = m => [...new Set([m.image_url, ...parseGallery(m.gallery
 
 export async function getCatalogueCards() {
   const [materials, products, categoryRows, tierRows] = await Promise.all([
-    db.prepare('SELECT * FROM materials WHERE available = 1 ORDER BY variant_order, name').all(),
+    db.prepare('SELECT * FROM materials WHERE available = true ORDER BY variant_order, name').all(),
     db.prepare('SELECT id, slug, name, category, description FROM products').all(),
     db.prepare('SELECT id, name, label, description, image_url, position, created_at FROM categories').all(),
     db.prepare('SELECT material_id, min_qty, max_qty, price_weekday_ht, price_weekend_ht FROM material_price_tiers ORDER BY min_qty').all(),

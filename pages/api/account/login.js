@@ -1,4 +1,4 @@
-import db from '../../../src/lib/sqlite-db.js'
+import db from '../../../src/lib/db/index.js'
 import { createCustomerToken, publicCustomer, setCustomerCookie, verifyCustomerPassword } from '../../../src/lib/customer-auth.js'
 import { rateLimit } from '../../../src/lib/rate-limit.js'
 import { tryCustomerWelcome } from '../../../src/lib/customer-welcome.js'
@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   const email = String(req.body?.email || '').trim().toLowerCase().slice(0, 254)
   const password = String(req.body?.password || '')
   try {
-    const account = await db.prepare('SELECT * FROM customer_accounts WHERE email = ? COLLATE NOCASE').get(email)
+    const account = await db.prepare('SELECT * FROM customer_accounts WHERE email = ?').get(email)
     if (!account || !account.active || !verifyCustomerPassword(password, account.password_hash)) {
       return res.status(400).json({ message: 'Adresse email ou mot de passe incorrect.' })
     }

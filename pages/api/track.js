@@ -1,4 +1,4 @@
-import db from '../../src/lib/sqlite-db.js';
+import db from '../../src/lib/db/index.js';
 import { rateLimit } from '../../src/lib/rate-limit.js';
 import { expireUnpaidOrders, flushOrderEmails } from '../../src/lib/orders.js';
 
@@ -24,12 +24,13 @@ export default async function handler(req, res) {
     const resa = await db.prepare(`
       SELECT * FROM reservations
       WHERE lower(email) = lower(?) AND upper(reference) = upper(?)
+        AND COALESCE(order_kind, '') NOT IN ('block', 'manual')
     `).get(email.trim(), reference.trim());
 
     if (!resa) {
       // Generic message on purpose — doesn't reveal whether the email or
       // the reference was the part that didn't match.
-      return res.status(404).json({ message: 'Aucune demande trouvée avec cet email et ce numéro de commande.' });
+      return res.status(404).json({ message: 'Aucune commande trouvée avec cet email et ce numéro de commande.' });
     }
 
     let dates = [];
@@ -59,6 +60,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('[Track API Error]', error);
-    return res.status(500).json({ message: 'Erreur lors de la recherche de votre demande.' });
+    return res.status(500).json({ message: 'Erreur lors de la recherche de votre commande.' });
   }
 }

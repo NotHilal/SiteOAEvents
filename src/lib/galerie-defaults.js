@@ -1,4 +1,4 @@
-// Shared by pages/galerie.jsx (fallback), src/lib/sqlite-db.js (seed +
+// Shared by pages/galerie.jsx (fallback), src/lib/db/seed.js (seed +
 // migration off the old Unsplash placeholders) and Espace OA's category
 // dropdown — one source so the three can't drift apart.
 

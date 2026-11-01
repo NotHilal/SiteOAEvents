@@ -5,12 +5,13 @@ import { useRouter } from 'next/router'
 import Seo from '../../src/components/Seo.jsx'
 import Icon from '../../src/components/Icon.jsx'
 import DateRangePicker from '../../src/components/checkout/DateRangePicker.jsx'
-import { supabase } from '../../src/lib/supabase.js'
+import { getBookingConfig, getCatalogueItems } from '../../src/lib/public-api.js'
 import { getDayType, getMinOrderQty, getUnitPriceTtc, groupTiersByMaterial } from '../../src/lib/pricing.js'
 import { getCartDates, setCartDates, setCatalogueCart } from '../../src/lib/cart.js'
 import { useCatalogueCart } from '../../src/components/product/productUtils.js'
 import { slugify } from '../../src/lib/slug.js'
 import { track } from '../../src/lib/analytics.js'
+import { fetchCustomerSession } from '../../src/lib/customer-session.js'
 
 // Stripe's code only loads with the payment form, on this page.
 const StripePayment = dynamic(() => import('../../src/components/checkout/StripePayment.jsx'), {
@@ -46,6 +47,7 @@ export default function Checkout() {
   const [blocked, setBlocked] = useState(new Set())
   const [maxDays, setMaxDays] = useState(DEFAULT_MAX_DAYS)
   const [available, setAvailable] = useState(null) // online payment configured?
+  const [publishableKey, setPublishableKey] = useState(null)
   const [dates, setDates] = useState([])
   const [stock, setStock] = useState({}) // { id: available units over `dates` }
   const [form, setForm] = useState(EMPTY_FORM)
@@ -61,18 +63,20 @@ export default function Checkout() {
   useEffect(() => {
     const saved = readSession(FORM_KEY)
     if (saved) setForm(f => ({ ...f, ...saved, website: '' }))
+    // Signed in: contact fields come from the account (only the empty ones,
+    // so nothing typed is overwritten), and the order lands in Mon compte.
+    fetchCustomerSession().then(user => {
+      if (!user) return
+      const fromAccount = { prenom: user.firstName, nom: user.lastName, email: user.email, phone: user.phone }
+      setForm(f => Object.fromEntries(Object.entries(f).map(([key, value]) => [key, value || fromAccount[key] || ''])))
+    })
     const cartDates = getCartDates()
     if (cartDates.length) setDates(cartDates)
     setCartReady(true)
-    fetch('/api/checkout').then(r => r.json()).then(r => setAvailable(!!r.data?.available)).catch(() => setAvailable(false))
-    Promise.all([
-      supabase.from('blocked_dates').select('date'),
-      supabase.from('blocked_hours').select('date'),
-      supabase.from('site_content').select('*').eq('key', 'max_consecutive_days'),
-    ]).then(([days, hours, setting]) => {
-      setBlocked(new Set([...(days.data || []), ...(hours.data || [])].map(r => r.date)))
-      const n = parseInt(setting.data?.[0]?.value, 10)
-      if (n > 0) setMaxDays(n)
+    fetch('/api/checkout').then(r => r.json()).then(r => { setAvailable(!!r.data?.available); setPublishableKey(r.data?.publishableKey || null) }).catch(() => setAvailable(false))
+    getBookingConfig().then(({ closedDates, maxConsecutiveDays }) => {
+      setBlocked(new Set(closedDates))
+      if (maxConsecutiveDays > 0) setMaxDays(maxConsecutiveDays)
     })
     track('Début commande')
   }, [])
@@ -83,13 +87,10 @@ export default function Checkout() {
   useEffect(() => {
     if (!ids.length) return
     let cancelled = false
-    Promise.all([
-      supabase.from('materials').select('*').in('id', ids),
-      supabase.from('material_price_tiers').select('*').in('material_id', ids),
-    ]).then(([m, t]) => {
+    getCatalogueItems(ids).then(({ materials: m, tiers: t }) => {
       if (cancelled) return
-      setMaterials(Object.fromEntries((m.data || []).map(x => [String(x.id), x])))
-      setTiers(groupTiersByMaterial(t.data || []))
+      setMaterials(Object.fromEntries(m.map(x => [String(x.id), x])))
+      setTiers(groupTiersByMaterial(t))
     })
     return () => { cancelled = true }
   }, [idsKey])
@@ -319,6 +320,7 @@ export default function Checkout() {
             <h2 id="ck-payment" className="ck-section-title"><span className="ck-step">3</span> Paiement</h2>
             {available ? (
               <StripePayment
+                publishableKey={publishableKey}
                 amount={grandTotal}
                 ready={!loading}
                 validate={validate}

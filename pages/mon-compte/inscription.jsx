@@ -136,7 +136,7 @@ export default function InscriptionCompte() {
 
             <label className="oa-register-consent">
               <input type="checkbox" required />
-              <span>J’accepte que mes informations soient utilisées pour gérer mon compte et mes demandes, conformément à la <Link href="/confidentialite">politique de confidentialité</Link>.</span>
+              <span>J’accepte que mes informations soient utilisées pour gérer mon compte et mes commandes, conformément à la <Link href="/confidentialite">politique de confidentialité</Link>.</span>
             </label>
             <div className="oa-register-actions">
               <button type="submit" className="oa-auth-primary" disabled={loading}>{loading ? 'Création…' : 'Créer mon compte'}</button>

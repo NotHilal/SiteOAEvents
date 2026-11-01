@@ -38,3 +38,7 @@ restores/
 # ───── Agents & Outils locaux ─────
 .agents/
 .codex/
+
+# TypeScript (admin)
+next-env.d.ts
+*.tsbuildinfo

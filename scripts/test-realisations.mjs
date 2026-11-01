@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict'
 import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
+import { createTestDatabase } from './lib/test-db.mjs'
 import { once } from 'node:events'
 import fs from 'node:fs/promises'
 import os from 'node:os'
@@ -9,6 +10,7 @@ import path from 'node:path'
 import net from 'node:net'
 
 const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'oa-realisations-'))
+const testDb = await createTestDatabase()
 const socket = net.createServer()
 await new Promise(resolve => socket.listen(0, '127.0.0.1', resolve))
 const port = socket.address().port
@@ -18,7 +20,7 @@ const secret = crypto.randomBytes(32).toString('hex')
 const payload = Buffer.from(JSON.stringify({ role: 'authenticated', exp: Date.now() + 3600000 })).toString('base64url')
 const token = `${payload}.${crypto.createHmac('sha256', secret).update(payload).digest('base64url')}`
 const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-p', String(port)], {
-  env: { ...process.env, TURSO_DATABASE_URL: `file:${path.join(directory, 'qa.sqlite').replaceAll('\\', '/')}`, TURSO_AUTH_TOKEN: '', JWT_SECRET: secret },
+  env: { ...process.env, DATABASE_URL: testDb.url, JWT_SECRET: secret },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 let logs = ''
@@ -109,4 +111,5 @@ try {
   server.kill()
   await exited
   await fs.rm(directory, { recursive: true, force: true })
+  await testDb.drop()
 }

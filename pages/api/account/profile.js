@@ -1,4 +1,4 @@
-import db from '../../../src/lib/sqlite-db.js'
+import db from '../../../src/lib/db/index.js'
 import { getCustomerSession, publicCustomer, isCurrentCustomerSession } from '../../../src/lib/customer-auth.js'
 
 const clean = (value, max = 120) => String(value || '').trim().slice(0, max)
@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   if (!['GET', 'PUT'].includes(req.method)) return res.status(405).json({ message: 'Method Not Allowed' })
   const session = getCustomerSession(req)
   if (!session) return res.status(401).json({ message: 'Session expirée.' })
-  const account = await db.prepare('SELECT * FROM customer_accounts WHERE id = ? AND active = 1').get(session.sub)
+  const account = await db.prepare('SELECT * FROM customer_accounts WHERE id = ? AND active = true').get(session.sub)
   if (!isCurrentCustomerSession(session, account)) return res.status(401).json({ message: 'Session expirée. Reconnectez-vous.' })
 
   if (req.method === 'GET') return res.status(200).json({ user: publicCustomer(account) })

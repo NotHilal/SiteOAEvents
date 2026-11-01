@@ -11,14 +11,15 @@ import { spawnSync } from 'node:child_process'
 
 if (!process.argv.includes('--worker')) {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'oa-orders-'))
-  const result = spawnSync(process.execPath, [process.argv[1], '--worker'], { env: { ...process.env, OA_TEST_DIRECTORY: directory }, stdio: 'inherit' })
+  const { createTestDatabase } = await import('./lib/test-db.mjs')
+  const testDb = await createTestDatabase()
+  const result = spawnSync(process.execPath, [process.argv[1], '--worker'], { env: { ...process.env, OA_TEST_DIRECTORY: directory, DATABASE_URL: testDb.url }, stdio: 'inherit' })
+  await testDb.drop()
   if (!path.resolve(directory).startsWith(path.join(os.tmpdir(), 'oa-orders-'))) throw new Error('Unsafe test directory')
   await fs.rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
   process.exit(result.status ?? 1)
 }
 const directory = process.env.OA_TEST_DIRECTORY
-process.env.TURSO_DATABASE_URL = `file:${path.join(directory, 'test.sqlite').replaceAll('\\', '/')}`
-process.env.TURSO_AUTH_TOKEN = ''
 process.env.STRIPE_SECRET_KEY = 'sk_test_local_fake_provider'
 process.env.STRIPE_WEBHOOK_SECRET = 'whsec_local_test'
 process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = 'pk_test_local_fake_provider'
@@ -41,15 +42,15 @@ globalThis.fetch = async (url, options = {}) => {
   }
   throw new Error(`Unexpected network call: ${url}`)
 }
-const { default: db } = await import('../src/lib/sqlite-db.js')
+const { default: db } = await import('../src/lib/db/index.js')
 const { startCheckout, expireUnpaidOrders, cancelOrder, flushOrderEmails, syncOrderPayment } = await import('../src/lib/orders.js')
-const { getStripe } = await import('../src/lib/stripe.js')
+const { getStripe, clearStripeConfigCache } = await import('../src/lib/stripe.js')
 const { default: webhook } = await import('../pages/api/payments/webhook.js')
 const { default: adminOrders } = await import('../pages/api/admin/orders.js')
 const { createAdminToken } = await import('../src/lib/auth.js')
 
 // ---- Fake Stripe ----
-const stripe = getStripe()
+const stripe = await getStripe()
 const intents = new Map()
 const idempotent = new Map()
 const refunds = []
@@ -101,7 +102,7 @@ const expire = async id => db.prepare('UPDATE reservations SET expires_at = ? WH
 
 try {
   await db.prepare('SELECT 1').get()
-  await db.prepare("INSERT INTO materials (id, name, max_quantity, available) VALUES ('qa-material', 'Article test', 1, 1)").run()
+  await db.prepare("INSERT INTO materials (id, name, max_quantity, available) VALUES ('qa-material', 'Article test', 1, true)").run()
   await db.prepare("INSERT INTO material_price_tiers (id, material_id, min_qty, price_weekday_ht, price_weekend_ht) VALUES ('qa-tier', 'qa-material', 1, 10, 10)").run()
   await db.prepare("UPDATE settings SET value = '15' WHERE key = 'delivery_base_fee'").run()
   await db.prepare("UPDATE settings SET value = '1.2' WHERE key = 'delivery_per_km'").run()
@@ -134,8 +135,10 @@ try {
   await assert.rejects(startCheckout(input()), /livraison/)
   geoFails = false
   delete process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  clearStripeConfigCache()
   await assert.rejects(startCheckout(input()), /indisponible/)
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = 'pk_test_local_fake_provider'
+  clearStripeConfigCache()
 
   // Concurrency: one unit can't be sold twice.
   const concurrent = input()
