@@ -110,7 +110,7 @@ export default function NosExperiences() {
                     <ul className="service-includes">
                       {e.highlights.map((h, j) => <li key={j}>{h}</li>)}
                     </ul>
-                    <Link href="/reservation" className="btn btn-rose-gold">Vivre une expérience similaire</Link>
+                    <Link href="/catalogue" className="btn btn-rose-gold">Vivre une expérience similaire</Link>
                   </div>
                 </div>
               </div>

@@ -5,7 +5,7 @@ import ProductGallery from './ProductGallery.jsx'
 import QtyStepper from './QtyStepper.jsx'
 import AvailabilityCheck from './AvailabilityCheck.jsx'
 import { formatEuro, useCatalogueCart, categoryLabel } from './productUtils.js'
-import { addToCatalogueCart, openCartDrawer, sendCatalogueCartToReservation } from '../../lib/cart.js'
+import { addToCatalogueCart, openCartDrawer, goToCheckout } from '../../lib/cart.js'
 import { track } from '../../lib/analytics.js'
 
 // "Aperçu rapide" dialog opened from a catalogue / homepage card: photos
@@ -53,7 +53,7 @@ export default function QuickView({ card, onClose }) {
   function bookNow() {
     if (!inCart) add()
     track('Clic Réserver', { emplacement: 'aperçu rapide' })
-    sendCatalogueCartToReservation(router, { dates })
+    goToCheckout(router, { dates })
   }
 
   const images = variant.images?.length ? variant.images : card.variants.flatMap(v => v.images || [])
@@ -123,7 +123,7 @@ export default function QuickView({ card, onClose }) {
 
             <div className="shop-qv-actions">
               <button type="button" className="shop-btn shop-btn-gold" onClick={bookNow} disabled={room === 0 && !inCart}>
-                <i className="far fa-calendar-check" /> Réserver maintenant
+                <i className="fas fa-bolt" /> Commander maintenant
               </button>
               <Link href={`/catalogue/${variant.slug || card.slug}`} className="shop-btn shop-btn-ghost" onClick={onClose}>
                 Voir la fiche complète

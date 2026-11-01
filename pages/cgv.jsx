@@ -3,8 +3,8 @@ import LegalPage, { ToFill, ToValidate } from '../src/components/LegalPage.jsx'
 import { SITE } from '../src/lib/site.js'
 
 // Only rules the site actually applies are stated as fact (pricing by day
-// type, TTC prices, delivery fee formula, validation then payment,
-// installment plans). Every commercial policy the business hasn't defined
+// type, TTC prices, delivery fee formula, order confirmed on payment,
+// refund on cancellation). Every commercial policy the business hasn't defined
 // yet is a visible <ToFill> marker — nothing invented.
 export default function Cgv() {
   return (
@@ -12,7 +12,7 @@ export default function Cgv() {
       title="Conditions générales de vente"
       description="Conditions générales de vente et de location d'OA Événementiel : réservation, prix, paiement, livraison, annulation et responsabilités."
       path="/cgv"
-      updated="11 octobre 2026"
+      updated="31 octobre 2026"
     >
       <ToValidate>
         trame à compléter avec vos conditions commerciales et à faire valider par un professionnel du droit
@@ -28,16 +28,15 @@ export default function Cgv() {
       </p>
 
       <h2>2. Réservation</h2>
-      <p>La réservation s'effectue en ligne, en plusieurs étapes :</p>
+      <p>La commande s'effectue en ligne :</p>
       <ol>
-        <li>le Client sélectionne son matériel, la ou les dates de son événement et l'adresse de livraison ;</li>
-        <li>le total de la location et de la livraison est calculé et vérifié avant paiement ;</li>
-        <li>le Client enregistre sa commande de matériel, qui reçoit un numéro et réserve temporairement le stock ;</li>
-        <li>le Client règle son premier versement en ligne ou par virement dans le délai affiché ;</li>
-        <li>la commande est confirmée automatiquement après réception du premier versement prévu à l’échéancier. Les prestations sur mesure font l’objet d’un devis distinct.</li>
+        <li>le Client ajoute le matériel souhaité à son panier depuis le catalogue ;</li>
+        <li>il indique la ou les dates de son événement, ses coordonnées et l'adresse de livraison ; le total de la location et de la livraison est calculé avant paiement ;</li>
+        <li>il règle la totalité de la commande en ligne. Le matériel est réservé pendant 30 minutes le temps du paiement ; sans paiement dans ce délai, la commande est abandonnée sans aucun débit ;</li>
+        <li>la commande est confirmée dès que le paiement est accepté. Le Client reçoit un numéro de commande et un email de confirmation. Les prestations sur mesure font l’objet d’un devis distinct.</li>
       </ol>
       <p>
-        Le Client peut suivre sa demande à tout moment
+        Le Client peut suivre sa commande à tout moment
         depuis la page <Link href="/suivi">Suivi de commande</Link>.
       </p>
 
@@ -56,24 +55,22 @@ export default function Cgv() {
           de livraison (forfait fixe + prix au kilomètre).
         </li>
         <li>
-          Les montants affichés en ligne sont indicatifs ; le montant définitif est celui confirmé par le
-          Prestataire. <ToFill>préciser si une caution / un dépôt de garantie est demandé, son montant et ses modalités de restitution</ToFill>
+          Le montant payé est celui affiché au moment de la commande, livraison comprise.{' '}
+          <ToFill>préciser si une caution / un dépôt de garantie est demandé, son montant et ses modalités de restitution</ToFill>
         </li>
       </ul>
 
       <h2>4. Paiement</h2>
       <ul>
-        <li>Moyens de paiement acceptés : carte bancaire (paiement sécurisé par Stripe) et virement bancaire.</li>
         <li>
-          Le paiement peut être réglé en une fois ou, selon le montant et la date de l'événement, en 2, 3 ou 4
-          versements mensuels. Le dernier versement doit intervenir au plus tard 3 jours avant l'événement.
-          L'échéancier applicable est indiqué au Client avant validation du paiement.
+          La commande est payée en totalité au moment où elle est passée, en ligne, par les moyens proposés sur
+          la page de paiement (carte bancaire notamment), via la plateforme sécurisée Stripe. Le Prestataire
+          n'a jamais accès aux données de carte du Client.
         </li>
         <li>
-          En cas de paiement par carte en plusieurs fois, les versements suivants sont prélevés automatiquement
-          aux dates de l'échéancier.
+          En cas d'annulation d'une commande par le Prestataire, le Client est intégralement remboursé sur le
+          moyen de paiement utilisé.
         </li>
-        <li><ToFill>conséquences d'un défaut ou retard de paiement (pénalités, annulation de la réservation)</ToFill></li>
       </ul>
 
       <h2>5. Livraison, installation et reprise</h2>

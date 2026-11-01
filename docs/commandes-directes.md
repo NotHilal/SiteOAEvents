@@ -1,44 +1,48 @@
 # Commandes de location directes
 
-## Parcours
+## Parcours client
 
-Le catalogue et `/reservation` concernent la location de matériel. Le client choisit les dates, les quantités et la livraison, vérifie le récapitulatif puis passe directement au paiement. Les prestations d’organisation sur mesure renvoient vers `/contact` pour un devis.
+Le client fonctionne comme sur un site marchand classique : il commande et paie, puis la commande est confirmée. Personne ne la valide à la main.
 
-Le stock, les créneaux bloqués et les tarifs sont contrôlés côté serveur. Le contrôle et l’enregistrement utilisent une vraie transaction d’écriture libSQL. Le stock est réservé sur chaque journée de location, même si le client précise des heures. Plusieurs commandes peuvent partager une date dans la limite du stock. Une clé de tentative empêche de créer deux commandes après un double clic ou une réponse réseau perdue.
+1. Le client ajoute des articles au panier depuis le catalogue : tiroir panier, fiche produit ou aperçu rapide. Les dates vérifiées sur une fiche produit restent attachées au panier.
+2. **Commander** ouvre `/commande`, une page unique en trois blocs, avec le panier modifiable à côté :
+   - la date de l'événement : calendrier, période d'au plus *N* jours consécutifs (Réglages) ;
+   - la livraison et les coordonnées : l'adresse est proposée en autocomplétion, et les frais sont calculés tout de suite ;
+   - le paiement, avec le Payment Element de Stripe.
+3. Le bouton **Payer X €** crée la commande sur le serveur, puis confirme le paiement. Le client arrive ensuite sur `/commande/confirmation`, avec son numéro de commande et le récapitulatif. Le panier est alors vidé.
 
-## Paiement et statuts
+`/reservation` redirige vers `/commande`. Les prestations sur mesure passent par `/contact`.
 
-- Nouvelle commande : `awaiting_payment`, stock retenu 30 minutes.
-- Carte : la notification Stripe signée confirme la réception du premier versement et fait passer la commande à `confirmed`. Les éventuels versements suivants restent dans l’échéancier existant.
-- Virement : le stock est retenu pendant 48 heures au maximum, sans dépasser le début de l’événement en heure de Paris. Le gérant constate la réception via **Marquer reçu** dans l’admin ; la confirmation de commande est alors automatique.
-- Sans premier versement : `expired` et libération du stock. L’expiration est évaluée lors des accès au stock, au suivi, aux commandes et au paiement, sans tâche planifiée supplémentaire.
-- Avant de libérer un stock associé à une carte, le serveur vérifie puis annule le paiement Stripe. Un paiement en traitement ou une panne Stripe conserve la réservation jusqu’à une nouvelle vérification. Les tentatives interrompues sont récupérées avec leur clé Stripe d’origine.
-- Un versement bancaire reçu après expiration nécessite un traitement avec le client ; le bouton de réception ne réactive pas une commande dont le stock a été libéré.
-- Une commande confirmée peut être marquée `terminee` par le gérant. Les commandes directes et leurs paiements restent conservés pour le suivi ; les changements manuels de statut ou de total ne doivent pas contourner le paiement.
+Les points suivants sont tous recontrôlés côté serveur, dans une transaction d'écriture libSQL : prix, stock par jour, jours bloqués et frais de livraison. Une journée partiellement bloquée dans **Blocages** n'est plus réservable. Si le client clique plusieurs fois sur le même panier, la même commande et le même paiement sont repris. S'il modifie son panier après un échec, une nouvelle commande est créée et la précédente libère son stock tout de suite.
 
-Le moyen de paiement et le nombre de versements sont fixés lors de leur première préparation. Les nouvelles tentatives reprennent le même paiement et ne recréent pas de prélèvement.
+## Moyens de paiement
 
-## Emails
+Stripe propose automatiquement tous les moyens activés dans le **tableau de bord Stripe → Paramètres → Moyens de paiement** : carte, Apple Pay, Google Pay, **PayPal**, etc. Il n'y a rien à coder pour en ajouter un. Pour PayPal, il suffit de l'activer chez Stripe.
 
-Les emails de création et de confirmation sont préparés pour le client et pour l’adresse `NOTIFICATION_EMAIL`, si elle est configurée (avec repli sur `ADMIN_EMAIL` pour les anciennes configurations). Cette adresse de réception est indépendante de l’identifiant de connexion à l’admin. Une table `order_emails` conserve les envois à effectuer. Les échecs ne suppriment pas la commande ; ils sont retentés lors d’un prochain accès au suivi, d’une nouvelle commande ou d’une confirmation. Une clé d’idempotence est transmise à Resend. Aucun envoi n’est marqué réussi lorsque le service d’emails n’est pas configuré.
+Le paiement par virement et le paiement en plusieurs fois ont été retirés.
+
+## Statuts
+
+- `awaiting_payment` : la commande vient d'être créée et le stock est retenu 30 minutes, le temps du paiement.
+- `confirmed` : le paiement a réussi. La confirmation vient du webhook signé, ou de la page de retour, qui relit le paiement chez Stripe. Un email part au client et à `NOTIFICATION_EMAIL`.
+- `expired` : la commande n'a pas été payée à temps. Le paiement Stripe est annulé et le stock libéré. Avant d'expirer, le serveur vérifie chez Stripe : un paiement réussi est conservé, et un paiement en cours de traitement garde le stock.
+- `cancelled` : la commande a été annulée par OA et remboursée intégralement.
+
+## Côté Espace OA
+
+L'onglet **Commandes** liste les commandes. Il n'y a rien à valider. La seule action possible est **Annuler et rembourser** : le remboursement Stripe est total, le client est prévenu par email et le stock redevient disponible. Un remboursement total fait directement dans le tableau de bord Stripe annule aussi la commande (événement `charge.refunded`).
 
 ## Configuration avant mise en service
 
-La carte nécessite `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` et `STRIPE_WEBHOOK_SECRET`, avec le webhook `/api/payments/webhook` enregistré chez Stripe. Pour les essais réels de bout en bout, utiliser le mode test Stripe. Recompiler après tout changement de clé publique.
-
-Le virement se configure dans **Espace OA → Réglages → Virement**. Le RIB fourni par le client a été enregistré dans les réglages de cet environnement au nom d’OA Événementiel. Les coordonnées complètes restent dans la base de données et ne sont pas enregistrées dans le code source.
-
-L’envoi d’emails nécessite `RESEND_API_KEY`, un expéditeur autorisé dans `EMAIL_FROM`, l’adresse de réception des notifications d’OA Événementiel dans `NOTIFICATION_EMAIL` et l’URL définitive du site dans `NEXT_PUBLIC_SITE_URL`. L’environnement actuel utilise `contact@oa-evenementiel.fr` comme expéditeur et destinataire des notifications. La clé Resend reste à renseigner, et l’expéditeur doit être autorisé chez Resend avant l’envoi réel. Les autres sections incomplètes des CGV restent à compléter séparément.
-
-En l’absence de tout moyen de paiement, le site indique que la commande est indisponible et propose le contact. Aucun faux paiement ni livraison gratuite implicite n’est accepté.
+- `.env` : `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` et `STRIPE_WEBHOOK_SECRET`. Sans les deux premières, la page de commande affiche « paiement bientôt disponible ». Il faut recompiler après tout changement de clé publique.
+- Webhook Stripe : `https://oa-evenementiel.fr/api/payments/webhook`, avec les événements `payment_intent.succeeded`, `payment_intent.payment_failed` et `charge.refunded`.
+- Emails : `RESEND_API_KEY`, `EMAIL_FROM` (expéditeur autorisé chez Resend), `NOTIFICATION_EMAIL` et `NEXT_PUBLIC_SITE_URL`. Les emails sont mis en file dans `order_emails` et renvoyés si l'envoi échoue.
+- Pour les essais, utiliser les clés **test** de Stripe et la carte `4242 4242 4242 4242`.
 
 ## Vérification
 
 ```sh
-npm run build
 node scripts/test-direct-orders.mjs
-node scripts/test-direct-orders-http.mjs
-node scripts/test-realisations.mjs
 ```
 
-Les tests utilisent des bases temporaires et des prestataires simulés. Ils n’envoient aucun véritable email, ne débitent aucun compte et ne modifient pas la base du site. `node scripts/test-direct-orders-http.mjs --preview` conserve un serveur de vérification sur `http://127.0.0.1:3100` pour le contrôle navigateur. L’admin de cet environnement de test utilise uniquement `preview@oa.test` / `oa-preview-local`.
+Ce test utilise une base temporaire et des prestataires simulés (Stripe, géocodage, emails). Il n'envoie aucun véritable email et ne débite rien.

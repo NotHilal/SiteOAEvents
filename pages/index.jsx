@@ -61,9 +61,9 @@ const ASSURANCES = [
 // confirmation, then payment + tracking via /suivi.
 const ETAPES = [
   { title: 'Faites votre sélection', text: 'Mobilier, art de la table et décoration : ajoutez vos pièces au panier depuis le catalogue.' },
-  { title: 'Indiquez la date et le lieu', text: "Choisissez le ou les jours de votre événement et l'adresse de livraison." },
-  { title: 'Vérifiez votre total', text: 'Le prix de la location et de la livraison est calculé en ligne.' },
-  { title: 'Confirmez et suivez', text: 'Réglez le premier versement pour confirmer automatiquement la location, puis suivez votre commande en ligne.' },
+  { title: 'Indiquez la date et le lieu', text: "Au moment de commander, choisissez le ou les jours de votre événement et l'adresse de livraison." },
+  { title: 'Vérifiez votre total', text: 'Le prix de la location et de la livraison est calculé immédiatement.' },
+  { title: 'Payez, c’est réservé', text: 'Réglez en ligne par carte : votre location est confirmée aussitôt, suivez-la depuis votre commande.' },
 ]
 
 const STATS = [
@@ -146,8 +146,8 @@ export default function Home({ realisations, selection, productCount }) {
               <Link href="/catalogue/complet" className="shop-btn shop-btn-gold shop-btn-xl" onClick={() => track('Clic Catalogue', { emplacement: 'hero' })}>
                 <i className="fas fa-th-large" /> Voir le catalogue
               </Link>
-              <Link href="/reservation" className="shop-btn shop-btn-light shop-btn-xl" onClick={() => track('Clic Réserver', { emplacement: 'hero' })}>
-                <i className="far fa-calendar-check" /> Réserver une date
+              <Link href="/catalogue" className="shop-btn shop-btn-light shop-btn-xl" onClick={() => track('Clic Réserver', { emplacement: 'hero' })}>
+                <i className="far fa-calendar-check" /> Réserver mon événement
               </Link>
             </div>
           </div>
@@ -237,8 +237,8 @@ export default function Home({ realisations, selection, productCount }) {
               ))}
             </ol>
             <div className="oa-center-cta">
-              <Link href="/reservation" className="shop-btn shop-btn-gold shop-btn-xl" onClick={() => track('Clic Réserver', { emplacement: 'étapes' })}>
-                <i className="far fa-calendar-check" /> Commencer ma réservation
+              <Link href="/catalogue/complet" className="shop-btn shop-btn-gold shop-btn-xl" onClick={() => track('Clic Réserver', { emplacement: 'étapes' })}>
+                <i className="far fa-calendar-check" /> Commencer ma sélection
               </Link>
             </div>
           </div>
@@ -311,7 +311,7 @@ export default function Home({ realisations, selection, productCount }) {
             <p className="apropos-cta-text">Choisissez vos articles, indiquez votre date : le total, livraison comprise, est calculé en ligne.</p>
             <div className="oa-center-cta" style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link href="/catalogue/complet" className="shop-btn shop-btn-dark shop-btn-xl">Voir le catalogue</Link>
-              <Link href="/reservation" className="shop-btn shop-btn-gold shop-btn-xl">Réserver mon événement</Link>
+              <Link href="/catalogue" className="shop-btn shop-btn-gold shop-btn-xl">Réserver mon événement</Link>
             </div>
           </div>
         </section>

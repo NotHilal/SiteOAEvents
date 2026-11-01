@@ -140,7 +140,7 @@ export default function APropos() {
           <div className="container">
             <h2 className="apropos-cta-title">Discutons de votre événement</h2>
             <p className="apropos-cta-text">Parlons de votre projet et voyons comment lui donner vie ensemble.</p>
-            <Link href="/reservation" className="btn btn-rose-gold">Demander un devis</Link>
+            <Link href="/contact" className="btn btn-rose-gold">Demander un devis</Link>
           </div>
         </section>
       </div>

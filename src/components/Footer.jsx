@@ -54,7 +54,7 @@ export default function Footer() {
                 <ul role="list" className="list-style-one">
                   <li className="list-item"><Link href="/" className="list-text-link">Accueil</Link></li>
                   <li className="list-item"><Link href="/nos-realisations" className="list-text-link">Nos réalisations</Link></li>
-                  <li className="list-item"><Link href="/reservation" className="list-text-link">Réserver</Link></li>
+                  <li className="list-item"><Link href="/catalogue" className="list-text-link">Réserver</Link></li>
                 </ul>
                 <ul role="list" className="list-style-one">
                   <li className="list-item"><Link href="/suivi" className="list-text-link">Suivi de commande</Link></li>
@@ -74,7 +74,7 @@ export default function Footer() {
                   <i className="fas fa-envelope" aria-hidden="true" /> <a href={`mailto:${SITE.email}`} className="list-text-link">{SITE.email}</a>
                 </li>
                 <li className="list-item">
-                  <Link href="/reservation" className="list-text-link footer-cta-link">
+                  <Link href="/catalogue" className="list-text-link footer-cta-link">
                     Demander un devis →
                   </Link>
                 </li>

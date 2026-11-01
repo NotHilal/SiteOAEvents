@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/router'
 import AvailabilityCheck from './AvailabilityCheck.jsx'
-import { sendCatalogueCartToReservation } from '../../lib/cart.js'
+import { goToCheckout } from '../../lib/cart.js'
 import ProductLayout from './ProductLayout.jsx'
 import QtyStepper from './QtyStepper.jsx'
 import { ProductFacts, TariffTable } from './ProductFacts.jsx'
@@ -54,12 +54,12 @@ export default function ProductMultiple({ product, variants, activeVariantId, re
     setQuantities({})
   }
 
-  // Adds what is chosen in the table (if anything), then opens the booking
-  // wizard on the days checked for the selected option.
+  // Adds what is chosen in the table (if anything), then opens the
+  // checkout on the days checked for the selected option.
   function bookNow() {
     if (chosen.length) add()
     track('Clic Réserver', { emplacement: 'fiche produit' })
-    sendCatalogueCartToReservation(router, { dates })
+    goToCheckout(router, { dates })
   }
 
   return (
@@ -127,7 +127,7 @@ export default function ProductMultiple({ product, variants, activeVariantId, re
 
       <AvailabilityCheck variantId={active.id} qty={quantities[active.id] || minQtyOf(active)} onDates={setDates} />
       <button type="button" className="shop-btn shop-btn-gold pdp-book" onClick={bookNow} disabled={!chosen.length && !Object.keys(cart).some(id => variants.some(v => v.id === id && cart[id] > 0))}>
-        <i className="far fa-calendar-check" /> Réserver maintenant
+        <i className="fas fa-bolt" /> Commander maintenant
       </button>
 
       <section className="pdp-variant-detail" aria-label={`Détails : ${active.name}`}>

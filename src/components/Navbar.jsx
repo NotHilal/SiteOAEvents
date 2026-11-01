@@ -30,7 +30,7 @@ const MAIN_LINKS = [
   { href: '/a-propos', label: 'À Propos' },
 ]
 const SERVICE_LINKS = [
-  { href: '/reservation', label: 'Réserver' },
+  { href: '/commande', label: 'Mon panier' },
   { href: '/suivi', label: 'Suivi de commande' },
   { href: '/contact', label: 'Contact' },
   // Also in the header icon row, which hides them below 992px.
@@ -155,7 +155,7 @@ export default function Navbar() {
             <Icon name="book" size={20} strokeWidth={1.6} />
             <span>Catalogue</span>
           </Link>
-          <Link href="/reservation" className="oah-cta" onClick={() => track('Clic Réserver', { emplacement: 'header' })}>
+          <Link href="/catalogue/complet" className="oah-cta" onClick={() => track('Clic Réserver', { emplacement: 'header' })}>
             <Icon name="calendar" size={30} />
             <span>Réserver votre événement</span>
           </Link>
@@ -215,7 +215,7 @@ export default function Navbar() {
               {c.label}
             </Link>
           ))}
-          <Link href="/reservation" className="oah-catbar-book" onClick={() => track('Clic Réserver', { emplacement: 'barre catalogue' })}>
+          <Link href="/catalogue/complet" className="oah-catbar-book" onClick={() => track('Clic Réserver', { emplacement: 'barre catalogue' })}>
             <i className="far fa-calendar-check" aria-hidden="true" /> Réserver
           </Link>
         </div>

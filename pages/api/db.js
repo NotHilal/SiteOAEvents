@@ -5,7 +5,7 @@ import { PUBLIC_SANITIZERS, isSpam } from '../../src/lib/public-submissions';
 import { rateLimit } from '../../src/lib/rate-limit';
 import { slugify } from '../../src/lib/slug';
 import { normalizeCategoryTitle } from '../../src/lib/catalogue-pages';
-import { createRentalOrder, confirmPaidOrder, expireUnpaidOrders } from '../../src/lib/orders.js';
+import { expireUnpaidOrders } from '../../src/lib/orders.js';
 
 // URL slug for a new material or product (/catalogue/[slug]), unique across
 // BOTH tables: the product page resolves product slugs first, so a material
@@ -105,13 +105,11 @@ export default async function handler(req, res) {
     reservations: ['GET', 'PUT', 'DELETE'], // GET is protected, POST (insert) is public
     contacts: ['GET', 'PUT', 'DELETE'],     // GET is protected, POST (insert) is public
     settings: ['GET', 'POST', 'PUT', 'DELETE'], // business config, admin-only end to end
-    payments: ['GET', 'POST', 'PUT', 'DELETE'], // financial data, admin-only; rows are actually
-                                                  // written by /api/payments/* server-side, not
-                                                  // inserted through this generic endpoint
+    payments: ['GET', 'POST', 'PUT', 'DELETE'], // financial data, admin-only; rows are only
+                                                  // written server-side (src/lib/orders.js)
     site_content: ['POST', 'PUT', 'DELETE'],    // GET public — public pages (e.g. À Propos) read
                                                   // this while logged out; kept separate from
-                                                  // settings so bank_iban/bank_bic never have to
-                                                  // be exposed to make this readable
+                                                  // settings, which stays admin-only
   };
 
   const method = req.method;
@@ -199,9 +197,10 @@ export default async function handler(req, res) {
           // Pretend success so bots don't learn to adapt.
           return res.status(200).json({ data: { id: crypto.randomUUID() } });
         }
+        // Orders (with items) are paid at once: they go through
+        // /api/checkout, never through this generic insert.
         if (table === 'reservations' && Array.isArray(payload.materials) && payload.materials.length) {
-          const data = await createRentalOrder(payload);
-          return res.status(201).json({ data });
+          return res.status(400).json({ message: 'Les commandes passent par la page Commande.' });
         }
         const { record, error } = await sanitize(payload);
         if (error) return res.status(400).json({ message: error });
@@ -270,24 +269,11 @@ export default async function handler(req, res) {
         const directOrders = id
           ? await db.prepare("SELECT status FROM reservations WHERE id = ? AND order_kind = 'rental'").all(id)
           : await db.prepare("SELECT status FROM reservations WHERE order_kind = 'rental' LIMIT 1").all();
-        if (directOrders.length && (!id || actualPayload.status !== 'terminee' || Object.keys(actualPayload).length !== 1 || directOrders[0].status !== 'confirmed')) return res.status(409).json({ message: 'Le statut de cette commande est géré par le paiement. Seule une commande confirmée peut être marquée terminée.' });
+        if (directOrders.length) return res.status(409).json({ message: 'Le statut d’une commande suit son paiement. Pour l’annuler, utilisez « Annuler et rembourser ».' });
       }
 
-      if (table === 'payments' && actualPayload.status === 'paid') {
-        const id = actualFilters.find(f => f.type === 'eq' && f.field === 'id')?.value;
-        if (!id) return res.status(400).json({ message: 'Un versement précis est requis.' });
-        const currentPayment = await db.prepare('SELECT reservation_id FROM payments WHERE id = ?').get(id);
-        if (currentPayment) await expireUnpaidOrders(currentPayment.reservation_id);
-        const payment = await db.writeTransaction(async tx => {
-          const p = await tx.prepare('SELECT * FROM payments WHERE id = ?').get(id);
-          const order = p && await tx.prepare('SELECT status, expires_at FROM reservations WHERE id = ?').get(p.reservation_id);
-          if (!p || p.method !== 'virement' || !['awaiting_payment', 'confirmed'].includes(order?.status) || (order.status === 'awaiting_payment' && order.expires_at && Date.parse(order.expires_at) <= Date.now())) throw Object.assign(new Error('Ce virement ne peut pas être confirmé : vérifiez le statut de la commande et la disponibilité avant de traiter un versement tardif.'), { status: 409 });
-          await tx.prepare("UPDATE payments SET status = 'paid', paid_at = COALESCE(paid_at, ?) WHERE id = ?").run(new Date().toISOString(), id);
-          return p;
-        });
-        await confirmPaidOrder(payment.reservation_id);
-        return res.json({ data: await db.prepare('SELECT * FROM payments WHERE id = ?').all(id) });
-      }
+      // Payments are written by Stripe (webhook / checkout) only.
+      if (table === 'payments') return res.status(409).json({ message: 'Les paiements sont gérés par Stripe.' });
 
       if (table === 'categories' && (actualPayload.name || actualPayload.label)) {
         const idFilter = (actualFilters || []).find(f => f.field === 'id' && f.type === 'eq')

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/router'
 import AvailabilityCheck from './AvailabilityCheck.jsx'
-import { sendCatalogueCartToReservation } from '../../lib/cart.js'
+import { goToCheckout } from '../../lib/cart.js'
 import ProductLayout from './ProductLayout.jsx'
 import QtyStepper from './QtyStepper.jsx'
 import { ProductFacts, TariffTable } from './ProductFacts.jsx'
@@ -34,11 +34,11 @@ export default function ProductSingle({ product, variant, related }) {
   }
 
   // Puts the chosen quantity in the cart if it isn't there yet, then opens
-  // the booking wizard on the days checked below.
+  // the checkout on the days checked below.
   function bookNow() {
     if (!inCart) add()
     track('Clic Réserver', { emplacement: 'fiche produit' })
-    sendCatalogueCartToReservation(router, { dates })
+    goToCheckout(router, { dates })
   }
 
   return (
@@ -71,7 +71,7 @@ export default function ProductSingle({ product, variant, related }) {
         <>
           <AvailabilityCheck variantId={variant.id} qty={qty} onDates={setDates} />
           <button type="button" className="shop-btn shop-btn-gold pdp-book" onClick={bookNow} disabled={atStockLimit && !inCart}>
-            <i className="far fa-calendar-check" /> Réserver maintenant
+            <i className="fas fa-bolt" /> Commander maintenant
           </button>
         </>
       )}

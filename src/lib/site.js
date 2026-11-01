@@ -33,7 +33,6 @@ export const SITE = {
 export const PUBLIC_PAGES = [
   { path: '/', priority: 1.0, changefreq: 'weekly' },
   { path: '/catalogue', priority: 0.9, changefreq: 'weekly' },
-  { path: '/reservation', priority: 0.8, changefreq: 'monthly' },
   { path: '/nos-realisations', priority: 0.7, changefreq: 'weekly' },
   { path: '/a-propos', priority: 0.6, changefreq: 'yearly' },
   { path: '/contact', priority: 0.7, changefreq: 'yearly' },

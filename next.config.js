@@ -81,7 +81,9 @@ const nextConfig = {
       },
       ...['/galerie', '/nos-experiences'].map(source => ({ source, destination: '/nos-realisations', permanent: true })),
       // The online quote simulation was removed — bookmarks land on the real booking.
-      { source: '/devis', destination: '/reservation', permanent: true },
+      { source: '/devis', destination: '/catalogue/complet', permanent: true },
+      // The booking wizard was replaced by the cart + one-page checkout.
+      { source: '/reservation', destination: '/commande', permanent: true },
       // The Prestations page was removed — old links land on the catalogue.
       { source: '/services', destination: '/catalogue', permanent: true },
     ];

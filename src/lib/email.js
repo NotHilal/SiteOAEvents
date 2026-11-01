@@ -46,12 +46,6 @@ export function passwordChangedEmail({ name }) {
   return { subject, html: layout(subject, `<p>Bonjour ${escapeHtml(name)},</p><p>Le mot de passe de votre compte client vient d’être modifié. Les anciennes sessions ont été déconnectées.</p><p>Si vous n’êtes pas à l’origine de ce changement, contactez-nous à <a href="mailto:contact@oa-evenementiel.fr">contact@oa-evenementiel.fr</a>.</p>`) };
 }
 
-export function orderCreatedEmail({ name, reference, grandTotal, trackingUrl, expiresAt }) {
-  const subject = `Votre commande ${reference} — paiement à finaliser — OA Événementiel`;
-  const deadline = new Date(expiresAt).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' });
-  return { subject, html: layout(subject, `<p>Bonjour ${escapeHtml(name)},</p><p>Votre commande de location <strong>${escapeHtml(reference)}</strong> est enregistrée.</p><p>Total TTC, livraison comprise : <strong>${grandTotal.toFixed(2)} €</strong>.</p><p>Votre matériel est réservé temporairement jusqu’au ${escapeHtml(deadline)} (heure de Paris). Réglez le premier versement pour confirmer votre commande. Si vous choisissez le virement, le délai de réception sera indiqué dans le suivi.</p>${trackingButton(trackingUrl)}`) };
-}
-
 function layout(preheader, bodyHtml) {
   return `<!doctype html>
 <html lang="fr">
@@ -78,52 +72,37 @@ function layout(preheader, bodyHtml) {
 }
 
 function trackingButton(trackingUrl) {
-  return `<a href="${trackingUrl}" style="display:inline-block;margin-top:20px;background:#c9a15a;color:#ffffff;text-decoration:none;font-weight:bold;letter-spacing:1px;text-transform:uppercase;font-size:13px;padding:14px 28px;border-radius:2px;">Suivre ma demande</a>`;
+  return `<a href="${trackingUrl}" style="display:inline-block;margin-top:20px;background:#c9a15a;color:#ffffff;text-decoration:none;font-weight:bold;letter-spacing:1px;text-transform:uppercase;font-size:13px;padding:14px 28px;border-radius:2px;">Suivre ma commande</a>`;
 }
 
-// Sent when the admin accepts a request (pending → awaiting_payment) — the
-// reservation isn't definitively confirmed yet, payment is what finalizes it.
-export function awaitingPaymentEmail({ name, reference, dateLabel, grandTotal, trackingUrl }) {
-  const subject = `Votre demande ${reference} est acceptée — réglez pour confirmer — OA Événementiel`;
-  const html = layout(subject, `
-    <p>Bonjour ${escapeHtml(name)},</p>
-    <p>Bonne nouvelle — votre demande de réservation pour le <strong>${escapeHtml(dateLabel)}</strong> est <strong style="color:#2e7d32;">acceptée</strong> !</p>
-    <p style="background:#f7f6f4;border-radius:4px;padding:16px 20px;margin:20px 0;">
-      Numéro de commande : <strong style="letter-spacing:1px;">${escapeHtml(reference)}</strong><br/>
-      Montant total estimé : <strong>${grandTotal.toFixed(2)} €</strong>
-    </p>
-    <p>Pour confirmer définitivement votre réservation, il ne reste plus qu'à régler votre premier versement. Cliquez ci-dessous et entrez votre numéro de commande avec votre email pour accéder aux moyens de paiement.</p>
-    ${trackingButton(trackingUrl)}
-    <p style="margin-top:24px;color:#666;font-size:13px;">Conservez ce numéro de commande — il vous permettra de suivre votre demande et de régler vos versements à tout moment.</p>
-  `);
-  return { subject, html };
-}
-
-// Sent once the admin marks the reservation as confirmed after checking that
-// payment has been received — the reservation is now definitively locked in.
+// Sent as soon as the order is paid — the order is confirmed at that point,
+// there is no validation by the team.
 export function confirmationEmail({ name, reference, dateLabel, grandTotal, trackingUrl }) {
-  const subject = `Votre réservation ${reference} est définitivement confirmée — OA Événementiel`;
+  const subject = `Commande ${reference} confirmée — OA Événementiel`;
   const html = layout(subject, `
     <p>Bonjour ${escapeHtml(name)},</p>
-    <p>Votre paiement a bien été reçu — votre réservation pour le <strong>${escapeHtml(dateLabel)}</strong> est désormais <strong style="color:#2e7d32;">définitivement confirmée</strong> !</p>
+    <p>Merci pour votre commande ! Votre paiement a bien été reçu et votre location pour le <strong>${escapeHtml(dateLabel)}</strong> est <strong style="color:#2e7d32;">confirmée</strong>.</p>
     <p style="background:#f7f6f4;border-radius:4px;padding:16px 20px;margin:20px 0;">
       Numéro de commande : <strong style="letter-spacing:1px;">${escapeHtml(reference)}</strong><br/>
-      Montant total estimé : <strong>${grandTotal.toFixed(2)} €</strong>
+      Montant payé (TTC, livraison comprise) : <strong>${grandTotal.toFixed(2)} €</strong>
     </p>
-    <p>Vous pouvez à tout moment suivre votre commande et consulter vos versements ci-dessous.</p>
+    <p>Nous vous contacterons avant l’événement pour caler l’horaire de livraison. Vous pouvez suivre votre commande à tout moment ci-dessous.</p>
     ${trackingButton(trackingUrl)}
-    <p style="margin-top:24px;color:#666;font-size:13px;">Conservez ce numéro de commande — il vous permettra de suivre votre demande à tout moment.</p>
   `);
   return { subject, html };
 }
 
-export function refusalEmail({ name, reference }) {
-  const subject = `Votre demande ${reference} — OA Événementiel`;
+export function cancellationEmail({ name, reference, grandTotal, trackingUrl }) {
+  const subject = `Commande ${reference} annulée et remboursée — OA Événementiel`;
   const html = layout(subject, `
     <p>Bonjour ${escapeHtml(name)},</p>
-    <p>Nous sommes désolés — nous ne sommes malheureusement pas en mesure de donner suite à votre demande de réservation (référence <strong>${escapeHtml(reference)}</strong>) pour la date sélectionnée.</p>
-    <p>N'hésitez pas à nous recontacter pour explorer d'autres dates disponibles.</p>
-    <p style="margin-top:20px;">L'équipe OA Événementiel</p>
+    <p>Votre commande <strong>${escapeHtml(reference)}</strong> a été annulée.</p>
+    <p style="background:#f7f6f4;border-radius:4px;padding:16px 20px;margin:20px 0;">
+      Montant remboursé : <strong>${grandTotal.toFixed(2)} €</strong>
+    </p>
+    <p>Le remboursement est fait sur le moyen de paiement utilisé ; il apparaît généralement sous 5 à 10 jours ouvrés selon votre banque.</p>
+    <p>Une question ? Répondez simplement à cet email.</p>
+    ${trackingButton(trackingUrl)}
   `);
   return { subject, html };
 }

@@ -1,0 +1,289 @@
+/* =====================================================
+   OA Événementiel — checkout.css
+   /commande (one-page checkout) and /commande/confirmation. Same black /
+   gold, square-cornered language as shop.css.
+   ===================================================== */
+
+.ck-page { padding: 48px 0 96px; background: #faf9f7; }
+.ck-title {
+  margin: 0 0 28px;
+  font-family: var(--oa-font-heading);
+  font-size: var(--oa-size-h2);
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: var(--oa-text);
+}
+.ck-muted { color: var(--oa-muted); }
+.ck-label { display: block; font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--oa-muted); }
+
+.ck-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 40px;
+  align-items: start;
+}
+
+/* ---------- Sections ---------- */
+.ck-section {
+  background: #fff;
+  border: 1px solid var(--oa-border);
+  padding: 28px 32px;
+  margin-bottom: 20px;
+  scroll-margin-top: 140px;
+}
+.ck-section.has-error { border-color: rgba(179, 38, 30, .45); }
+.ck-section-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 22px;
+  font-family: var(--oa-font-heading);
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: var(--oa-text);
+}
+.ck-step {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--oa-text);
+  color: #fff;
+  font-size: .82rem;
+}
+.ck-notice {
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  background: #fbf6ec;
+  border: 1px solid rgba(201, 161, 90, .45);
+  color: var(--oa-text);
+}
+.ck-notice i { margin-right: 8px; }
+.ck-notice a, .ck-legal a { color: var(--oa-accent-ink); }
+
+/* ---------- Dates ---------- */
+.ck-dates { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 32px; align-items: start; }
+.ck-dates-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px;
+  background: #faf9f7;
+  border: 1px solid var(--oa-border);
+  min-height: 120px;
+  justify-content: center;
+}
+.ck-dates-summary strong { font-size: 1.05rem; margin-bottom: 6px; }
+.ck-dates-summary strong::first-letter { text-transform: uppercase; }
+.ck-rate {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 4px 10px;
+  font-size: .76rem;
+  font-weight: 700;
+  background: var(--oa-border);
+}
+.ck-rate.is-weekend { background: #fbf0dc; color: var(--oa-accent-ink); }
+
+.ck-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.ck-cal-month { font-family: var(--oa-font-heading); font-weight: 700; text-transform: capitalize; }
+.ck-cal-nav {
+  width: 36px; height: 36px;
+  border: 1px solid var(--oa-border);
+  background: #fff;
+  color: var(--oa-text);
+  cursor: pointer;
+}
+.ck-cal-nav:disabled { opacity: .35; cursor: default; }
+.ck-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.ck-cal-wd { text-align: center; font-size: .72rem; font-weight: 700; color: var(--oa-muted); padding: 4px 0 8px; }
+.ck-day {
+  aspect-ratio: 1;
+  border: 0;
+  background: #fff;
+  color: var(--oa-text);
+  font-size: .9rem;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  transition: background .15s;
+}
+.ck-day:hover:not(:disabled) { background: #f1ede5; }
+.ck-day:focus-visible { outline: 2px solid var(--oa-accent); outline-offset: -2px; }
+.ck-day.is-weekend::after, .ck-dot.is-weekend {
+  content: '';
+  position: absolute;
+  bottom: 6px; left: 50%;
+  width: 4px; height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: var(--oa-accent);
+}
+.ck-dot.is-weekend { position: static; display: inline-block; margin: 0 4px 0 12px; vertical-align: middle; }
+.ck-day.is-disabled { color: #c9c5bd; text-decoration: line-through; cursor: not-allowed; }
+.ck-day.is-reachable { box-shadow: inset 0 0 0 1px rgba(201, 161, 90, .6); }
+.ck-day.is-selected { background: var(--oa-text); color: #fff; }
+.ck-day.is-mid { background: #3a352c; }
+.ck-day.is-selected::after { background: #fff; }
+.ck-cal-hint { margin: 12px 0 0; font-size: .82rem; color: var(--oa-muted); }
+.ck-cal-legend { white-space: nowrap; }
+
+/* ---------- Fields ---------- */
+.ck-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 18px; }
+.ck-field { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.ck-field.is-wide { grid-column: 1 / -1; }
+.ck-field > span:first-child { font-size: .8rem; font-weight: 700; color: var(--oa-text); }
+.ck-field input, .ck-field textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(22, 20, 15, .18);
+  border-radius: 2px;
+  background: #fff;
+  font: inherit;
+  color: var(--oa-text);
+}
+.ck-field input:focus, .ck-field textarea:focus { outline: 0; border-color: var(--oa-accent); box-shadow: 0 0 0 1px var(--oa-accent); }
+.ck-field.has-error input { border-color: #b3261e; }
+.ck-field-error { display: block; font-size: .8rem; color: #b3261e; margin-top: 4px; }
+.ck-hint { font-size: .82rem; color: var(--oa-muted); }
+.ck-hint.ck-ok { color: #2e6b3a; font-weight: 600; }
+.ck-address { position: relative; }
+.ck-address-btn {
+  margin-top: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--oa-text);
+  background: #fff;
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ck-suggestions {
+  position: absolute;
+  z-index: 20;
+  top: 100%; left: 0; right: 0;
+  margin: 2px 0 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--oa-border);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .08);
+}
+.ck-suggestions li { padding: 10px 14px; cursor: pointer; font-size: .9rem; }
+.ck-suggestions li:hover { background: #f6f3ee; }
+.ck-suggestions i { color: var(--oa-accent-ink); margin-right: 6px; }
+.ck-link { padding: 0; border: 0; background: none; color: var(--oa-muted); font-size: .82rem; text-decoration: underline; cursor: pointer; }
+.ck-link:hover { color: var(--oa-text); }
+
+/* ---------- Payment ---------- */
+.ck-pay { display: flex; flex-direction: column; gap: 16px; }
+.ck-pay-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 58px;
+  border: 0;
+  background: var(--oa-text);
+  color: #fff;
+  font-family: var(--oa-font-heading);
+  font-size: .92rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .2s;
+}
+.ck-pay-btn:hover:not(:disabled) { background: var(--oa-accent-ink); }
+.ck-pay-btn:disabled { opacity: .5; cursor: not-allowed; }
+.ck-error { margin: 0; padding: 12px 14px; background: #fdf0ef; color: #b3261e; font-size: .9rem; }
+.ck-legal { margin: 14px 0 0; font-size: .78rem; color: var(--oa-muted); }
+
+/* ---------- Summary ---------- */
+.ck-summary { position: sticky; top: 140px; background: #fff; border: 1px solid var(--oa-border); }
+.ck-summary-toggle { display: none; }
+.ck-summary-body { padding: 26px 26px 22px; }
+.ck-summary-title { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 16px; font-family: var(--oa-font-heading); font-size: 1.05rem; font-weight: 700; }
+.ck-summary-title span { font-family: var(--oa-font-body); font-size: .82rem; font-weight: 400; color: var(--oa-muted); }
+.ck-lines { list-style: none; margin: 0; padding: 0; max-height: 46vh; overflow: auto; }
+.ck-line { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 14px; padding: 14px 0; border-top: 1px solid var(--oa-border); }
+.ck-line:first-child { border-top: 0; padding-top: 0; }
+.ck-line-img { display: grid; place-items: center; width: 64px; height: 64px; background: #f4f2ee; color: var(--oa-muted); overflow: hidden; }
+.ck-line-img img { width: 100%; height: 100%; object-fit: cover; }
+.ck-line-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ck-line-name { font-weight: 700; font-size: .9rem; line-height: 1.3; }
+.ck-line-unit { font-size: .78rem; color: var(--oa-muted); }
+.ck-line-actions { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+.ck-line-total { font-size: .9rem; white-space: nowrap; }
+.ck-line.has-problem .ck-line-img { outline: 2px solid #b3261e; }
+.ck-qty { display: inline-flex; align-items: center; border: 1px solid rgba(22, 20, 15, .18); }
+.ck-qty button { width: 28px; height: 28px; border: 0; background: none; font-size: 1rem; cursor: pointer; }
+.ck-qty button:disabled { opacity: .3; cursor: default; }
+.ck-qty span { min-width: 30px; text-align: center; font-size: .86rem; font-weight: 700; }
+.ck-totals { margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--oa-border); }
+.ck-totals > div { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: .9rem; }
+.ck-totals dt { font-weight: 400; color: var(--oa-muted); }
+.ck-totals dd { margin: 0; font-weight: 700; }
+.ck-total { margin-top: 8px; padding-top: 12px !important; border-top: 1px solid var(--oa-text); font-size: 1.1rem !important; }
+.ck-total dt, .ck-total span:first-child { color: var(--oa-text); font-weight: 700; }
+.ck-trust { list-style: none; margin: 18px 0 0; padding: 14px 0 0; border-top: 1px solid var(--oa-border); display: grid; gap: 8px; font-size: .8rem; color: var(--oa-muted); }
+.ck-trust i { width: 18px; color: var(--oa-accent-ink); }
+.ck-continue { display: inline-block; margin-top: 16px; }
+
+/* ---------- Empty cart ---------- */
+.ck-empty { max-width: 520px; margin: 40px auto; padding: 56px 32px; text-align: center; background: #fff; border: 1px solid var(--oa-border); color: var(--oa-muted); }
+.ck-empty h1 { margin: 18px 0 10px; font-family: var(--oa-font-heading); font-size: 1.6rem; font-weight: 700; color: var(--oa-text); }
+.ck-empty p { margin-bottom: 26px; }
+
+/* ---------- Confirmation ---------- */
+.ck-confirm { max-width: 680px; }
+.ck-confirm-head { text-align: center; margin-bottom: 28px; }
+.ck-confirm-head h1 { margin: 18px 0 12px; font-family: var(--oa-font-heading); font-size: var(--oa-size-h3); font-weight: 700; }
+.ck-confirm-head p { color: var(--oa-muted); max-width: 520px; margin: 0 auto 14px; }
+.ck-confirm-head .shop-btn { margin-top: 10px; }
+.ck-confirm-icon { display: inline-grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: #2e6b3a; color: #fff; font-size: 1.5rem; }
+.ck-confirm-head.is-failed .ck-confirm-icon { background: #b3261e; }
+.ck-confirm-ref { display: inline-block; padding: 10px 20px; background: #fff; border: 1px solid var(--oa-border); color: var(--oa-text) !important; letter-spacing: .04em; }
+.ck-confirm-card { background: #fff; border: 1px solid var(--oa-border); padding: 26px 28px; }
+.ck-confirm-row { display: flex; gap: 14px; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--oa-border); }
+.ck-confirm-row i { width: 20px; margin-top: 3px; color: var(--oa-accent-ink); }
+.ck-confirm-items { list-style: none; margin: 0; padding: 0; }
+.ck-confirm-items li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: .92rem; }
+.ck-confirm-items small { color: var(--oa-muted); }
+.ck-confirm-items .ck-total { border-top: 1px solid var(--oa-text); font-weight: 700; }
+.ck-confirm-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 28px; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1099px) {
+  .ck-layout { grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; }
+  .ck-dates { grid-template-columns: 1fr; gap: 16px; }
+  .ck-dates-summary { min-height: 0; }
+}
+@media (max-width: 899px) {
+  .ck-page { padding: 24px 0 64px; }
+  .ck-layout { grid-template-columns: 1fr; }
+  .ck-summary { position: static; order: -1; }
+  .ck-summary-toggle {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 18px;
+    border: 0;
+    background: #fff;
+    font-size: .9rem;
+    color: var(--oa-text);
+    cursor: pointer;
+  }
+  .ck-summary-toggle i { margin-right: 6px; color: var(--oa-accent-ink); }
+  .ck-summary-body { display: none; padding: 0 18px 18px; }
+  .ck-summary.is-open .ck-summary-body { display: block; }
+  .ck-summary-title { display: none; }
+  .ck-lines { max-height: none; }
+  .ck-section { padding: 22px 18px; }
+  .ck-title { margin-bottom: 18px; }
+}
+@media (max-width: 575px) {
+  .ck-grid { grid-template-columns: 1fr; }
+  .ck-confirm-card { padding: 20px 18px; }
+}

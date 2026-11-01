@@ -1,6 +1,6 @@
 import db from '../../../src/lib/sqlite-db.js';
 import { getStripe, isStripeConfigured } from '../../../src/lib/stripe.js';
-import { recordCardSuccess, confirmPaidOrder } from '../../../src/lib/orders.js';
+import { recordPaymentSuccess, recordExternalRefund } from '../../../src/lib/orders.js';
 
 // Stripe requires the exact raw request body to verify the signature —
 // Next's default JSON body parser would re-serialize it and break that,
@@ -18,6 +18,8 @@ function readRawBody(req) {
   });
 }
 
+// Events to enable on the endpoint (Stripe > Développeurs > Webhooks):
+// payment_intent.succeeded, payment_intent.payment_failed, charge.refunded.
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
@@ -43,41 +45,13 @@ export default async function handler(req, res) {
 
   try {
     if (event.type === 'payment_intent.succeeded') {
-      const intent = event.data.object;
-      const payment = await db.prepare('SELECT * FROM payments WHERE stripe_payment_intent_id = ?').get(intent.id);
-      if (payment) {
-        await recordCardSuccess(intent);
-      }
+      await recordPaymentSuccess(event.data.object);
     } else if (event.type === 'payment_intent.payment_failed') {
       const intent = event.data.object;
-      const payment = await db.prepare('SELECT * FROM payments WHERE stripe_payment_intent_id = ?').get(intent.id);
-      if (payment) {
-        const message = intent.last_payment_error?.message || 'Paiement refusé';
-        await db.prepare("UPDATE payments SET status = 'failed', failure_message = ? WHERE id = ? AND status != 'paid'").run(message, payment.id);
-      }
-    } else if (event.type === 'invoice.paid' || event.type === 'invoice.payment_failed') {
-      // Later installments are billed through a per-installment Subscription
-      // Schedule (see createInstallmentAutoCharge) — the invoice only
-      // carries the underlying subscription id, so we look up that
-      // subscription's `.schedule` (the id we stored on the payment row)
-      // to find which installment this is.
-      const invoice = event.data.object;
-      if (invoice.subscription) {
-        const sub = await stripe.subscriptions.retrieve(invoice.subscription);
-        const payment = sub.schedule
-          ? await db.prepare('SELECT * FROM payments WHERE stripe_subscription_id = ?').get(sub.schedule)
-          : null;
-        if (payment) {
-          if (event.type === 'invoice.paid') {
-            if (invoice.currency !== 'eur' || invoice.amount_paid !== Math.round(payment.amount * 100)) throw new Error('Montant du versement Stripe incohérent');
-            await db.prepare("UPDATE payments SET status = 'paid', paid_at = COALESCE(paid_at, ?) WHERE id = ?").run(new Date().toISOString(), payment.id);
-            await confirmPaidOrder(payment.reservation_id);
-          } else {
-            const message = invoice.last_finalization_error?.message || 'Prélèvement automatique refusé';
-            await db.prepare("UPDATE payments SET status = 'failed', failure_message = ? WHERE id = ? AND status != 'paid'").run(message, payment.id);
-          }
-        }
-      }
+      const message = intent.last_payment_error?.message || 'Paiement refusé';
+      await db.prepare("UPDATE payments SET status = 'failed', failure_message = ? WHERE stripe_payment_intent_id = ? AND status = 'pending'").run(message, intent.id);
+    } else if (event.type === 'charge.refunded') {
+      await recordExternalRefund(event.data.object);
     }
     return res.status(200).json({ received: true });
   } catch (error) {

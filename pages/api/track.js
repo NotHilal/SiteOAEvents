@@ -37,12 +37,8 @@ export default async function handler(req, res) {
     try { dates = JSON.parse(resa.dates) || []; } catch {}
     try { materials = JSON.parse(resa.materials) || []; } catch {}
 
-    const payments = await db.prepare('SELECT installment_index, installment_label, due_date, amount, status FROM payments WHERE reservation_id = ? ORDER BY installment_index').all(resa.id);
-    const fullyPaid = payments.length > 0 && payments.every(p => p.status === 'paid');
-
     return res.status(200).json({
       data: {
-        id: resa.id,
         reference: resa.reference,
         status: resa.status,
         expires_at: resa.expires_at,
@@ -59,8 +55,6 @@ export default async function handler(req, res) {
         grand_total: resa.grand_total,
         payment_method: resa.payment_method,
         created_at: resa.created_at,
-        payments,
-        fullyPaid,
       },
     });
   } catch (error) {

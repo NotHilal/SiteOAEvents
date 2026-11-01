@@ -8,7 +8,7 @@
 //   - "Article à options" = one product + one material per option, each
 //     with its own price tiers, stock, photo and availability. An option's
 //     name is the article name + its label ("Poids de lestage" + "15 kg"),
-//     which is what the cart, booking wizard and orders display.
+//     which is what the cart, checkout and orders display.
 
 export const EMPTY_TIER = { minQty: 1, maxQty: '', weekday: '', weekend: '' }
 

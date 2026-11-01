@@ -1,10 +1,9 @@
-// Lightweight shared "catalogue cart" — { [materialId]: quantity } persisted
-// to localStorage so it survives navigation between the homepage teaser and
-// /catalogue, and a browser refresh. There is no separate checkout: the cart
-// is handed off wholesale into the existing ReservationWizard via the same
-// sessionStorage prefill (see ReservationWizard.jsx's oa_devis_prefill effect),
-// so building/pricing/availability logic never has to be duplicated.
+// Lightweight shared cart — { [materialId]: quantity } persisted to
+// localStorage so it survives navigation and a browser refresh. The checkout
+// page (/commande) reads it directly and empties it once the order is paid.
+// The event dates picked on a product page travel with it (CART_DATES_KEY).
 const CART_KEY = 'oa_catalogue_cart'
+const CART_DATES_KEY = 'oa_cart_dates'
 export const CART_EVENT = 'oa-catalogue-cart-updated'
 // Asks the header to slide its cart drawer open (Navbar.jsx listens).
 export const OPEN_CART_EVENT = 'oa-open-cart'
@@ -47,14 +46,25 @@ export function clearCatalogueCart() {
   setCatalogueCart({})
 }
 
-// Hands the cart off to /reservation and clears it locally. `dates` (a run
-// of consecutive YYYY-MM-DD days, e.g. from a product page's availability
-// check) preselects the event days in the wizard.
-export function sendCatalogueCartToReservation(router, { dates } = {}) {
-  const cart = getCatalogueCart()
-  if (typeof window !== 'undefined') {
-    sessionStorage.setItem('oa_devis_prefill', JSON.stringify({ cart, ...(dates?.length ? { selectedDates: dates } : {}) }))
+// Event days (consecutive YYYY-MM-DD) chosen for the cart, e.g. on a
+// product page's availability check; preselected at checkout.
+export function getCartDates() {
+  if (typeof window === 'undefined') return []
+  try {
+    const list = JSON.parse(localStorage.getItem(CART_DATES_KEY) || '[]')
+    return Array.isArray(list) ? list.filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)) : []
+  } catch {
+    return []
   }
-  clearCatalogueCart()
-  router.push('/reservation')
+}
+
+export function setCartDates(dates) {
+  if (typeof window === 'undefined') return
+  try { localStorage.setItem(CART_DATES_KEY, JSON.stringify(dates || [])) } catch {}
+}
+
+// Opens the checkout, keeping `dates` (if given) as the event days.
+export function goToCheckout(router, { dates } = {}) {
+  if (dates?.length) setCartDates(dates)
+  router.push('/commande')
 }

@@ -1,18 +1,14 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Seo from '../src/components/Seo.jsx'
-import dynamic from 'next/dynamic'
-// Loaded only when an order awaiting payment is displayed — keeps the
-// payment code (and Stripe) out of the page bundle.
-const PaymentFlow = dynamic(() => import('../src/components/PaymentFlow.jsx'), { ssr: false })
 
 const EVENT_LABELS = {
   'mariage':'Mariage','anniversaire':'Anniversaire',
   'evenement-pro':'Événement professionnel',
   'location-deco':'Location décoration','autre':'Autre'
 }
-const STATUS_LABEL = { pending:'En attente', awaiting_payment:'En attente de paiement', confirmed:'Confirmée', terminee:'Terminée', refused:'Refusée', expired:'Expirée' }
-const STATUS_CLASS = { pending:'badge-pending', awaiting_payment:'badge-awaiting', confirmed:'badge-confirmed', terminee:'badge-terminee', refused:'badge-refused' }
+const STATUS_LABEL = { awaiting_payment:'Paiement en cours', confirmed:'Confirmée', cancelled:'Annulée · remboursée', expired:'Non payée', pending:'En attente', terminee:'Terminée', refused:'Refusée' }
+const STATUS_CLASS = { pending:'badge-pending', awaiting_payment:'badge-awaiting', confirmed:'badge-confirmed', terminee:'badge-terminee', refused:'badge-refused', cancelled:'badge-refused' }
 
 function fmtDate(ds) {
   return new Date(ds + 'T12:00:00').toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' })
@@ -24,7 +20,6 @@ export default function Suivi() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [order, setOrder] = useState(null)
-  const [paidJustNow, setPaidJustNow] = useState(null)
   const [showPriceDetail, setShowPriceDetail] = useState(false)
 
   // Freeze the page behind the modal — see the same lock in espace-oa.jsx.
@@ -70,19 +65,8 @@ export default function Suivi() {
 
   function handleNewSearch() {
     setOrder(null)
-    setPaidJustNow(null)
     setEmail('')
     setReference('')
-  }
-
-  function handlePaymentComplete(summary) {
-    setPaidJustNow(summary)
-    // Re-fetch so the schedule/fullyPaid state reflects what was just paid.
-    fetch('/api/track', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.trim(), reference: reference.trim() }),
-    }).then(r => r.json()).then(result => { if (result.data) setOrder(result.data) }).catch(() => {})
   }
 
   return (
@@ -178,7 +162,7 @@ export default function Suivi() {
                   )}
                   {order.grand_total != null && (
                     <div className="recap-row">
-                      <span className="recap-lbl"><i className="fas fa-euro-sign" />Total estimé</span>
+                      <span className="recap-lbl"><i className="fas fa-euro-sign" />Total TTC</span>
                       <span className="recap-val"><strong>{order.grand_total.toFixed(2)} €</strong></span>
                     </div>
                   )}
@@ -201,43 +185,20 @@ export default function Suivi() {
                 )}
 
                 {order.status === 'awaiting_payment' && (
-                  <div className="mt-4">
-                    {order.expires_at && <p>Premier versement à recevoir avant le {new Date(order.expires_at).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })} (heure de Paris). Sans réception, le matériel est libéré.</p>}
-                    {paidJustNow ? (
-                      <div className="resa-success-msg" style={{padding:'32px 16px'}}>
-                        <span className="success-icon"><i className="fas fa-check-circle" /></span>
-                        <h3>Merci !</h3>
-                        <p>
-                          {paidJustNow.count > 1
-                            ? (paidJustNow.method === 'card'
-                                ? `Votre 1er versement de ${paidJustNow.firstAmount?.toFixed(2)} € (sur ${paidJustNow.count}) a bien été réglé.`
-                                : `Votre 1er virement de ${paidJustNow.firstAmount?.toFixed(2)} € (sur ${paidJustNow.count}) est noté — nous le confirmerons dès réception.`)
-                            : (paidJustNow.method === 'card'
-                                ? `Votre paiement de ${paidJustNow.firstAmount?.toFixed(2)} € a bien été réglé en totalité.`
-                                : `Votre virement de ${paidJustNow.firstAmount?.toFixed(2)} € est noté — nous le confirmerons dès réception.`)}
-                        </p>
-                        {paidJustNow.count > 1 && (
-                          <p style={{marginTop:6}}>
-                            Il vous reste {paidJustNow.count - 1} versement{paidJustNow.count - 1 > 1 ? 's' : ''} à venir{paidJustNow.method === 'card' ? ', prélevé' + (paidJustNow.count - 1 > 1 ? 's' : '') + ' automatiquement aux échéances prévues' : ''}.
-                          </p>
-                        )}
-                      </div>
-                    ) : order.fullyPaid ? (
-                      <div className="resa-alert" style={{background:'#f0fdf4',color:'#166534',borderColor:'#86efac'}}>
-                        <i className="fas fa-check-circle" />Paiement reçu. La confirmation se met à jour automatiquement.
-                      </div>
-                    ) : (
-                      <>
-                        <h4 className="res-quote-title" style={{marginBottom:16}}><i className="fas fa-credit-card" style={{marginRight:8}} />Paiement</h4>
-                        <PaymentFlow reservationId={order.id} grandTotal={order.grand_total || 0} orderReference={order.reference} onComplete={handlePaymentComplete} onPrepared={data => setOrder(current => ({ ...current, expires_at: data.expiresAt }))} />
-                      </>
-                    )}
+                  <div className="resa-alert mt-4" style={{background:'#fffbeb',color:'#92400e',borderColor:'#fcd34d'}}>
+                    <i className="fas fa-clock" />Le paiement de cette commande n’est pas finalisé. S’il n’aboutit pas dans les 30 minutes suivant la commande, le matériel est libéré et rien n’est débité.
                   </div>
                 )}
 
                 {order.status === 'confirmed' && (
                   <div className="resa-alert mt-4" style={{background:'#f0fdf4',color:'#166534',borderColor:'#86efac'}}>
-                    <i className="fas fa-check-circle" />Commande confirmée après réception du premier versement. Consultez l’échéancier pour les versements restants.
+                    <i className="fas fa-check-circle" />Commande payée et confirmée. Nous vous contacterons avant l’événement pour l’horaire de livraison.
+                  </div>
+                )}
+
+                {order.status === 'cancelled' && (
+                  <div className="resa-alert mt-4">
+                    <i className="fas fa-undo" />Commande annulée. Le montant payé vous a été remboursé sur votre moyen de paiement (5 à 10 jours ouvrés selon votre banque).
                   </div>
                 )}
 
@@ -246,7 +207,7 @@ export default function Suivi() {
                     <i className="fas fa-check-circle" />Événement terminé — merci d'avoir fait confiance à OA Événementiel !
                   </div>
                 )}
-                {order.status === 'expired' && <div className="resa-alert mt-4">Le délai de paiement a expiré et le matériel a été libéré. <Link href="/catalogue">Recommencer une commande</Link>. Si vous avez déjà envoyé un virement, contactez-nous avant tout nouveau paiement.</div>}
+                {order.status === 'expired' && <div className="resa-alert mt-4">Le paiement n’a pas été finalisé : la commande a été abandonnée et rien n’a été débité. <Link href="/catalogue">Refaire une commande</Link>.</div>}
               </div>
             )}
           </div>

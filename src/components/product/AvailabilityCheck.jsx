@@ -19,7 +19,7 @@ const fmt = ds => new Date(ds + 'T12:00:00').toLocaleDateString('fr-FR', { weekd
 // "Vérifier la disponibilité": the visitor picks the event day (or first and
 // last day) and sees how many units are free — live from current orders
 // (/api/availability). `onDates` hands the chosen days up so "Réserver"
-// can carry them into the booking wizard.
+// can carry them into the checkout.
 export default function AvailabilityCheck({ variantId, qty, onDates, onResult }) {
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')

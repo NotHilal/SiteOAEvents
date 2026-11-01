@@ -4,7 +4,7 @@ import { useRouter } from 'next/router'
 import Icon from './Icon.jsx'
 import { supabase } from '../lib/supabase.js'
 import { getMinOrderQty, getUnitPriceTtc, groupTiersByMaterial } from '../lib/pricing.js'
-import { sendCatalogueCartToReservation, setCatalogueCart } from '../lib/cart.js'
+import { goToCheckout, setCatalogueCart } from '../lib/cart.js'
 import { slugify } from '../lib/slug.js'
 
 const priceFormatter = new Intl.NumberFormat('fr-FR', {
@@ -81,9 +81,9 @@ export default function CartDrawer({ cart, closeRef, onClose, open }) {
     updateQuantity(entry.id, Math.min(maximum, entry.quantity + 1))
   }
 
-  function reserve() {
+  function checkout() {
     onClose()
-    sendCatalogueCartToReservation(router)
+    goToCheckout(router)
   }
 
   return (
@@ -159,8 +159,8 @@ export default function CartDrawer({ cart, closeRef, onClose, open }) {
               <span>Total estimatif</span>
               <strong>{total > 0 ? `≈ ${priceFormatter.format(total)} €` : 'Sur devis'}</strong>
             </div>
-            <button type="button" className="oah-cart-reserve" onClick={reserve}>
-              Réserver ma sélection <span aria-hidden="true">→</span>
+            <button type="button" className="oah-cart-reserve" onClick={checkout}>
+              Commander <span aria-hidden="true">→</span>
             </button>
             <p>Le tarif définitif dépendra de la date choisie.</p>
           </div>

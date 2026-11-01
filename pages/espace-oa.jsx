@@ -21,8 +21,11 @@ const REFRESH_MS = 60 * 1000
 const HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00']
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
 const TYPE_LABELS = { mariage:'Mariage', anniversaire:'Anniversaire', 'evenement-pro':'Événement professionnel', 'location-deco':'Location de décoration', autre:'Autre' }
-const STATUS_LABEL = { pending:'En attente', awaiting_payment:'En attente de paiement', confirmed:'Confirmée', terminee:'Terminée', refused:'Refusée', expired:'Expirée' }
-const STATUS_CLASS = { pending:'badge-pending', awaiting_payment:'badge-awaiting', confirmed:'badge-confirmed', terminee:'badge-terminee', refused:'badge-refused' }
+// Online orders: awaiting_payment → confirmed (paid) | expired (not paid in
+// time); confirmed → cancelled (refunded). pending/terminee/refused are left
+// from the old request flow.
+const STATUS_LABEL = { awaiting_payment:'Paiement en cours', confirmed:'Payée', cancelled:'Annulée · remboursée', expired:'Non payée', pending:'En attente', terminee:'Terminée', refused:'Refusée' }
+const STATUS_CLASS = { pending:'badge-pending', awaiting_payment:'badge-awaiting', confirmed:'badge-confirmed', terminee:'badge-terminee', refused:'badge-refused', cancelled:'badge-refused' }
 // Fixed icons for the "Nos valeurs" blocks on /a-propos — kept in sync with
 // the same 4 icons already reused on the homepage's "Pourquoi OA" section;
 // only the title/text are admin-editable, not the icon itself.
@@ -56,11 +59,6 @@ const VISUEL_TABS = [
   { key:'accueil-categories', label:'Accueil — Catégories' },
   { key:'apropos', label:'À Propos' },
   { key:'contact', label:'Contact' },
-]
-const REGLAGES_TABS = [
-  { key:'adresse', label:'Adresse & livraison' },
-  { key:'virement', label:'Virement' },
-  { key:'installments', label:'Paiement en plusieurs fois' },
 ]
 const MAT_PAGE_SIZE = 8
 const DAY_PAGE_SIZE = 4
@@ -116,19 +114,17 @@ export default function AdminDashboard() {
   const [blockReason, setBlockReason] = useState('')
   const [blockSelHours, setBlockSelHours] = useState([])
   const [deleteModal, setDeleteModal] = useState(null)
+  const [cancelModal, setCancelModal] = useState(null)
+  const [cancelling, setCancelling] = useState(false)
   const [contactModal, setContactModal] = useState(null)
   const [msgDetail, setMsgDetail] = useState(null)
   const [settingsForm, setSettingsForm] = useState({
     depot_address:'', delivery_base_fee:'', delivery_per_km:'',
-    bank_holder:'', bank_iban:'', bank_bic:'',
-    installment_2x_min_amount:'', installment_3x_min_amount:'', installment_min_total_4x:'',
     max_consecutive_days:'',
   })
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [settingsError, setSettingsError] = useState('')
-  const [reglagesTab, setReglagesTab] = useState('adresse')
-  const [reglagesMenuOpen, setReglagesMenuOpen] = useState(false)
   const [visuelTab, setVisuelTab] = useState('accueil')
   const [visuelMenuOpen, setVisuelMenuOpen] = useState(false)
   const [aboutForm, setAboutForm] = useState({
@@ -197,9 +193,8 @@ export default function AdminDashboard() {
     const { data, error } = await supabase.from('reservations').select('*').order('created_at', { ascending: false })
     if (!error) setReservations(data || [])
   }
-  // Used to show a "paiement reçu" indicator (montant + N/total versements)
-  // on each reservation card — one query for every installment across every
-  // reservation, grouped client-side, rather than one query per reservation.
+  // "Payée en ligne" indicator on each order card — one query for every
+  // payment, grouped client-side, rather than one query per order.
   async function loadPaymentSummaries() {
     const { data, error } = await supabase.from('payments').select('reservation_id, amount, status').order('installment_index')
     if (error) return
@@ -252,7 +247,7 @@ export default function AdminDashboard() {
     const [{ data }, { data: contentData }] = await Promise.all([
       supabase.from('settings').select('*'),
       // max_consecutive_days lives in site_content, not settings — the
-      // booking wizard is a public logged-out page and needs to read it
+      // checkout is a public logged-out page and needs to read it
       // without auth (see requiresAuth in pages/api/db.js).
       supabase.from('site_content').select('*').eq('key', 'max_consecutive_days'),
     ])
@@ -262,12 +257,6 @@ export default function AdminDashboard() {
       depot_address: map.depot_address || '',
       delivery_base_fee: map.delivery_base_fee || '',
       delivery_per_km: map.delivery_per_km || '',
-      bank_holder: map.bank_holder || '',
-      bank_iban: map.bank_iban || '',
-      bank_bic: map.bank_bic || '',
-      installment_2x_min_amount: map.installment_2x_min_amount || '0',
-      installment_3x_min_amount: map.installment_3x_min_amount || '0',
-      installment_min_total_4x: map.installment_min_total_4x || '300',
       max_consecutive_days: contentData?.[0]?.value || '7',
     })
   }
@@ -281,30 +270,12 @@ export default function AdminDashboard() {
     const maxDays = parseInt(settingsForm.max_consecutive_days, 10)
     if (isNaN(maxDays) || maxDays < 1 || maxDays > 30) { setSettingsError('Nombre de jours consécutifs invalide (entre 1 et 30).'); return }
 
-    const tiers = [
-      { n: 2, minAmountKey:'installment_2x_min_amount' },
-      { n: 3, minAmountKey:'installment_3x_min_amount' },
-      { n: 4, minAmountKey:'installment_min_total_4x' },
-    ]
-    const parsedTiers = {}
-    for (const t of tiers) {
-      const minAmount = parseFloat(String(settingsForm[t.minAmountKey]).replace(',', '.'))
-      if (isNaN(minAmount) || minAmount < 0) { setSettingsError(`Montant minimum invalide pour le paiement en ${t.n} fois (doit être ≥ 0).`); return }
-      parsedTiers[t.n] = { minAmount }
-    }
-
     setSettingsSaving(true)
     try {
       await Promise.all([
         supabase.from('settings').update({ value: settingsForm.depot_address.trim() }).eq('key', 'depot_address'),
         supabase.from('settings').update({ value: String(baseFee) }).eq('key', 'delivery_base_fee'),
         supabase.from('settings').update({ value: String(perKm) }).eq('key', 'delivery_per_km'),
-        supabase.from('settings').update({ value: settingsForm.bank_holder.trim() }).eq('key', 'bank_holder'),
-        supabase.from('settings').update({ value: settingsForm.bank_iban.trim() }).eq('key', 'bank_iban'),
-        supabase.from('settings').update({ value: settingsForm.bank_bic.trim() }).eq('key', 'bank_bic'),
-        supabase.from('settings').update({ value: String(parsedTiers[2].minAmount) }).eq('key', 'installment_2x_min_amount'),
-        supabase.from('settings').update({ value: String(parsedTiers[3].minAmount) }).eq('key', 'installment_3x_min_amount'),
-        supabase.from('settings').update({ value: String(parsedTiers[4].minAmount) }).eq('key', 'installment_min_total_4x'),
         supabase.from('site_content').update({ value: String(maxDays) }).eq('key', 'max_consecutive_days'),
       ].map(must))
       await loadSettings()
@@ -429,33 +400,36 @@ export default function AdminDashboard() {
     setBlockedDatesMap({}); setBlockedHoursMap({}); setActiveTab('demandes')
   }
 
-  const pendingCount = reservations.filter(r => r.status === 'pending').length
+  // Paid orders whose event is still ahead — what the team has to deliver.
+  const todayIso = fmtDate(new Date())
+  const upcomingCount = reservations.filter(r => r.status === 'confirmed' && (getRDates(r).at(-1) || '') >= todayIso).length
   const unreadCount = messages.filter(m => !m.read).length
 
-  async function updateResaStatus(id, status) {
-    const { error } = await supabase.from('reservations').update({ status }).eq('id', id)
-    if (error) { alert(error.message); return }
-    setReservations(prev => prev.map(r => r.id === id ? { ...r, status } : r))
-    if (status === 'awaiting_payment' || status === 'confirmed' || status === 'refused') {
-      notifyReservationStatus(id)
-    }
+  // The only status action left: opens the cancel-and-refund dialog.
+  function updateResaStatus(id, status) {
+    if (status === 'cancel') setCancelModal(reservations.find(r => r.id === id) || null)
   }
-  async function notifyReservationStatus(reservationId) {
+  // Espace OA's only action on an online order: cancel it and refund the
+  // customer in full (src/lib/orders.js cancelOrder).
+  async function cancelOrder(resa) {
+    setCancelling(true)
     try {
-      const sessionStr = sessionStorage.getItem('oa_session')
-      const session = sessionStr ? JSON.parse(sessionStr) : null
-      await fetch('/api/reservations/notify', {
+      const session = JSON.parse(sessionStorage.getItem('oa_session') || 'null')
+      const response = await fetch('/api/admin/orders', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({ reservationId }),
+        headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
+        body: JSON.stringify({ id: resa.id, action: 'cancel' }),
       })
-      // Best-effort: the client is only informed by email, there's no UI
-      // feedback loop here — a failure (e.g. Resend not configured yet)
-      // shouldn't block the admin from continuing their work.
-    } catch {}
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.message || 'Annulation impossible.')
+      setCancelModal(null)
+      await Promise.all([loadReservations(), loadPaymentSummaries()])
+      alert(result.data?.refunded ? `Commande annulée. ${result.data.amount.toFixed(2)} € remboursés au client.` : 'Commande annulée.')
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setCancelling(false)
+    }
   }
   function confirmDelete(subtitle, callback) {
     setDeleteModal({ subtitle, callback })
@@ -595,7 +569,7 @@ export default function AdminDashboard() {
   )
 
   const NAV_ITEMS = [
-    { key:'demandes',   icon:'fas fa-inbox',        label:'Demandes',   badge:pendingCount,  blink:false },
+    { key:'demandes',   icon:'fas fa-inbox',        label:'Commandes',  badge:upcomingCount, blink:false },
     { key:'calendrier', icon:'fas fa-calendar-alt', label:'Calendrier', badge:0,             blink:false },
     { key:'blocages',   icon:'fas fa-ban',          label:'Blocages',   badge:0,             blink:false },
     { key:'messagerie', icon:'fas fa-envelope',     label:'Messagerie', badge:unreadCount,   blink:unreadCount>0 },
@@ -676,11 +650,11 @@ export default function AdminDashboard() {
           <div className={`tab-content${activeTab==='demandes'?' active':''}`} id="tab-demandes">
             <div className="adm-header">
               <div>
-                <p className="adm-eyebrow">Gestion des demandes</p>
-                <h1 className="adm-title">Demandes de réservation</h1>
+                <p className="adm-eyebrow">Payées en ligne · confirmées automatiquement</p>
+                <h1 className="adm-title">Commandes</h1>
               </div>
               <div className="adm-filters">
-                {['all','pending','awaiting_payment','confirmed','terminee','refused','expired'].map(f => {
+                {['all','confirmed','awaiting_payment','cancelled','expired','pending','terminee','refused'].filter(f => ['all','confirmed','awaiting_payment','cancelled'].includes(f) || reservations.some(r => r.status === f)).map(f => {
                   const count = f==='all' ? reservations.length : reservations.filter(r => r.status===f).length
                   return (
                     <button key={f} className={`filter-btn${resaFilter===f?' active':''}`} onClick={() => setResaFilter(f)}>
@@ -1013,36 +987,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="mat-form-card" style={{maxWidth:640,margin:'0 auto'}}>
-              <div className="block-tabs">
-                <button className={`block-tab${reglagesTab==='adresse'?' active':''}`} onClick={() => setReglagesTab('adresse')}>Adresse &amp; livraison</button>
-                <button className={`block-tab${reglagesTab==='virement'?' active':''}`} onClick={() => setReglagesTab('virement')}>Virement</button>
-                <button className={`block-tab${reglagesTab==='installments'?' active':''}`} onClick={() => setReglagesTab('installments')}>Paiement en plusieurs fois</button>
-              </div>
-              <div className="block-tabs-mobile">
-                <button type="button" className="block-tabs-mobile-trigger" onClick={() => setReglagesMenuOpen(o => !o)}>
-                  <span>{REGLAGES_TABS.find(t => t.key === reglagesTab)?.label}</span>
-                  <i className={`fas fa-chevron-down${reglagesMenuOpen ? ' is-open' : ''}`} />
-                </button>
-                {reglagesMenuOpen && (
-                  <div className="block-tabs-mobile-list">
-                    {REGLAGES_TABS.map(t => (
-                      <button
-                        key={t.key}
-                        className={`block-tabs-mobile-option${reglagesTab===t.key?' active':''}`}
-                        onClick={() => { setReglagesTab(t.key); setReglagesMenuOpen(false) }}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {reglagesTab==='adresse' && (
                 <div>
-                  <p style={{color:'var(--gray)',fontSize:'.82rem',marginTop:0,marginBottom:14}}>
-                    Point de départ et frais de livraison utilisés pour le calcul automatique lors d'une réservation.
-                  </p>
                   <div className="adm-form-group">
                     <label>Adresse de départ (dépôt) <span className="req">*</span></label>
                     <input
@@ -1083,70 +1028,10 @@ export default function AdminDashboard() {
                       onChange={e => setSettingsForm(f => ({...f, max_consecutive_days: e.target.value}))}
                     />
                     <p style={{color:'var(--gray)',fontSize:'.78rem',margin:'6px 0 0'}}>
-                      Nombre de jours consécutifs qu'un client peut sélectionner à l'étape "Date" du formulaire de réservation.
+                      Nombre de jours consécutifs qu'un client peut sélectionner dans le calendrier de la commande.
                     </p>
                   </div>
                 </div>
-              )}
-
-              {reglagesTab==='virement' && (
-                <div>
-                  <p style={{color:'var(--gray)',fontSize:'.82rem',marginTop:0,marginBottom:14}}>
-                    Coordonnées affichées au client s'il choisit de payer par virement. Laissez l'IBAN vide pour désactiver cette option de paiement.
-                  </p>
-                  <div className="adm-form-group">
-                    <label>Titulaire du compte</label>
-                    <input
-                      className="adm-input"
-                      placeholder="Ex : OA Événementiel"
-                      value={settingsForm.bank_holder}
-                      onChange={e => setSettingsForm(f => ({...f, bank_holder: e.target.value}))}
-                    />
-                  </div>
-                  <div className="mat-form-grid">
-                    <div className="adm-form-group">
-                      <label>IBAN</label>
-                      <input
-                        className="adm-input"
-                        placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
-                        value={settingsForm.bank_iban}
-                        onChange={e => setSettingsForm(f => ({...f, bank_iban: e.target.value}))}
-                      />
-                    </div>
-                    <div className="adm-form-group">
-                      <label>BIC</label>
-                      <input
-                        className="adm-input"
-                        placeholder="Ex : BNPAFRPPXXX"
-                        value={settingsForm.bank_bic}
-                        onChange={e => setSettingsForm(f => ({...f, bank_bic: e.target.value}))}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {reglagesTab==='installments' && (
-                <div>
-                  <p style={{color:'var(--gray)',fontSize:'.82rem',marginTop:0,marginBottom:14}}>
-                    Les dates de chaque versement se calculent automatiquement : le premier est prélevé immédiatement, puis chaque versement suivant tombe le même jour du mois (ex : réservé le 8 → prélèvements les 8 de chaque mois). Réglez uniquement le montant minimum de commande requis pour chaque plan — un plan reste proposé au client seulement si tous ses versements, y compris le dernier, tombent au moins 3 jours avant l'événement.
-                  </p>
-
-                  <InstallmentTierFields
-                    title="Paiement en 2 fois"
-                    minAmount={settingsForm.installment_2x_min_amount} onMinAmount={v => setSettingsForm(f => ({...f, installment_2x_min_amount: v}))}
-                  />
-                  <InstallmentTierFields
-                    title="Paiement en 3 fois"
-                    minAmount={settingsForm.installment_3x_min_amount} onMinAmount={v => setSettingsForm(f => ({...f, installment_3x_min_amount: v}))}
-                  />
-                  <InstallmentTierFields
-                    title="Paiement en 4 fois"
-                    minAmount={settingsForm.installment_min_total_4x} onMinAmount={v => setSettingsForm(f => ({...f, installment_min_total_4x: v}))}
-                    last
-                  />
-                </div>
-              )}
 
               {settingsError && (
                 <div style={{marginTop:8,background:'#fff5f5',border:'1.5px solid #fca5a5',borderRadius:8,padding:'9px 13px',color:'var(--danger)',fontSize:'.83rem',fontWeight:600}}>
@@ -1174,7 +1059,6 @@ export default function AdminDashboard() {
                   backDate={resaDetail.backDate}
                   onBack={resaDetail.backDate ? () => { setResaDetail(null); setDayModal({ dateStr: resaDetail.backDate, mode:'calendar', page:0 }) } : null}
                   onStatus={updateResaStatus}
-                  onPaymentReceived={() => Promise.all([loadReservations(), loadPaymentSummaries()])}
                   onDelete={id => deleteResa(id, null)}
                 />
               )}
@@ -1205,6 +1089,26 @@ export default function AdminDashboard() {
                   onClearHours={() => clearHourBlocks(dayModal.dateStr)}
                 />
               )}
+            </div>
+          </div>
+        )}
+
+        {cancelModal && (
+          <div className="modal-overlay" style={{display:'flex'}} onClick={e => { if(e.target===e.currentTarget && !cancelling) setCancelModal(null) }}>
+            <div className="modal-card delete-modal-card">
+              <div className="del-modal-icon"><i className="fas fa-undo" /></div>
+              <h3 className="del-modal-title">Annuler la commande {cancelModal.reference} ?</h3>
+              <p className="del-modal-sub">
+                {cancelModal.status === 'confirmed'
+                  ? <>Le client sera remboursé de <strong>{cancelModal.grand_total?.toFixed(2)} €</strong> sur son moyen de paiement et prévenu par email. Le matériel redevient disponible. Cette action est définitive.</>
+                  : <>Le paiement en cours est abandonné et le matériel redevient disponible.</>}
+              </p>
+              <div className="del-modal-actions">
+                <button className="adm-btn-ghost" onClick={() => setCancelModal(null)} disabled={cancelling}>Retour</button>
+                <button className="adm-btn-danger" onClick={() => cancelOrder(cancelModal)} disabled={cancelling}>
+                  {cancelling ? <><i className="fas fa-circle-notch fa-spin" style={{marginRight:8}} />Remboursement…</> : <><i className="fas fa-undo" style={{marginRight:8}} />{cancelModal.status === 'confirmed' ? 'Annuler et rembourser' : 'Annuler la commande'}</>}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1253,18 +1157,6 @@ export default function AdminDashboard() {
 
 /* ── Sub-components ─────────────────────────────────── */
 
-function InstallmentTierFields({ title, minAmount, onMinAmount, last }) {
-  return (
-    <div style={{marginBottom: last?0:22, paddingBottom: last?0:18, borderBottom: last?'none':'1px solid var(--border)'}}>
-      <h3 style={{marginTop:0,marginBottom:12,fontSize:'.95rem'}}>{title}</h3>
-      <div className="adm-form-group">
-        <label>Montant minimum de commande (€)</label>
-        <input type="number" min={0} step="1" className="adm-input" style={{maxWidth:220}} value={minAmount} onChange={e => onMinAmount(e.target.value)} />
-      </div>
-    </div>
-  )
-}
-
 // pk_test_... vs pk_live_... tells us which Stripe dashboard (test or live
 // mode) the "vérifier sur Stripe" link on a paid reservation should open —
 // the two modes have entirely separate payment lists.
@@ -1272,53 +1164,14 @@ const STRIPE_DASHBOARD_URL = (process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 
   ? 'https://dashboard.stripe.com/payments'
   : 'https://dashboard.stripe.com/test/payments'
 
-// Single combobox for every status transition — replaces the old set of
-// status-specific buttons (Accepter/Marquer payé/Matériel rendu/Refuser) so
-// there's one consistent control everywhere a reservation's status can be
-// changed (list card footer on desktop, detail popup on both), instead of
-// only some transitions being one click away and others needing a delete +
-// recreate. Manages its own open/closed state — give it `key={resa.id}`
-// wherever the same slot can render different reservations (e.g. ResaDetail
-// swapping between cards) so that state resets on switch.
+// Order actions: online orders confirm themselves when paid; the team can
+// only cancel them (with a full refund through Stripe).
 function StatusChanger({ resa, onStatus }) {
-  const [open, setOpen] = useState(false)
-  if (resa.order_kind === 'rental') return resa.status === 'confirmed'
-    ? <button type="button" className="adm-btn-ghost btn-sm" onClick={() => onStatus(resa.id, 'terminee')}>Marquer terminée</button>
-    : <span>Statut géré automatiquement par le paiement.</span>
+  if (resa.order_kind !== 'rental' || !['confirmed', 'awaiting_payment'].includes(resa.status)) return null
   return (
-    <div className={`status-changer${open ? ' is-open' : ''}`} onClick={e => e.stopPropagation()}>
-      <button type="button" className="status-changer-trigger" onClick={() => setOpen(o => !o)}>
-        <span><i className="fas fa-arrows-rotate" style={{marginRight:8}} />Changer de statut</span>
-        <i className={`fas fa-chevron-down${open ? ' is-open' : ''}`} />
-      </button>
-      {open && (
-        <div className="status-changer-list">
-          {/* Every status is listed, including the current one — shown
-              disabled + checked instead of filtered out, so the list reads
-              as a full picture of "here's where this sits" rather than just
-              "here's where you can send it". */}
-          {Object.keys(STATUS_LABEL).map(s => {
-            const isCurrent = s === resa.status
-            return (
-              <button
-                key={s}
-                type="button"
-                className={`status-changer-option${isCurrent ? ' is-current' : ''}`}
-                disabled={isCurrent}
-                onClick={() => { onStatus(resa.id, s); setOpen(false) }}
-              >
-                <span className={`status-badge ${STATUS_CLASS[s]||''}`}>{STATUS_LABEL[s]}</span>
-                {isCurrent ? (
-                  <span className="status-changer-current-tag"><i className="fas fa-check" />Actuel</span>
-                ) : (
-                  <i className="fas fa-arrow-right" />
-                )}
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </div>
+    <button type="button" className="adm-btn-danger btn-sm" onClick={() => onStatus(resa.id, 'cancel')}>
+      <i className="fas fa-undo" style={{marginRight:6}} />{resa.status === 'confirmed' ? 'Annuler et rembourser' : 'Annuler'}
+    </button>
   )
 }
 
@@ -1377,15 +1230,14 @@ function ResaList({ reservations, paymentSummaries, filter, search, onStatus, on
                   return (
                     <div className="resa-payment-block">
                       <span className="resa-payment-notice">
-                        <i className="fas fa-bell" /><i className="fas fa-check" /> Paiement de {s.paidAmount.toFixed(2)} € reçu ({s.paidCount}/{s.total})
+                        <i className="fas fa-check" /> {s.paidAmount.toFixed(2)} € payés en ligne
                       </span>
-                      {r.payment_method === 'card' && <div className="resa-payment-verify">
+                      {<div className="resa-payment-verify">
                         <span>Cliquer ici pour vérifier :</span>
                         <a href={STRIPE_DASHBOARD_URL} target="_blank" rel="noopener noreferrer" className="resa-verify-btn" onClick={e => e.stopPropagation()}>
                           Stripe <i className="fas fa-arrow-right" />
                         </a>
                       </div>}
-                      {r.payment_method === 'virement' && <span>Virement marqué reçu par l’équipe.</span>}
                     </div>
                   )
                 })()}
@@ -1399,7 +1251,7 @@ function ResaList({ reservations, paymentSummaries, filter, search, onStatus, on
               </div>
               {r.materials?.length > 0 && <p className="resa-mats"><i className="fas fa-boxes" style={{marginRight:6}} />{r.materials.map(m=>m.name+' × '+m.quantity).join(', ')}</p>}
               {r.delivery_address && <p className="resa-mats"><i className="fas fa-truck" style={{marginRight:6}} />{r.delivery_address}{r.distance_km!=null?` — ${r.distance_km} km`:''}{r.delivery_fee!=null?` — livraison ${r.delivery_fee.toFixed(2)} €`:''}</p>}
-              {r.grand_total!=null && <p className="resa-mats"><i className="fas fa-euro-sign" style={{marginRight:6}} /><strong>Total estimé : {r.grand_total.toFixed(2)} €</strong></p>}
+              {r.grand_total!=null && <p className="resa-mats"><i className="fas fa-euro-sign" style={{marginRight:6}} /><strong>Total : {r.grand_total.toFixed(2)} €</strong></p>}
               {r.message && <p className="resa-msg"><i className="fas fa-comment" style={{marginRight:6}} />{r.message}</p>}
               <p className="resa-created">Reçue le {new Date(r.created_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</p>
             </div>
@@ -1463,7 +1315,7 @@ function CalGrid({ year, month, reservations, blockedDatesMap, blockedHoursMap, 
   for(let i=0;i<firstDay;i++) cells.push({ empty:true })
   for(let d=1;d<=daysInMonth;d++) {
     const ds=monthStr+'-'+String(d).padStart(2,'0')
-    cells.push({ d, ds, isPast:ds<today, isToday:ds===today, isBlocked:!!blockedDatesMap[ds], dayHours:blockedHoursMap[ds]||[], dayEvents:(eventMap[ds]||[]).filter(e=>!['refused','expired'].includes(e.r.status)), reason:blockedDatesMap[ds]?.reason })
+    cells.push({ d, ds, isPast:ds<today, isToday:ds===today, isBlocked:!!blockedDatesMap[ds], dayHours:blockedHoursMap[ds]||[], dayEvents:(eventMap[ds]||[]).filter(e=>!['refused','expired','cancelled'].includes(e.r.status)), reason:blockedDatesMap[ds]?.reason })
   }
 
   return (
@@ -1522,7 +1374,7 @@ function YearGrid({ year, reservations, blockedDatesMap, blockedHoursMap, onDayC
               {Array.from({length:daysInMonth},(_,i)=>{
                 const d=i+1; const ds=monthStr+'-'+String(d).padStart(2,'0')
                 const isBlocked=!!blockedDatesMap[ds]; const hours=blockedHoursMap[ds]||[]
-                const dayRes=(eventMap[ds]||[]).filter(r=>!['refused','expired'].includes(r.status))
+                const dayRes=(eventMap[ds]||[]).filter(r=>!['refused','expired','cancelled'].includes(r.status))
                 const hasConf=dayRes.some(r=>r.status==='confirmed'), hasPend=dayRes.some(r=>['pending','awaiting_payment'].includes(r.status))
                 let cls='cal-mini-day'+(ds<today?' is-past':'')+(ds===today?' is-today':'')+(isBlocked?' is-blocked':hours.length>0?' is-partial':'')
                 return (
@@ -1654,65 +1506,39 @@ function DayBlocModal({ dateStr, reservations, blockedDatesMap, blockedHoursMap,
   )
 }
 
-const PAY_STATUS_LABEL = { pending:'En attente', paid:'Payé', failed:'Échoué' }
-const PAY_STATUS_CLASS = { pending:'badge-pending', paid:'badge-confirmed', failed:'badge-refused' }
+const PAY_STATUS_LABEL = { pending:'En attente', paid:'Payé', failed:'Refusé (le client peut réessayer)', canceled:'Abandonné', refunded:'Remboursé' }
+const PAY_STATUS_CLASS = { pending:'badge-pending', paid:'badge-confirmed', failed:'badge-refused', canceled:'badge-refused', refunded:'badge-terminee' }
 
-function PaymentsBlock({ reservationId, onReceived }) {
+function PaymentsBlock({ reservationId }) {
   const [payments, setPayments] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [updatingId, setUpdatingId] = useState(null)
-
-  async function load() {
-    const { data } = await supabase.from('payments').select('*').eq('reservation_id', reservationId).order('installment_index')
-    setPayments(data || [])
-    setLoading(false)
-  }
-  useEffect(() => { load() }, [reservationId])
-
-  async function markReceived(paymentId) {
-    setUpdatingId(paymentId)
-    const { error } = await supabase.from('payments').update({ status: 'paid', paid_at: new Date().toISOString() }).eq('id', paymentId)
-    if (error) { alert(error.message); setUpdatingId(null); return }
-    await load()
-    await onReceived?.()
-    setUpdatingId(null)
-  }
-
-  if (loading) return null
+  useEffect(() => {
+    supabase.from('payments').select('*').eq('reservation_id', reservationId).order('installment_index').then(({ data }) => setPayments(data || []))
+  }, [reservationId])
   if (!payments.length) return null
-
   return (
     <div className="detail-block">
-      <h4 className="detail-block-title"><i className="fas fa-euro-sign" style={{marginRight:8}} />Paiements</h4>
+      <h4 className="detail-block-title"><i className="fas fa-euro-sign" style={{marginRight:8}} />Paiement</h4>
       <div className="detail-mats">
         {payments.map(p => (
           <div key={p.id} className="detail-mat-row" style={{alignItems:'center'}}>
             <span className="detail-mat-name">
-              <i className={p.method === 'virement' ? 'fas fa-university' : 'fas fa-credit-card'} style={{marginRight:8}} />
-              {p.installment_label} {p.due_date && <small style={{color:'var(--gray)',marginLeft:6}}>({new Date(p.due_date+'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})})</small>}
+              <i className="fas fa-credit-card" style={{marginRight:8}} />
+              {p.method === 'virement' ? 'Virement' : 'Paiement en ligne (Stripe)'}
+              {p.refunded_at && <small style={{color:'var(--gray)',marginLeft:6}}>remboursé le {new Date(p.refunded_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</small>}
             </span>
             <span style={{display:'flex',alignItems:'center',gap:10}}>
               <strong>{p.amount.toFixed(2)} €</strong>
               <span className={`status-badge ${PAY_STATUS_CLASS[p.status]||''}`}>{PAY_STATUS_LABEL[p.status]||p.status}</span>
-              {p.method === 'virement' && p.status === 'pending' && (
-                <button className="adm-btn-success btn-sm" onClick={() => markReceived(p.id)} disabled={updatingId === p.id}>
-                  {updatingId === p.id ? <i className="fas fa-circle-notch fa-spin" /> : <><i className="fas fa-check" style={{marginRight:4}} />Marquer reçu</>}
-                </button>
-              )}
+              {p.stripe_payment_intent_id && <a href={`${STRIPE_DASHBOARD_URL}/${p.stripe_payment_intent_id}`} target="_blank" rel="noopener noreferrer" className="adm-btn-ghost btn-sm">Stripe <i className="fas fa-arrow-right" /></a>}
             </span>
           </div>
         ))}
       </div>
-      {payments.some(p => p.status === 'failed') && (
-        <p style={{color:'var(--danger)',fontSize:'.82rem',marginTop:8}}>
-          <i className="fas fa-exclamation-triangle" style={{marginRight:4}} />Au moins un versement a échoué — le client devra mettre à jour son moyen de paiement.
-        </p>
-      )}
     </div>
   )
 }
 
-function ResaDetail({ resa, backDate, onBack, onStatus, onDelete, onPaymentReceived }) {
+function ResaDetail({ resa, backDate, onBack, onStatus, onDelete }) {
   if (!resa) return null
   const rd = getRDates(resa)
   const dateDisplay = rd.length<=1
@@ -1793,14 +1619,14 @@ function ResaDetail({ resa, backDate, onBack, onStatus, onDelete, onPaymentRecei
             )}
             {resa.grand_total != null && (
               <div className="price-detail-row price-detail-total">
-                <span className="price-detail-label">Total estimé</span>
+                <span className="price-detail-label">Total TTC</span>
                 <span className="price-detail-amount">{resa.grand_total.toFixed(2)} €</span>
               </div>
             )}
           </div>
         </div>
       )}
-      <PaymentsBlock reservationId={resa.id} onReceived={onPaymentReceived} />
+      <PaymentsBlock key={resa.id} reservationId={resa.id} />
       {resa.message&&<div className="detail-block"><h4 className="detail-block-title"><i className="fas fa-comment" style={{marginRight:8}} />Message / Créneau</h4><p className="detail-message">{resa.message}</p></div>}
       {/* Same status-change/delete actions as the card footer — added so the
           mobile compact-tile flow (tap tile -> this popup) can actually

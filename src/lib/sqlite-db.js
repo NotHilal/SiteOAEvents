@@ -30,21 +30,37 @@ function normalizeArgs(args) {
 // added rather than a full rewrite to client.execute({ sql, args }).
 const db = {
   close() { client.close(); },
+  // `fn` must only touch the database through `tx`: on SQLITE_BUSY the
+  // transaction is rolled back and `fn` runs again (up to 3 times). With a
+  // local file, a write that lost a race leaves libSQL's connection unable
+  // to commit the next transaction once ("SQL statements in progress");
+  // the retry gets a fresh connection.
   async writeTransaction(fn) {
     await ready();
-    const tx = await client.transaction('write');
-    const scoped = {
-      prepare(sql) {
-        const execute = args => tx.execute({ sql, args: normalizeArgs(args) });
-        return {
-          async get(...args) { return (await execute(args)).rows[0]; },
-          async all(...args) { return (await execute(args)).rows; },
-          async run(...args) { const r = await execute(args); return { changes: r.rowsAffected }; },
+    for (let attempt = 1; ; attempt++) {
+      let tx;
+      try {
+        tx = await client.transaction('write');
+        const scoped = {
+          prepare(sql) {
+            const execute = args => tx.execute({ sql, args: normalizeArgs(args) });
+            return {
+              async get(...args) { return (await execute(args)).rows[0]; },
+              async all(...args) { return (await execute(args)).rows; },
+              async run(...args) { const r = await execute(args); return { changes: r.rowsAffected }; },
+            };
+          },
         };
-      },
-    };
-    try { const result = await fn(scoped); await tx.commit(); return result; }
-    finally { tx.close(); }
+        const result = await fn(scoped);
+        await tx.commit();
+        return result;
+      } catch (error) {
+        if (error?.code !== 'SQLITE_BUSY' || attempt >= 3) throw error;
+        await new Promise(resolve => setTimeout(resolve, 25 * attempt));
+      } finally {
+        tx?.close();
+      }
+    }
   },
   prepare(sql) {
     return {
@@ -180,10 +196,10 @@ async function init() {
     );
 
     -- Same key/value shape as settings, but public-GET (see requiresAuth in
-    -- pages/api/db.js) — settings stays admin-only end-to-end because it
-    -- also holds bank_iban/bank_bic, so page copy that the public site needs
+    -- pages/api/db.js) — settings stays admin-only end-to-end (business
+    -- configuration), so page copy that the public site needs
     -- to read while logged out (e.g. the À Propos text/photo) lives here
-    -- instead, to avoid ever having to make bank details publicly readable.
+    -- instead.
     CREATE TABLE IF NOT EXISTS site_content (
       key TEXT PRIMARY KEY,
       value TEXT,
@@ -284,13 +300,11 @@ async function init() {
   // computed from, even if the base fee/per-km rate in Réglages changes afterwards.
   await ensureColumn('reservations', 'quote_base_fee', 'REAL');
   await ensureColumn('reservations', 'quote_per_km', 'REAL');
-  // Later installments are charged automatically by a dedicated Stripe
-  // Subscription Schedule per installment (one schedule = one future charge),
-  // rather than a single schedule with one phase per installment — so a
-  // payment failure on one installment can never affect the others (see
-  // src/lib/stripe.js createInstallmentAutoCharge). This column correlates an
-  // incoming invoice.paid/invoice.payment_failed webhook back to its row.
+  // Legacy (installments were removed); kept so old rows still read.
   await ensureColumn('payments', 'stripe_subscription_id', 'TEXT');
+  // Espace OA > Annuler et rembourser (src/lib/orders.js cancelOrder).
+  await ensureColumn('payments', 'refund_id', 'TEXT');
+  await ensureColumn('payments', 'refunded_at', 'TEXT');
   // Minimum rentable quantity for this item (e.g. Chaise Napoléon = 20) —
   // NULL means no minimum. Enforced client-side in the booking wizard.
   await ensureColumn('materials', 'min_order_qty', 'INTEGER');
@@ -411,7 +425,7 @@ async function init() {
 
   // Seed each setting key independently (INSERT OR IGNORE) rather than only
   // when the whole table is empty — otherwise a key added later (like the
-  // bank_* ones) would never get inserted for a database that already has
+  // delivery ones) would never get inserted for a database that already has
   // earlier settings rows in it, and every read/update against that key
   // would silently no-op forever.
   const settingsNow = new Date().toISOString();
@@ -419,13 +433,9 @@ async function init() {
     ['depot_address', process.env.DEPOT_ADDRESS || '72 rue Victor Basch, 92120 Montrouge, France'],
     ['delivery_base_fee', process.env.DELIVERY_BASE_FEE || '15'],
     ['delivery_per_km', process.env.DELIVERY_PER_KM || '1.2'],
-    ['bank_holder', ''],
-    ['bank_iban', ''],
-    ['bank_bic', ''],
-    ['installment_min_total_4x', '300'],
-    ['installment_2x_min_amount', '0'],
-    ['installment_3x_min_amount', '0'],
   ];
+  // Bank transfer and installment payments were removed: drop their settings.
+  await client.execute("DELETE FROM settings WHERE key LIKE 'bank_%' OR key LIKE 'installment_%' OR key = 'stripe_installment_product_id'");
   for (const [key, value] of settingDefaults) {
     await client.execute({
       sql: 'INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES (?, ?, ?)',
