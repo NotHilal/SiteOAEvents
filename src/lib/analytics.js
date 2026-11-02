@@ -1,9 +1,9 @@
 import { hasAnalyticsConsent } from './consent.js'
 
-// Privacy-friendly audience measurement (Plausible: no cookies, no
-// cross-site tracking), loaded ONLY after consent. Inactive until
-// NEXT_PUBLIC_PLAUSIBLE_DOMAIN is set (e.g. "oa-evenementiel.fr");
-// NEXT_PUBLIC_PLAUSIBLE_SRC can point at a self-hosted instance.
+// Audience measurement, loaded ONLY after consent:
+// - Google Tag Manager (container below);
+// - Plausible, if NEXT_PUBLIC_PLAUSIBLE_DOMAIN is set (e.g. "oa-evenementiel.fr");
+//   NEXT_PUBLIC_PLAUSIBLE_SRC can point at a self-hosted instance.
 //
 // Conversion events (never send personal data in props — no email, name,
 // phone, address or order reference):
@@ -14,9 +14,23 @@ const DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN
 const SRC = process.env.NEXT_PUBLIC_PLAUSIBLE_SRC || 'https://plausible.io/js/script.js'
 const SCRIPT_ID = 'oa-analytics'
 
-export function loadAnalytics() {
-  if (typeof window === 'undefined' || !DOMAIN || !hasAnalyticsConsent()) return
-  if (document.getElementById(SCRIPT_ID)) return
+const GTM_SRC = 'https://www.googletagmanager.com/gtm.js?id=GTM-T5W5G97Z'
+const GTM_SCRIPT_ID = 'oa-gtm'
+
+function loadGoogleTag() {
+  if (document.getElementById(GTM_SCRIPT_ID)) return
+  window.dataLayer = window.dataLayer || []
+  window.gtag = function () { window.dataLayer.push(arguments) }
+  window.gtag('js', new Date())
+  const s = document.createElement('script')
+  s.id = GTM_SCRIPT_ID
+  s.async = true
+  s.src = GTM_SRC
+  document.head.appendChild(s)
+}
+
+function loadPlausible() {
+  if (!DOMAIN || document.getElementById(SCRIPT_ID)) return
   window.plausible = window.plausible || function () { (window.plausible.q = window.plausible.q || []).push(arguments) }
   const s = document.createElement('script')
   s.id = SCRIPT_ID
@@ -26,12 +40,27 @@ export function loadAnalytics() {
   document.head.appendChild(s)
 }
 
+export function loadAnalytics() {
+  if (typeof window === 'undefined' || !hasAnalyticsConsent()) return
+  loadGoogleTag()
+  loadPlausible()
+}
+
 // Consent withdrawn: stop sending anything. Plausible sets no cookies, so
-// there is nothing to delete client-side.
+// removing it is enough. Tags started by GTM can't be stopped from outside:
+// its cookies are deleted and the page reloaded without it.
 export function unloadAnalytics() {
   if (typeof window === 'undefined') return
   document.getElementById(SCRIPT_ID)?.remove()
   window.plausible = function () {}
+  if (!document.getElementById(GTM_SCRIPT_ID)) return
+  const host = window.location.hostname.replace(/^www\./, '')
+  for (const cookie of document.cookie.split('; ')) {
+    const name = cookie.split('=')[0]
+    if (!/^(_ga|_gid|_gat|_gcl)/.test(name)) continue
+    for (const domain of ['', `; domain=${host}`, `; domain=.${host}`]) document.cookie = `${name}=; Max-Age=0; path=/${domain}`
+  }
+  window.location.reload()
 }
 
 export function track(event, props) {

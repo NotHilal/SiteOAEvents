@@ -60,8 +60,8 @@ export default function Confidentialite() {
             <td>Intérêt légitime (art. 6.1.f)</td>
           </tr>
           <tr>
-            <td>Mesure d'audience (si activée)</td>
-            <td>Pages consultées, source de visite, type d'appareil — sans donnée d'identification directe</td>
+            <td>Mesure d'audience</td>
+            <td>Pages consultées, source de visite, type d'appareil, adresse IP et identifiants de cookies</td>
             <td>Améliorer le site</td>
             <td>Consentement (art. 6.1.a), recueilli via la bannière cookies</td>
           </tr>
@@ -91,12 +91,13 @@ export default function Confidentialite() {
         <li><strong>Stripe</strong> (Stripe Payments Europe Ltd, Irlande) : paiement par carte.</li>
         <li><strong>Base Adresse Nationale</strong> (État français) : suggestion d'adresses pendant la saisie.</li>
         <li><strong>OpenStreetMap / Nominatim</strong> et <strong>OSRM</strong> : calcul de la distance de livraison à partir de l'adresse saisie.</li>
+        <li><strong>Google</strong> (Google Tag Manager, Google Analytics ; Google Ireland Ltd, Irlande) : mesure d'audience, uniquement après votre accord.</li>
         <li><strong>Unsplash</strong> : certaines photos d'illustration sont chargées depuis ses serveurs, qui reçoivent alors votre adresse IP.</li>
       </ul>
 
       <h2>5. Transferts hors de l'Union européenne</h2>
       <p>
-        Certains prestataires (notamment Resend, Stripe et Unsplash) peuvent traiter des données aux
+        Certains prestataires (notamment Resend, Stripe, Google et Unsplash) peuvent traiter des données aux
         États-Unis. Ces transferts sont encadrés par le Data Privacy Framework UE–États-Unis et/ou par les
         clauses contractuelles types de la Commission européenne.{' '}
         <ToFill>vérifier la situation de chaque prestataire au moment de la mise en ligne</ToFill>
@@ -110,8 +111,8 @@ export default function Confidentialite() {
         <li><strong>Session administrateur</strong> (stockage de session, espace réservé à l'équipe).</li>
       </ul>
       <p>
-        Ces éléments sont exemptés de consentement. Les outils de mesure d'audience, s'ils sont activés, ne
-        sont chargés qu'après votre accord. Vous pouvez modifier votre choix à tout moment :{' '}
+        Ces éléments sont exemptés de consentement. Les outils de mesure d'audience de Google, qui déposent
+        des cookies, ne sont chargés qu'après votre accord. Vous pouvez modifier votre choix à tout moment :{' '}
         <button type="button" className="legal-inline-btn" onClick={openCookieSettings}>gérer mes cookies</button>.
       </p>
 

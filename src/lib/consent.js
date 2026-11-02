@@ -1,7 +1,6 @@
 // Cookie / tracker consent. The site itself only uses strictly necessary
-// storage (cart, this choice, admin session), which needs no consent — so
-// the banner only exists once an optional tool is configured (analytics,
-// via NEXT_PUBLIC_PLAUSIBLE_DOMAIN). Non-essential scripts are injected
+// storage (cart, this choice, admin session), which needs no consent.
+// Audience measurement (Google Tag Manager, optionally Plausible) is injected
 // only after an explicit "yes" (see src/lib/analytics.js).
 
 const KEY = 'oa_consent'
@@ -10,8 +9,6 @@ const MAX_AGE_MS = 182 * 24 * 60 * 60 * 1000 // ~6 months, then ask again (CNIL 
 export const CONSENT_EVENT = 'oa-consent-changed'
 export const OPEN_SETTINGS_EVENT = 'oa-open-cookie-settings'
 
-export const ANALYTICS_AVAILABLE = !!process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN
-export const HAS_OPTIONAL_TRACKERS = ANALYTICS_AVAILABLE
 
 export function getConsent() {
   if (typeof window === 'undefined') return null
@@ -34,7 +31,7 @@ export function setConsent({ analytics }) {
 }
 
 export function hasAnalyticsConsent() {
-  return ANALYTICS_AVAILABLE && !!getConsent()?.analytics
+  return !!getConsent()?.analytics
 }
 
 // Footer "Gestion des cookies" link and the privacy page button.

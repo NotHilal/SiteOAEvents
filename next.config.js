@@ -8,23 +8,27 @@ const isDev = process.env.NODE_ENV !== 'production';
 const analyticsOrigin = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN
   ? new URL(process.env.NEXT_PUBLIC_PLAUSIBLE_SRC || 'https://plausible.io/js/script.js').origin
   : '';
+// Google Tag Manager / Analytics, injected only after consent (src/lib/analytics.js).
+const googleTag = 'https://*.googletagmanager.com';
+const googleAnalytics = 'https://*.google-analytics.com https://*.analytics.google.com';
 
 // Content Security Policy — only the third parties the site really uses:
-// Stripe (card payments), Webflow's CDN (template assets referenced by
-// furnish.css), Unsplash (photos) and Web3Forms (contact form). Fonts,
-// Bootstrap and Font Awesome are self-hosted (see _app.jsx).
+// Stripe (card payments), Google Tag Manager / Analytics, Webflow's CDN
+// (template assets referenced by furnish.css), Unsplash (photos) and
+// Web3Forms (contact form). Fonts, Bootstrap and Font Awesome are self-hosted
+// (see _app.jsx).
 // 'unsafe-inline' for styles is needed by React inline styles; scripts
 // stay strict in production — which is why `npm run build` uses webpack:
 // Turbopack's production output injects an inline bootstrap <script> on
 // every page that this policy would block.
 const csp = [
   "default-src 'self'",
-  `script-src 'self' https://js.stripe.com ${analyticsOrigin}${isDev ? " 'unsafe-eval' 'unsafe-inline'" : ''}`,
+  `script-src 'self' https://js.stripe.com https://*.js.stripe.com ${googleTag} ${analyticsOrigin}${isDev ? " 'unsafe-eval' 'unsafe-inline'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data: https://cdn.prod.website-files.com",
-  "img-src 'self' data: blob: https://images.unsplash.com https://cdn.prod.website-files.com https://*.stripe.com",
-  `connect-src 'self' https://api.web3forms.com https://api.stripe.com https://*.stripe.com ${analyticsOrigin}${isDev ? ' ws: wss:' : ''}`,
-  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
+  `img-src 'self' data: blob: https://images.unsplash.com https://cdn.prod.website-files.com https://*.stripe.com ${googleTag} ${googleAnalytics}`,
+  `connect-src 'self' https://api.web3forms.com https://api.stripe.com https://*.stripe.com ${googleTag} ${googleAnalytics} ${analyticsOrigin}${isDev ? ' ws: wss:' : ''}`,
+  "frame-src 'self' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com",
   "media-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
@@ -90,6 +94,8 @@ const nextConfig = {
       { source: '/reservation', destination: '/commande', permanent: true },
       // Category tiles are no longer paginated: /catalogue-2, -3… → /catalogue.
       { source: '/catalogue-:page(\\d{1,})', destination: '/catalogue', permanent: true },
+      // Categories live at /location/<slug>; the bare prefix has no page.
+      { source: '/location', destination: '/catalogue', permanent: true },
       // The Prestations page was removed — old links land on the catalogue.
       { source: '/services', destination: '/catalogue', permanent: true },
       // Mon compte follows the shop: orders replaced quote requests, and the
