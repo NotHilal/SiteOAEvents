@@ -27,7 +27,9 @@ unset NODE_OPTIONS
 mkdir -p "$RELEASE"
 cp -a .next/standalone/. "$RELEASE/"
 cp -a .next/static "$RELEASE/.next/static"
-cp -a public "$RELEASE/public"
+# The standalone output may already hold a public/ folder: merge into it.
+mkdir -p "$RELEASE/public"
+cp -a public/. "$RELEASE/public/"
 
 PREVIOUS=$(readlink "$ROOT/current" || true)
 ln -sfn "$RELEASE" "$ROOT/current.new" && mv -T "$ROOT/current.new" "$ROOT/current"
