@@ -29,7 +29,7 @@ export default function ShopCard({ card, inCart = 0, onQuickView, eager = false,
         <Link href={href} className="shop-card-photo" tabIndex={-1} aria-hidden="true">
           {card.imageUrl ? (
             <>
-              <img src={card.imageUrl} alt="" loading={eager ? 'eager' : 'lazy'} decoding="async" />
+              <img src={card.imageUrl} alt={`Location ${card.name}`} loading={eager ? 'eager' : 'lazy'} decoding="async" />
               {card.hoverImageUrl && <img src={card.hoverImageUrl} alt="" loading="lazy" decoding="async" className="shop-card-photo-alt" />}
             </>
           ) : (

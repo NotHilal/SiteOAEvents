@@ -12,7 +12,7 @@ export async function getServerSideProps() {
 
 export default function Realisations({ items }) {
   return <>
-    <Seo title="Nos réalisations" description="Découvrez les événements réalisés par OA Événementiel : récits, photos et vidéos." path="/nos-realisations" breadcrumb={[{ name: 'Nos réalisations', path: '/nos-realisations' }]} jsonLd={items.length ? {
+    <Seo title="Nos réalisations" description="Découvrez les événements réalisés par OA Événementiel : récits, photos et vidéos." path="/nos-realisations" noindex={!items.length} preloadImage={PAGE_HEADER_DEFAULT} breadcrumb={[{ name: 'Nos réalisations', path: '/nos-realisations' }]} jsonLd={items.length ? {
       '@context': 'https://schema.org',
       '@type': 'ItemList',
       itemListElement: items.map((item, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}/nos-realisations/${item.slug}`, name: item.title })),

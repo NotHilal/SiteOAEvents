@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { openCookieSettings } from '../lib/consent.js'
 import { SITE } from '../lib/site.js'
+import { CATEGORY_SEO } from '../lib/seo/catalogue.js'
+import { ZONES, EVENTS } from '../lib/seo/landings.js'
 
 const SOCIALS = [
   { key: 'facebook', label: 'Facebook', icon: 'fab fa-facebook-f' },
@@ -32,7 +34,7 @@ export default function Footer() {
                 />
               </Link>
               <p className="footer-text">
-                Organisation et scénographie d'événements sur-mesure en Île-de-France.
+                Location de matériel événementiel en Île-de-France : tentes, mobilier, vaisselle et décoration, livrés et installés.
               </p>
               {/* Social icons pointed to "#!" (dead links). They render again
                   as soon as real profile URLs are filled in SITE.social
@@ -68,8 +70,13 @@ export default function Footer() {
               <h2 className="footer-widget-title">Contact</h2>
               <ul role="list" className="list-style-one">
                 <li className="list-item footer-contact-line">
-                  <i className="fas fa-map-marker-alt" aria-hidden="true" /> Île-de-France, France
+                  <i className="fas fa-map-marker-alt" aria-hidden="true" /> {SITE.address.street}, {SITE.address.postalCode} {SITE.address.city}
                 </li>
+                {SITE.phone && (
+                  <li className="list-item footer-contact-line">
+                    <i className="fas fa-phone" aria-hidden="true" /> <a href={`tel:${SITE.phone}`} className="list-text-link">{SITE.phone}</a>
+                  </li>
+                )}
                 <li className="list-item footer-contact-line">
                   <i className="fas fa-envelope" aria-hidden="true" /> <a href={`mailto:${SITE.email}`} className="list-text-link">{SITE.email}</a>
                 </li>
@@ -94,6 +101,35 @@ export default function Footer() {
               </ul>
             </div>
           </div>
+          {/* Crawlable links to the catalogue, zone and occasion pages. */}
+          <nav className="footer-seo" aria-label="Location de matériel">
+            <div>
+              <h2 className="footer-widget-title">Matériel à louer</h2>
+              <ul role="list">
+                {Object.entries(CATEGORY_SEO).map(([slug, c]) => (
+                  <li key={slug}><Link href={`/location/${slug}`} className="list-text-link">{c.label}</Link></li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h2 className="footer-widget-title">Zones de livraison</h2>
+              <ul role="list">
+                {ZONES.map(z => (
+                  <li key={z.slug}><Link href={`/location-materiel-evenementiel/${z.slug}`} className="list-text-link">{z.name} ({z.code})</Link></li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h2 className="footer-widget-title">Votre événement</h2>
+              <ul role="list">
+                {EVENTS.map(e => (
+                  <li key={e.slug}><Link href={`/evenements/${e.slug}`} className="list-text-link">{e.name}</Link></li>
+                ))}
+                <li><Link href="/guides" className="list-text-link">Conseils</Link></li>
+                <li><Link href="/faq" className="list-text-link">Questions fréquentes</Link></li>
+              </ul>
+            </div>
+          </nav>
         </div>
       </div>
       <div className="footer-bottom">

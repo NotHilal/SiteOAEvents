@@ -25,12 +25,16 @@ const LOCATION_HREF = '/contact#localisation'
 const MAIN_LINKS = [
   { href: '/', label: 'Accueil' },
   { href: '/catalogue', label: 'Catalogue' },
+  { href: '/evenements', label: 'Événements' },
+  { href: '/location-materiel-evenementiel', label: 'Zones de livraison' },
   { href: '/nos-realisations', label: 'Nos réalisations' },
   { href: '/a-propos', label: 'À Propos' },
 ]
 const SERVICE_LINKS = [
   { href: '/commande', label: 'Mon panier' },
   { href: '/suivi', label: 'Suivi de commande' },
+  { href: '/guides', label: 'Conseils' },
+  { href: '/faq', label: 'Questions fréquentes' },
   { href: '/contact', label: 'Contact' },
   // Also in the header icon row, which hides them below 992px.
   ...(SITE.phone ? [{ href: `tel:${SITE.phone}`, label: 'Nous appeler', external: true }] : []),
@@ -209,11 +213,11 @@ export default function Navbar() {
 
       <nav className="oah-catbar" aria-label="Catalogue">
         <div className="oah-catbar-inner">
-          <Link href="/catalogue/complet" className={`oah-catbar-all${router.pathname === '/catalogue/complet' && !router.query.categorie ? ' is-current' : ''}`}>
+          <Link href="/catalogue/complet" className={`oah-catbar-all${router.pathname === '/catalogue/complet' ? ' is-current' : ''}`}>
             <i className="fas fa-th-large" aria-hidden="true" /> Tout le catalogue
           </Link>
           {categories.map(c => (
-            <Link key={c.key} href={catalogueCategoryHref(c.key)} className={`oah-catbar-link${router.query.categorie === c.key ? ' is-current' : ''}`}>
+            <Link key={c.key} href={catalogueCategoryHref(c.key)} className={`oah-catbar-link${router.asPath.split('?')[0] === catalogueCategoryHref(c.key) ? ' is-current' : ''}`}>
               {c.label}
             </Link>
           ))}

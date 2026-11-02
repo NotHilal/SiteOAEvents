@@ -12,7 +12,10 @@ import { SITE } from '../lib/site.js'
 // réalisation, 'product' for a catalogue item.
 export default function Seo({ title, description, path = '/', image, imageAlt, type = 'website', noindex = false, breadcrumb, jsonLd, preloadImage }) {
   const url = `${SITE.url}${path === '/' ? '/' : path}`
-  const fullTitle = title.includes(SITE.name) ? title : `${title} | ${SITE.name}`
+  // The brand is dropped when it would push the keywords out of the ~70
+  // characters search results display.
+  const withBrand = `${title} | ${SITE.name}`
+  const fullTitle = title.includes(SITE.name) || withBrand.length > 72 ? title : withBrand
   const img = absoluteUrl(image) || SITE.ogImage
   // Only the default share image is known to be 1200×630.
   const isDefaultImage = img === SITE.ogImage
@@ -30,7 +33,7 @@ export default function Seo({ title, description, path = '/', image, imageAlt, t
       })),
     })
   }
-  if (jsonLd) blocks.push(...(Array.isArray(jsonLd) ? jsonLd : [jsonLd]))
+  if (jsonLd) blocks.push(...(Array.isArray(jsonLd) ? jsonLd : [jsonLd]).filter(Boolean))
 
   return (
     <Head>
@@ -49,7 +52,7 @@ export default function Seo({ title, description, path = '/', image, imageAlt, t
       <meta property="og:image" content={img} />
       {isDefaultImage && <meta property="og:image:width" content="1200" />}
       {isDefaultImage && <meta property="og:image:height" content="630" />}
-      <meta property="og:image:alt" content={imageAlt || (isDefaultImage ? `${SITE.name} — location de mobilier et de décoration pour événements` : title)} />
+      <meta property="og:image:alt" content={imageAlt || (isDefaultImage ? `${SITE.name} — location de matériel événementiel en ${SITE.region}` : title)} />
 
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={fullTitle} />
@@ -72,31 +75,70 @@ export function absoluteUrl(src) {
 
 export const ORGANIZATION_ID = `${SITE.url}/#organization`
 
-// Organization + WebSite, for the homepage only. Only facts the site
-// already states — no address, ratings or reviews invented.
-export const ORGANIZATION_LD = [
-  {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    '@id': ORGANIZATION_ID,
-    name: SITE.name,
-    url: SITE.url,
-    logo: SITE.logo,
-    image: SITE.ogImage,
-    email: SITE.email,
-    ...(SITE.phone ? { telephone: SITE.phone } : {}),
-    description: SITE.description,
-    areaServed: { '@type': 'AdministrativeArea', name: SITE.region },
-    knowsAbout: ['Location de mobilier événementiel', 'Location de décoration de mariage', 'Location de tentes et chapiteaux', 'Art de la table'],
-    ...(Object.values(SITE.social).some(Boolean) ? { sameAs: Object.values(SITE.social).filter(Boolean) } : {}),
+const DEPARTMENTS = ['Paris', 'Yvelines', 'Hauts-de-Seine', 'Val-d’Oise', 'Essonne', 'Seine-Saint-Denis', 'Val-de-Marne', 'Seine-et-Marne']
+
+// Reference to the business from another JSON-LD block.
+export const PROVIDER_LD = { '@type': 'LocalBusiness', '@id': ORGANIZATION_ID, name: SITE.name, url: SITE.url }
+
+// The business, on the homepage and the contact page. Only verifiable facts
+// (Kbis, contact page) — never invent ratings or reviews: add aggregateRating
+// only once real reviews are displayed on the site.
+export const LOCAL_BUSINESS_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'LocalBusiness',
+  '@id': ORGANIZATION_ID,
+  name: SITE.name,
+  legalName: SITE.legalName,
+  url: SITE.url,
+  logo: SITE.logo,
+  image: SITE.ogImage,
+  email: SITE.email,
+  ...(SITE.phone ? { telephone: SITE.phone } : {}),
+  description: SITE.description,
+  foundingDate: SITE.foundingDate,
+  identifier: { '@type': 'PropertyValue', propertyID: 'SIREN', value: SITE.siren },
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: SITE.address.street,
+    postalCode: SITE.address.postalCode,
+    addressLocality: SITE.address.city,
+    addressRegion: SITE.region,
+    addressCountry: SITE.address.country,
   },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    '@id': `${SITE.url}/#website`,
-    name: SITE.name,
-    url: SITE.url,
-    inLanguage: 'fr-FR',
-    publisher: { '@id': ORGANIZATION_ID },
+  openingHoursSpecification: {
+    '@type': 'OpeningHoursSpecification',
+    dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+    ...SITE.openingHours,
   },
-]
+  areaServed: [{ '@type': 'AdministrativeArea', name: SITE.region }, ...DEPARTMENTS.map(name => ({ '@type': 'AdministrativeArea', name }))],
+  paymentAccepted: 'Carte bancaire',
+  currenciesAccepted: 'EUR',
+  knowsAbout: ['Location de matériel événementiel', 'Location de mobilier de réception', 'Location de tentes de réception', 'Décoration de mariage', 'Art de la table'],
+  ...(Object.values(SITE.social).some(Boolean) ? { sameAs: Object.values(SITE.social).filter(Boolean) } : {}),
+}
+
+export const WEBSITE_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  '@id': `${SITE.url}/#website`,
+  name: SITE.name,
+  url: SITE.url,
+  inLanguage: 'fr-FR',
+  publisher: { '@id': ORGANIZATION_ID },
+}
+
+// FAQ text may hold [label](/path) links: plain text for structured data.
+const plainText = text => text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+
+export const faqLd = items => (items?.length ? {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: items.map(({ q, a }) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: plainText(a) } })),
+} : null)
+
+// Meta description of at most `max` characters, cut between two words.
+export function clampDescription(text, max = 160) {
+  const clean = String(text || '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/\s+/g, ' ').trim()
+  if (clean.length <= max) return clean
+  return `${clean.slice(0, max - 1).replace(/[\s,;:.–-]+\S*$/, '')}…`
+}

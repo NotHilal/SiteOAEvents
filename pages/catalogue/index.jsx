@@ -36,8 +36,8 @@ export default function Catalogue({ tiles, productCount }) {
   return (
     <>
       <Seo
-        title="Catalogue : location de mobilier et de décoration"
-        description="Banquettes, chaises, tables, tentes, décoration et accessoires : découvrez par catégorie le mobilier et la décoration à louer pour vos réceptions."
+        title="Catalogue de location de matériel événementiel"
+        description="Tentes, tables, chaises, banquettes, vaisselle, décoration et accessoires : découvrez par catégorie tout le matériel à louer pour vos réceptions en Île-de-France."
         path="/catalogue"
         breadcrumb={[{ name: 'Catalogue', path: '/catalogue' }]}
         preloadImage={PAGE_HEADER_DEFAULT}
@@ -83,7 +83,7 @@ export default function Catalogue({ tiles, productCount }) {
                         className={`oa-cat-tile${tile.tall ? ' oa-cat-tile-tall' : ''}${tile.img ? '' : ' oa-cat-tile-empty'}`}
                         style={{ order: tile.i }}
                       >
-                        {tile.img && <img src={tile.img} alt="" loading={tile.i < 3 ? 'eager' : 'lazy'} decoding="async" />}
+                        {tile.img && <img src={tile.img} alt={`Location : ${tile.label}`} loading={tile.i < 3 ? 'eager' : 'lazy'} decoding="async" />}
                         <h2 className="oa-cat-title">{tile.label}</h2>
                         <span className="oa-cat-detail">
                           {tile.text && <span className="oa-cat-text">{tile.text}</span>}

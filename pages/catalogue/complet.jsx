@@ -1,141 +1,30 @@
-import { useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/router'
 import Seo from '../../src/components/Seo.jsx'
-import ShopCard from '../../src/components/product/ShopCard.jsx'
-import QuickView from '../../src/components/product/QuickView.jsx'
-import { categoryTitle } from '../../src/lib/catalogue-pages.js'
-import { useCatalogueCart } from '../../src/components/product/productUtils.js'
+import CatalogueListing from '../../src/components/product/CatalogueListing.jsx'
+import { catalogueCategoryHref } from '../../src/components/product/productUtils.js'
 
-// Shop listing: every rentable article (or one category with
-// ?categorie=CHAISES), category chips, sorting and a quick view on every
-// card. No pagination: the whole selection is on one scrolling page.
-// Cards come from src/lib/catalogue-cards.js.
+const PATH = '/catalogue/complet'
 
-const SORTS = [
-  { key: '', label: 'Pertinence' },
-  { key: 'prix', label: 'Prix croissant' },
-  { key: 'prix-desc', label: 'Prix décroissant' },
-  { key: 'nom', label: 'Nom (A → Z)' },
-]
-
-const queryString = params => {
-  const qs = new URLSearchParams()
-  for (const [k, v] of Object.entries(params)) if (v != null && v !== '') qs.set(k, String(v))
-  const s = qs.toString()
-  return s ? `/catalogue/complet?${s}` : '/catalogue/complet'
-}
-
+// Every rentable article on one page. The old ?categorie=CHAISES filter URLs
+// redirect permanently to the category's own page (/location/chaises).
 export async function getServerSideProps({ query }) {
-  const { getCatalogueCards } = await import('../../src/lib/catalogue-cards.js')
-  const { cards, categories } = await getCatalogueCards()
-
-  const requested = typeof query.categorie === 'string' ? query.categorie : ''
-  const category = requested ? categories.find(c => c.name === requested) || null : null
-  if (requested && !category && !cards.some(c => c.category === requested)) {
-    return { redirect: { destination: '/catalogue/complet', permanent: false } }
+  if (typeof query.categorie === 'string' && query.categorie) {
+    const tri = typeof query.tri === 'string' && query.tri ? `?tri=${encodeURIComponent(query.tri)}` : ''
+    return { redirect: { destination: `${catalogueCategoryHref(query.categorie)}${tri}`, permanent: true } }
   }
-
-  const counts = {}
-  for (const c of cards) counts[c.category] = (counts[c.category] || 0) + 1
-  const chips = categories.filter(c => counts[c.name]).map(c => ({ key: c.name, label: categoryTitle(c), count: counts[c.name] }))
-
-  const sort = SORTS.some(s => s.key === query.tri) ? String(query.tri) : ''
-  let filtered = requested ? cards.filter(c => c.category === requested) : [...cards]
-  const price = c => c.fromPrice || Infinity
-  if (sort === 'prix') filtered.sort((a, b) => price(a) - price(b))
-  if (sort === 'prix-desc') filtered.sort((a, b) => (b.fromPrice || 0) - (a.fromPrice || 0))
-  if (sort === 'nom') filtered.sort((a, b) => a.name.localeCompare(b.name, 'fr'))
-
-  return {
-    props: {
-      cards: filtered,
-      allTotal: cards.length,
-      sort,
-      chips,
-      categoryKey: requested || null,
-      title: category ? categoryTitle(category) : (requested ? categoryTitle({ name: requested }) : 'Tout le catalogue'),
-      intro: category?.description || '',
-    },
-  }
+  const { getCatalogueListing } = await import('../../src/lib/catalogue-listing.js')
+  return { props: await getCatalogueListing({ tri: query.tri }) }
 }
 
-export default function CatalogueListing({ cards, allTotal, sort, chips, categoryKey, title, intro }) {
-  const router = useRouter()
-  const cart = useCatalogueCart()
-  const [quick, setQuick] = useState(null)
-  const base = { categorie: categoryKey, tri: sort || null }
-  const path = queryString({ categorie: categoryKey })
-  const go = patch => router.push(queryString({ ...base, ...patch }), undefined, { scroll: false })
-  const inCartOf = card => card.variants.reduce((n, v) => n + (cart[v.id] || 0), 0)
-
+export default function CatalogueComplet(props) {
   return (
     <>
       <Seo
-        title={categoryKey ? `Location ${title.toLocaleLowerCase('fr')}` : 'Catalogue : location de mobilier et de décoration'}
-        description={intro || 'Parcourez notre catalogue de mobilier et de décoration à louer pour vos réceptions : chaises, tables, art de la table, luminaires et plus encore.'}
-        path={path}
-        breadcrumb={[{ name: 'Catalogue', path: '/catalogue' }, { name: title, path }]}
+        title="Tout le matériel à louer : tentes, tables, chaises, vaisselle"
+        description="Tous nos articles à louer en Île-de-France, avec leurs prix : tentes de réception, tables, chaises, banquettes, vaisselle, décoration et accessoires."
+        path={PATH}
+        breadcrumb={[{ name: 'Catalogue', path: '/catalogue' }, { name: props.title, path: PATH }]}
       />
-
-      <div className="site-wrap shop-listing">
-        <header className="shop-listing-head">
-          <nav aria-label="Fil d'Ariane">
-            <ol className="shop-crumbs">
-              <li><Link href="/">Accueil</Link></li>
-              <li><Link href="/catalogue">Catalogue</Link></li>
-              <li aria-current="page">{title}</li>
-            </ol>
-          </nav>
-          <h1>{title}</h1>
-          <p>{intro || 'Mobilier, art de la table et décoration à louer, livrés et installés. Ajoutez vos articles au panier puis choisissez vos dates : le total, livraison comprise, est calculé en ligne.'}</p>
-        </header>
-
-        <div className="shop-container">
-          <div className="shop-chips shop-chips-scroll" role="navigation" aria-label="Catégories">
-            <Link href={queryString({ tri: sort || null })} className={`shop-chip${!categoryKey ? ' is-active' : ''}`} scroll={false}>
-              Tout <span>{allTotal}</span>
-            </Link>
-            {chips.map(c => (
-              <Link key={c.key} href={queryString({ categorie: c.key, tri: sort || null })} className={`shop-chip${categoryKey === c.key ? ' is-active' : ''}`} scroll={false}>
-                {c.label} <span>{c.count}</span>
-              </Link>
-            ))}
-          </div>
-
-          <div className="shop-toolbar">
-            <p className="shop-amount">{cards.length > 0 ? <><strong>{cards.length}</strong> article{cards.length > 1 ? 's' : ''}</> : 'Aucun article'}</p>
-            <div className="shop-toolbar-controls">
-              <label className="shop-select">
-                <span>Trier</span>
-                <select value={sort} onChange={e => go({ tri: e.target.value || null })}>
-                  {SORTS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-                </select>
-              </label>
-            </div>
-          </div>
-
-          {cards.length > 0 ? (
-            <div className="shop-grid">
-              {cards.map((card, i) => (
-                <ShopCard key={card.key} card={card} inCart={inCartOf(card)} onQuickView={setQuick} eager={i < 4} />
-              ))}
-            </div>
-          ) : (
-            <p className="shop-empty">Aucun article disponible dans cette catégorie pour le moment.</p>
-          )}
-
-          <aside className="shop-help">
-            <div>
-              <h2>Un projet sur mesure ?</h2>
-              <p>Décoration complète, scénographie, grandes quantités : notre équipe vous prépare un devis.</p>
-            </div>
-            <Link href="/contact" className="shop-btn shop-btn-ghost">Demander un devis</Link>
-          </aside>
-        </div>
-      </div>
-
-      {quick && <QuickView card={quick} onClose={() => setQuick(null)} />}
+      <CatalogueListing {...props} />
     </>
   )
 }

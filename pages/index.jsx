@@ -2,11 +2,14 @@ import RealisationsGrid from '../src/components/RealisationsGrid.jsx'
 import { getRealisations } from '../src/lib/realisations-server.js'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import Seo, { ORGANIZATION_LD } from '../src/components/Seo.jsx'
+import Seo, { LOCAL_BUSINESS_LD, WEBSITE_LD, faqLd } from '../src/components/Seo.jsx'
+import Faq from '../src/components/seo/Faq.jsx'
+import RichText from '../src/components/seo/RichText.jsx'
+import { ZONES, EVENTS, GUIDES } from '../src/lib/seo/landings.js'
 import { getJsonContent } from '../src/lib/public-api.js'
 import ShopCard from '../src/components/product/ShopCard.jsx'
 import QuickView from '../src/components/product/QuickView.jsx'
-import { useCatalogueCart } from '../src/components/product/productUtils.js'
+import { catalogueCategoryHref, useCatalogueCart } from '../src/components/product/productUtils.js'
 import Icon from '../src/components/Icon.jsx'
 import HeroVideo from '../src/components/HeroVideo.jsx'
 import { track } from '../src/lib/analytics.js'
@@ -54,6 +57,13 @@ const STATS = [
   { count: '99%', label: 'Satisfaction Client' },
 ]
 
+const HOME_FAQ = [
+  { q: 'Quel matériel événementiel peut-on louer ?', a: 'Des [tentes de réception](/location/tentes), des [tables](/location/tables), des [chaises](/location/chaises), des [banquettes](/location/banquettes), de la [vaisselle](/location/vaisselle-art-de-la-table), de la [décoration](/location/decorations) et des [accessoires](/location/options-accessoires) comme l’éclairage ou le chauffage.' },
+  { q: 'Dans quels départements livrez-vous ?', a: 'Nous livrons toute l’Île-de-France : Paris, Yvelines, Hauts-de-Seine, Val-d’Oise, Essonne, Seine-Saint-Denis, Val-de-Marne et Seine-et-Marne.' },
+  { q: 'Le prix de la livraison est-il connu à l’avance ?', a: 'Oui, le total de la location et de la livraison est calculé en ligne selon votre adresse, avant le paiement.' },
+  { q: 'Le matériel est-il installé ?', a: 'Notre équipe assure la livraison, le montage et le démontage. Pour les tentes de réception, l’installation, la désinstallation et le lestage sont inclus dans le prix de location, hors frais kilométriques.' },
+]
+
 const SELECTION_SIZE = 8
 
 // Homepage selection: cards taken in turn from each category (one chair,
@@ -97,10 +107,11 @@ export default function Home({ realisations, selection, productCount }) {
   return (
     <>
       <Seo
-        title="OA Événementiel — Location de mobilier et de décoration pour vos réceptions"
-        description="Louez en ligne chaises, tables, tentes, art de la table et décoration pour vos mariages, anniversaires et événements en Île-de-France. Livraison et installation."
+        title="Location de matériel événementiel en Île-de-France | OA Événementiel"
+        description="Louez en ligne tentes, tables, chaises, vaisselle et décoration pour vos mariages et réceptions en Île-de-France. Prix affichés, livraison et installation."
         path="/"
-        jsonLd={ORGANIZATION_LD}
+        jsonLd={[LOCAL_BUSINESS_LD, WEBSITE_LD, faqLd(HOME_FAQ)]}
+        preloadImage="/videos/oa-hero-poster.jpg"
       />
 
       <div className="page-wrapper">
@@ -108,12 +119,12 @@ export default function Home({ realisations, selection, productCount }) {
         <section id="Hero-Section" className="oa-hero" aria-labelledby="oa-hero-title">
           <HeroVideo />
           <div className="oa-container oa-hero-inner">
-            <p className="oa-hero-eyebrow hero-reveal hero-reveal-1">Location de mobilier & décoration</p>
+            <p className="oa-hero-eyebrow hero-reveal hero-reveal-1">Tentes, mobilier, vaisselle & décoration</p>
             <h1 id="oa-hero-title" className="oa-hero-title hero-reveal hero-reveal-2">
-              Louez tout pour votre réception
+              Location de matériel événementiel en Île-de-France
             </h1>
             <p className="oa-hero-text hero-reveal hero-reveal-3">
-              Chaises, tables, tentes, art de la table et décoration : choisissez en ligne, réservez votre date, nous livrons et installons en Île-de-France.
+              Louez tout pour votre réception : choisissez en ligne, réservez votre date, nous livrons et installons chez vous.
             </p>
             <div className="oa-hero-actions hero-reveal hero-reveal-4">
               <Link href="/catalogue/complet" className="shop-btn shop-btn-gold shop-btn-xl" onClick={() => track('Clic Catalogue', { emplacement: 'hero' })}>
@@ -156,7 +167,7 @@ export default function Home({ realisations, selection, productCount }) {
                   return (
                     <Link
                       key={t.slotKey}
-                      href={`/catalogue/complet?categorie=${encodeURIComponent(t.value)}`}
+                      href={catalogueCategoryHref(t.value)}
                       className={`oa-home-cat${col.length === 1 ? ' is-tall' : ''}${t.raised ? ' is-raised' : ''}`}
                       style={{ backgroundImage: `url(${images[t.slotKey] || t.img})` }}
                     >
@@ -252,6 +263,32 @@ export default function Home({ realisations, selection, productCount }) {
                 <span className="oa-stat-label">{s.label}</span>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* LOCATION EN ÎLE-DE-FRANCE — occasions, zones, guides and FAQ */}
+        <section className="oa-section seo-home" aria-labelledby="seo-home-title">
+          <div className="oa-container">
+            <div className="seo-home-intro" data-reveal>
+              <span className="oa-eyebrow">Votre loueur en Île-de-France</span>
+              <h2 id="seo-home-title" className="oa-section-title">Tout le matériel de votre événement, au même endroit</h2>
+              <p><RichText text="OA Événementiel loue aux particuliers et aux professionnels le matériel de leurs réceptions : [tentes](/location/tentes), [tables](/location/tables), [chaises](/location/chaises), [banquettes](/location/banquettes), [vaisselle](/location/vaisselle-art-de-la-table) et [décoration](/location/decorations). Les prix sont affichés en ligne et le total, livraison comprise, est calculé avant le paiement." /></p>
+            </div>
+            <div className="seo-link-columns" data-reveal>
+              <div>
+                <h3>Selon votre événement</h3>
+                <ul>{EVENTS.map(e => <li key={e.slug}><Link href={`/evenements/${e.slug}`}>{e.title.replace(' en Île-de-France', '')}</Link></li>)}</ul>
+              </div>
+              <div>
+                <h3>Près de chez vous</h3>
+                <ul>{ZONES.map(z => <li key={z.slug}><Link href={`/location-materiel-evenementiel/${z.slug}`}>Location {z.prep} ({z.code})</Link></li>)}</ul>
+              </div>
+              <div>
+                <h3>Nos conseils</h3>
+                <ul>{GUIDES.map(g => <li key={g.slug}><Link href={`/guides/${g.slug}`}>{g.title}</Link></li>)}</ul>
+              </div>
+            </div>
+            <Faq items={HOME_FAQ} title="Vos questions sur la location" more />
           </div>
         </section>
 

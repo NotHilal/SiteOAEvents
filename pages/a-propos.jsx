@@ -60,8 +60,8 @@ export default function APropos() {
   return (
     <>
       <Seo
-        title="À propos : scénographie d'événements sur-mesure"
-        description="Découvrez OA Événementiel, spécialiste de l'organisation et de la scénographie d'événements sur-mesure en Île-de-France."
+        title="À propos d'OA Événementiel, loueur dans les Yvelines"
+        description="Installée à Chanteloup-les-Vignes (78), OA Événementiel loue le matériel et la décoration de vos réceptions et les installe partout en Île-de-France."
         path="/a-propos"
         breadcrumb={[{ name: 'À propos', path: '/a-propos' }]}
         preloadImage={PAGE_HEADER_DEFAULT}

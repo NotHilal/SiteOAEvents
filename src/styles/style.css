@@ -113,39 +113,6 @@ body { font-family: var(--oa-font-body); }
 }
 .oa-text-muted { color: var(--oa-muted); }
 
-/* ===== PRELOADER (Utilisé par Loader.jsx) ===== */
-/* Fades itself out with CSS (no JS needed): it used to stay up until React
-   hydrated and hid it, which on a slow phone kept the whole page covered
-   for several seconds. Loader.jsx still unmounts it afterwards. */
-#overlayer {
-  width: 100%; height: 100%;
-  position: fixed;
-  z-index: 9999;
-  background: #ffffff;
-  top: 0; left: 0;
-  animation: oaLoaderOut .35s ease .45s forwards;
-}
-
-.loader {
-  z-index: 9999;
-  position: fixed;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  animation: oaLoaderOut .25s ease .4s forwards;
-}
-@keyframes oaLoaderOut { to { opacity: 0; visibility: hidden; } }
-@media (prefers-reduced-motion: reduce) {
-  #overlayer, .loader { animation-delay: 0s; animation-duration: .01s; }
-}
-
-.loader-ring {
-  width: 48px; height: 48px;
-  border: 2px solid #eeeeee;
-  border-top-color: #000000;
-  border-radius: 50%;
-  animation: spin .85s linear infinite;
-}
-
 @keyframes spin { to { transform: rotate(360deg); } }
 
 

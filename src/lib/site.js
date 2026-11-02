@@ -15,6 +15,20 @@ export const SITE = {
   // contact page instead of a tel: link.
   phone: process.env.NEXT_PUBLIC_SITE_PHONE || '',
   region: 'Île-de-France',
+  // Registered office (Kbis, same as /mentions-legales). Keep name, address
+  // and phone strictly identical on Google Business Profile and directories.
+  legalName: 'OA Événementiel',
+  siren: '131239949',
+  foundingDate: '2026-10-08',
+  address: {
+    street: '8 rue de la Butte des Groux',
+    postalCode: '78570',
+    city: 'Chanteloup-les-Vignes',
+    department: 'Yvelines',
+    country: 'FR',
+  },
+  // Same hours as the contact page.
+  openingHours: { opens: '09:00', closes: '20:00' },
   locale: 'fr_FR',
   logo: `${SITE_URL}/icon-512.png`,
   ogImage: `${SITE_URL}/og-image.jpg`,
@@ -25,19 +39,24 @@ export const SITE = {
     pinterest: '',
   },
   description:
-    "Location de mobilier et de décoration raffinée pour mariages, anniversaires et événements d'entreprise en Île-de-France.",
+    "Location de matériel événementiel en Île-de-France : tentes, tables, chaises, vaisselle et décoration pour mariages, anniversaires et événements d'entreprise.",
 };
 
-// Public, indexable pages — drives the sitemap. Private/technical routes
-// (espace-oa, suivi, api, example) are deliberately absent.
+// Static, indexable pages — drives the sitemap together with the generated
+// catalogue, zone, occasion, guide and réalisation URLs (pages/sitemap.xml.js).
+// Private/technical routes (admin, suivi, api, example) are deliberately absent.
 export const PUBLIC_PAGES = [
-  { path: '/', priority: 1.0, changefreq: 'weekly' },
-  { path: '/catalogue', priority: 0.9, changefreq: 'weekly' },
-  { path: '/nos-realisations', priority: 0.7, changefreq: 'weekly' },
-  { path: '/a-propos', priority: 0.6, changefreq: 'yearly' },
-  { path: '/contact', priority: 0.7, changefreq: 'yearly' },
-  { path: '/mentions-legales', priority: 0.2, changefreq: 'yearly' },
-  { path: '/confidentialite', priority: 0.2, changefreq: 'yearly' },
-  { path: '/cgu', priority: 0.2, changefreq: 'yearly' },
-  { path: '/cgv', priority: 0.2, changefreq: 'yearly' },
+  '/',
+  '/catalogue',
+  '/catalogue/complet',
+  '/location-materiel-evenementiel',
+  '/evenements',
+  '/guides',
+  '/faq',
+  '/a-propos',
+  '/contact',
+  '/mentions-legales',
+  '/confidentialite',
+  '/cgu',
+  '/cgv',
 ];

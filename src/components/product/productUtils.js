@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getCatalogueCart, CART_EVENT } from '../../lib/cart.js'
 import { getMinOrderQty, getUnitPriceTtc, ttcFromHt } from '../../lib/pricing.js'
+import { slugify } from '../../lib/slug.js'
 
 const euro = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' })
 export const formatEuro = n => euro.format(n)
@@ -9,7 +10,7 @@ export const formatEuro = n => euro.format(n)
 // breadcrumb keeps the stored uppercase name (it's set in capitals anyway).
 export const categoryLabel = c => (c ? c.charAt(0) + c.slice(1).toLowerCase() : '')
 
-export const catalogueCategoryHref = c => `/catalogue/complet?categorie=${encodeURIComponent(c)}`
+export const catalogueCategoryHref = c => `/location/${slugify(c)}`
 
 export const minQtyOf = variant => getMinOrderQty(variant.tiers)
 

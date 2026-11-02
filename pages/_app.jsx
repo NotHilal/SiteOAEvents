@@ -18,7 +18,6 @@ import '../src/index.css'
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/router'
 import Lenis from 'lenis'
-import Loader from '../src/components/Loader.jsx'
 import Navbar from '../src/components/Navbar.jsx'
 import Footer from '../src/components/Footer.jsx'
 import CookieConsent from '../src/components/CookieConsent.jsx'
@@ -124,9 +123,6 @@ export default function App({ Component, pageProps }) {
   return (
     <>
       <div className={`oa-progress-bar oa-progress-${navState}`} aria-hidden="true" />
-      {/* Mounted once here (not per-page) so its intro animation plays only
-          on true first load, not on every client-side route change. */}
-      {!isAdmin && <Loader />}
       {!isAdmin && <Navbar />}
       {/* key={asPath} forces a remount on navigation, which restarts the
           .oa-page-transition CSS animation for every new page. The animation

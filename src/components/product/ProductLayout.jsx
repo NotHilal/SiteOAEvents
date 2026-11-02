@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import Icon from '../Icon.jsx'
-import { catalogueCategoryHref } from './productUtils.js'
+import { catalogueCategoryHref, categoryLabel } from './productUtils.js'
+import RichText from '../seo/RichText.jsx'
+import { PRODUCT_SEO } from '../../lib/seo/catalogue.js'
 import ProductGallery from './ProductGallery.jsx'
 
 // Frame shared by both product templates (options.fr product page, see
@@ -8,6 +10,7 @@ import ProductGallery from './ProductGallery.jsx'
 // breadcrumb, square picture on the left, product column on the right,
 // then other products from the same category.
 export default function ProductLayout({ product, images, imageAlt, imageCaption, related, children }) {
+  const editorial = PRODUCT_SEO[product.slug]
   return (
     <div className="site-wrap pdp">
       <nav className="pdp-breadcrumbs" aria-label="Fil d'Ariane">
@@ -18,7 +21,7 @@ export default function ProductLayout({ product, images, imageAlt, imageCaption,
         <ol>
           <li><Link href="/">Accueil</Link></li>
           <li><Link href="/catalogue/complet">Catalogue complet</Link></li>
-          {product.category && <li><Link href={catalogueCategoryHref(product.category)}>{product.category}</Link></li>}
+          {product.category && <li><Link href={catalogueCategoryHref(product.category)}>{categoryLabel(product.category)}</Link></li>}
           <li aria-current="page"><strong>{product.name}</strong></li>
         </ol>
       </nav>
@@ -31,6 +34,15 @@ export default function ProductLayout({ product, images, imageAlt, imageCaption,
         <div className="pdp-info">{children}</div>
       </div>
 
+      {editorial && (
+        <section className="seo-product-text" aria-labelledby="pdp-about-title">
+          <h2 id="pdp-about-title">{product.name} à louer en Île-de-France</h2>
+          <p>{editorial.lead}</p>
+          <p><RichText text={editorial.body} /></p>
+          <p className="seo-product-delivery">Livraison dans toute l’Île-de-France, avec un total calculé avant le paiement. <Link href="/faq">Questions fréquentes</Link> · <Link href="/location-materiel-evenementiel">Zones de livraison</Link></p>
+        </section>
+      )}
+
       {related.length > 0 && (
         <section className="oa-section-tight pdp-related" aria-labelledby="pdp-related-title">
           <div className="oa-container">
@@ -40,7 +52,7 @@ export default function ProductLayout({ product, images, imageAlt, imageCaption,
                 <Link href={`/catalogue/${r.slug}`} className="shop-related" key={r.key}>
                   <span className="shop-related-media">
                     {r.imageUrl
-                      ? <img src={r.imageUrl} alt="" loading="lazy" decoding="async" />
+                      ? <img src={r.imageUrl} alt={`Location ${r.name}`} loading="lazy" decoding="async" />
                       : <Icon name="image" size={40} strokeWidth={1} />}
                   </span>
                   <span className="shop-related-name">{r.name}</span>

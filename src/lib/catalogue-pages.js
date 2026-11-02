@@ -20,3 +20,10 @@ export const categoryKeyFromTitle = title => String(title || '').replace(/\s+/g,
 
 export const sortCategories = categories =>
   [...categories].sort((a, b) => (a.position ?? 1e9) - (b.position ?? 1e9) || String(a.created_at || '').localeCompare(String(b.created_at || '')) || String(a.name).localeCompare(String(b.name)))
+
+export const CATALOGUE_SORTS = [
+  { key: '', label: 'Pertinence' },
+  { key: 'prix', label: 'Prix croissant' },
+  { key: 'prix-desc', label: 'Prix décroissant' },
+  { key: 'nom', label: 'Nom (A → Z)' },
+]

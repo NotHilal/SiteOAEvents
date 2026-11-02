@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import Seo from '../src/components/Seo.jsx'
+import Seo, { LOCAL_BUSINESS_LD } from '../src/components/Seo.jsx'
+import { SITE } from '../src/lib/site.js'
 import PhoneInput from '../src/components/PhoneInput.jsx'
 import { getJsonContent, sendContact } from '../src/lib/public-api.js'
 import { track } from '../src/lib/analytics.js'
@@ -139,9 +140,10 @@ export default function Contact() {
   return (
     <>
       <Seo
-        title="Contact et demande de devis"
+        title="Contact et devis location de matériel"
         description="Une question ou un projet ? Contactez OA Événementiel pour vos mariages, anniversaires et événements professionnels en Île-de-France."
         path="/contact"
+        jsonLd={LOCAL_BUSINESS_LD}
         breadcrumb={[{ name: 'Contact', path: '/contact' }]}
         preloadImage={PAGE_HEADER_DEFAULT}
       />
@@ -172,7 +174,7 @@ export default function Contact() {
                 <p className="section-text">N'hésitez pas à nous contacter pour toute demande de renseignements ou pour démarrer la planification de votre événement.</p>
 
                 {[
-                  { icon: 'fas fa-map-marker-alt', title: 'Localisation', text: 'Île-de-France, France', id: 'localisation' },
+                  { icon: 'fas fa-map-marker-alt', title: 'Localisation', text: `${SITE.address.street}, ${SITE.address.postalCode} ${SITE.address.city}`, note: 'Livraison dans toute l’Île-de-France', id: 'localisation' },
                   { icon: 'fas fa-phone', title: 'Téléphone', text: 'Sur demande' },
                   { icon: 'fas fa-envelope', title: 'Email', text: 'contact@oa-evenementiel.fr', href: 'mailto:contact@oa-evenementiel.fr' },
                   { icon: 'fas fa-clock', title: 'Disponibilité', text: 'Lun – Dim : 9h – 20h', note: 'Livraison et installation possibles 24h/24, 7j/7' },

@@ -1,9 +1,11 @@
-import Seo, { ORGANIZATION_ID, absoluteUrl } from '../../src/components/Seo.jsx'
+import Seo, { ORGANIZATION_ID, absoluteUrl, clampDescription } from '../../src/components/Seo.jsx'
 import ProductSingle from '../../src/components/product/ProductSingle.jsx'
 import ProductMultiple from '../../src/components/product/ProductMultiple.jsx'
 import { getCatalogueProduct } from '../../src/lib/catalogue-products.js'
 import { SITE } from '../../src/lib/site.js'
 import { ttcFromHt } from '../../src/lib/pricing.js'
+import { catalogueCategoryHref, categoryLabel } from '../../src/components/product/productUtils.js'
+import { PRODUCT_SEO } from '../../src/lib/seo/catalogue.js'
 
 // One route for every catalogue product (/catalogue/table-ronde,
 // /catalogue/kit-lumiere-led…). Rendered per request so a direct link or a
@@ -29,7 +31,7 @@ function productLd(product, variants, description, url) {
     url,
     ...(description ? { description } : {}),
     ...(images.length ? { image: images } : {}),
-    ...(product.category ? { category: product.category } : {}),
+    ...(product.category ? { category: categoryLabel(product.category) } : {}),
     brand: { '@type': 'Brand', name: SITE.name },
     ...(prices.length ? {
       offers: {
@@ -50,21 +52,26 @@ function productLd(product, variants, description, url) {
 export default function CatalogueProduct({ product, variants, activeVariantId, related }) {
   const lead = variants.find(v => v.id === activeVariantId) || variants[0]
   const image = variants.find(v => v.imageUrl)?.imageUrl
-  const description = (product.description || lead.description || '').trim()
+  const editorial = PRODUCT_SEO[product.slug]
+  const description = (product.description || editorial?.lead || lead.description || '').trim()
 
   return (
     <>
       <Seo
-        title={`Location ${product.name}`}
-        description={description
-          ? `${product.name} à la location : ${description}`.slice(0, 160)
-          : `Louez ${product.name} pour votre réception en ${SITE.region} avec OA Événementiel.`}
+        title={`Location ${product.name} en ${SITE.region}`}
+        description={clampDescription(editorial?.lead || (description
+          ? `${product.name} à la location : ${description}`
+          : `Louez ${product.name} pour votre réception en ${SITE.region} avec OA Événementiel.`))}
         path={`/catalogue/${product.slug}`}
         image={image}
-        imageAlt={product.name}
+        imageAlt={`Location ${product.name}`}
         type="product"
         jsonLd={productLd(product, variants, description, `${SITE.url}/catalogue/${product.slug}`)}
-        breadcrumb={[{ name: 'Catalogue', path: '/catalogue' }, { name: product.name, path: `/catalogue/${product.slug}` }]}
+        breadcrumb={[
+          { name: 'Catalogue', path: '/catalogue' },
+          ...(product.category ? [{ name: categoryLabel(product.category), path: catalogueCategoryHref(product.category) }] : []),
+          { name: product.name, path: `/catalogue/${product.slug}` },
+        ]}
       />
       {variants.length > 1
         ? <ProductMultiple product={product} variants={variants} activeVariantId={activeVariantId} related={related} />
