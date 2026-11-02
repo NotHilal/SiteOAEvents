@@ -1,6 +1,47 @@
 # Mise en ligne d'OA Événementiel sur un VPS
 
-Tout tourne dans Docker sur le VPS :
+## Installation actuelle : VPS partagé (nginx + pm2)
+
+Le site tourne sur `79.137.72.112` (`ssh vps-site`) à côté d'autres sites, comme eux avec nginx, pm2 et le PostgreSQL du serveur :
+
+| Élément | Emplacement |
+| --- | --- |
+| Configuration et secrets | `/var/www/oa-evenementiel/shared/.env` (droits 600) |
+| Code source | `/var/www/oa-evenementiel/repo` |
+| Version en ligne | `/var/www/oa-evenementiel/current`, lien vers `releases/…` |
+| Sauvegardes | `/var/www/oa-evenementiel/backups` (chaque nuit à 3 h, 14 jours, cron de `ubuntu`) |
+| Application | pm2 `oa-evenementiel`, port local 3140 |
+| Base de données | PostgreSQL local, base et rôle `oa` |
+| Web | `/etc/nginx/sites-available/oa-evenementiel.fr`, certificat certbot |
+
+**Mettre à jour le site**, après un `git push` sur `main` :
+
+```bash
+ssh vps-site /var/www/oa-evenementiel/repo/deploy/deploy.sh
+```
+
+Le script construit la nouvelle version à côté de l'ancienne, bascule, puis vérifie `/api/health`. En cas d'échec, l'ancienne version est restaurée. Les migrations de base s'appliquent au démarrage.
+
+**Surveiller :** `pm2 logs oa-evenementiel` et `pm2 ls`.
+
+**Restaurer une sauvegarde** (remplace la base actuelle) :
+
+```bash
+pm2 stop oa-evenementiel
+DB=$(sed -n 's/^DATABASE_URL=//p' /var/www/oa-evenementiel/shared/.env)
+gunzip -c /var/www/oa-evenementiel/backups/oa-AAAAMMJJ-HHMMSS.sql.gz | psql "$DB"
+pm2 start oa-evenementiel
+```
+
+Les sauvegardes restent sur le même disque que le site : copiez-les régulièrement ailleurs. Ne changez jamais `SETTINGS_ENCRYPTION_KEY`, qui chiffre les clés Stripe. La configuration de Stripe et de Resend est décrite aux § 4 et 6.
+
+**Apple Pay :** déclarez aussi `oa-evenementiel.fr` dans Stripe, *Paramètres → Moyens de paiement → Domaines*.
+
+---
+
+## Variante : VPS dédié avec Docker
+
+Sur un serveur dont les ports 80 et 443 sont libres, tout peut tourner dans Docker :
 
 | Service | Rôle |
 | --- | --- |
