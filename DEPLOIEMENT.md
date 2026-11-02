@@ -24,6 +24,8 @@ Le script construit la nouvelle version à côté de l'ancienne, bascule, puis v
 
 **Surveiller :** `pm2 logs oa-evenementiel` et `pm2 ls`.
 
+**Après une modification de `shared/.env` :** `pm2 restart oa-evenementiel`. Les variables `NEXT_PUBLIC_*` demandent un redéploiement complet.
+
 **Restaurer une sauvegarde** (remplace la base actuelle) :
 
 ```bash

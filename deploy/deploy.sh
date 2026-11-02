@@ -15,14 +15,17 @@ git fetch --quiet origin main
 git reset --quiet --hard origin/main
 RELEASE=$ROOT/releases/$(git rev-parse --short HEAD)-$(date +%Y%m%d%H%M%S)
 
-# Public values are baked into the browser bundle at build time.
-set -a; . "$ENV_FILE"; set +a
-# Low priority and bounded memory: other sites run on this server.
-export NODE_OPTIONS=--max-old-space-size=2048 NEXT_TELEMETRY_DISABLED=1 NODE_ENV=development
-nice -n 10 npm ci --no-audit --no-fund
-export NODE_ENV=production
-nice -n 10 npm run build
-unset NODE_OPTIONS
+# In a subshell: public values are baked into the browser bundle at build time,
+# but nothing from .env may reach pm2 below. pm2 would store it, and it would
+# then take priority over the file read by --env-file at every restart.
+(
+  set -a; . "$ENV_FILE"; set +a
+  # Low priority and bounded memory: other sites run on this server.
+  export NODE_OPTIONS=--max-old-space-size=2048 NEXT_TELEMETRY_DISABLED=1 NODE_ENV=development
+  nice -n 10 npm ci --no-audit --no-fund
+  export NODE_ENV=production
+  nice -n 10 npm run build
+)
 
 mkdir -p "$RELEASE"
 cp -a .next/standalone/. "$RELEASE/"
