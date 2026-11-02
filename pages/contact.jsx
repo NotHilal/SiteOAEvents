@@ -6,7 +6,6 @@ import PhoneInput from '../src/components/PhoneInput.jsx'
 import { getJsonContent, sendContact } from '../src/lib/public-api.js'
 import { track } from '../src/lib/analytics.js'
 
-const WEB3FORMS_KEY = '380ad0e4-4abc-4a00-81d1-d81067d54129'
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // Same rules the browser's required/type=email checks applied before, plus
@@ -61,9 +60,7 @@ export default function Contact() {
     <p className="field-error" id={`${id}-error`}>{errors[name]}</p>
   )
 
-  // Saved to our database first (the admin's Messages tab is the source of
-  // truth), then forwarded by email via Web3Forms. Success if at least one
-  // of the two went through; the form keeps what was typed on failure.
+  // Saved server-side, which also emails the company (pages/api/contact.js).
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (status === 'loading') return
@@ -77,55 +74,23 @@ export default function Contact() {
     setStatus('loading')
     setErrorMsg('')
 
-    let saved = false
-    let emailed = false
-    try {
-      const error = await sendContact({
-        prenom: form.prenom.trim() || null,
-        nom: form.nom.trim() || null,
-        email: form.email.trim(),
-        telephone: form.telephone.trim() || null,
-        type_evenement: form.typeEvenement || null,
-        message: form.message.trim(),
-        website: form.website,
-      }).then(() => null, e => e)
-      if (error) {
-        // Validation message from the server (e.g. invalid email): show it
-        // and stop — the email would fail the same way.
-        if (error.status === 400 || error.status === 429) {
-          setErrorMsg(error.message)
-          setStatus('error')
-          return
-        }
-      } else {
-        saved = true
-      }
-    } catch {}
+    const error = await sendContact({
+      prenom: form.prenom.trim() || null,
+      nom: form.nom.trim() || null,
+      email: form.email.trim(),
+      telephone: form.telephone.trim() || null,
+      type_evenement: form.typeEvenement || null,
+      message: form.message.trim(),
+      website: form.website,
+    }).then(() => null, e => e)
 
-    if (!form.website) {
-      try {
-        const res = await fetch('https://api.web3forms.com/submit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({
-            access_key: WEB3FORMS_KEY,
-            subject: 'Nouvelle demande de contact — OA Événementiel',
-            from_name: 'OA Événementiel - Site Web',
-            botcheck: '',
-            'Prénom': form.prenom,
-            'Nom': form.nom,
-            'Email': form.email,
-            'Téléphone': form.telephone,
-            "Type d'événement": form.typeEvenement,
-            'Message': form.message,
-          }),
-        })
-        const result = await res.json()
-        emailed = !!result.success
-      } catch {}
+    if (error && (error.status === 400 || error.status === 429)) {
+      // Validation message from the server (e.g. invalid email).
+      setErrorMsg(error.message)
+      setStatus('error')
+      return
     }
-
-    if (saved || emailed) {
+    if (!error) {
       setStatus('success')
       setForm(EMPTY)
       setPhoneValid(true)

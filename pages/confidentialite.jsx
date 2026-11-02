@@ -87,8 +87,7 @@ export default function Confidentialite() {
       </p>
       <ul>
         <li><strong>Hébergement du site et de la base de données</strong> : OVH SAS, France.</li>
-        <li><strong>Web3Forms</strong> : transmission par email des messages du formulaire de contact.</li>
-        <li><strong>Resend</strong> (États-Unis) : envoi des emails de commande et de compte client.</li>
+        <li><strong>OVH SAS</strong> (France) : messagerie et envoi des emails de contact, de commande et de compte client.</li>
         <li><strong>Stripe</strong> (Stripe Payments Europe Ltd, Irlande) : paiement en ligne.</li>
         <li><strong>Base Adresse Nationale</strong> (État français) : suggestion d'adresses pendant la saisie.</li>
         <li><strong>OpenStreetMap / Nominatim</strong> et <strong>OSRM</strong> : calcul de la distance de livraison à partir de l'adresse saisie.</li>
@@ -98,7 +97,7 @@ export default function Confidentialite() {
 
       <h2>5. Transferts hors de l'Union européenne</h2>
       <p>
-        Certains prestataires (notamment Resend, Stripe, Google et Unsplash) peuvent traiter des données aux
+        Certains prestataires (notamment Stripe, Google et Unsplash) peuvent traiter des données aux
         États-Unis. Ces transferts sont encadrés par le Data Privacy Framework UE–États-Unis et/ou par les
         clauses contractuelles types de la Commission européenne.
       </p>

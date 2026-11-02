@@ -19,16 +19,16 @@ export function orderError(message, status = 409) { return Object.assign(new Err
 
 const HOLD_MINUTES = 30
 
-async function queueEmails(tx, order, event) {
+async function queueEmails(tx, order, event, refundedAmount = order.grand_total) {
   const args = {
     name: [order.prenom, order.nom].filter(Boolean).join(' '), reference: order.reference,
     dateLabel: new Date(order.date + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
     grandTotal: order.grand_total, trackingUrl: `${SITE_URL}/suivi`,
   }
-  const content = event === 'confirmed' ? confirmationEmail(args) : cancellationEmail(args)
+  const content = event === 'confirmed' ? confirmationEmail(args) : cancellationEmail({ ...args, refundedAmount })
   const emails = [{ to: order.email, ...content, suffix: 'client' }]
   const notificationEmail = process.env.NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL
-  if (notificationEmail) emails.push({ to: notificationEmail, subject: `${event === 'confirmed' ? 'Nouvelle commande payée' : 'Commande annulée et remboursée'} — ${order.reference}`, html: content.html, suffix: 'admin' })
+  if (notificationEmail) emails.push({ to: notificationEmail, subject: `${event === 'confirmed' ? 'Nouvelle commande payée' : refundedAmount > 0 ? 'Commande annulée et remboursée' : 'Commande annulée sans remboursement'} — ${order.reference}`, html: content.html, suffix: 'admin' })
   for (const email of emails) await tx.prepare('INSERT INTO order_emails (id, recipient, subject, html) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO NOTHING').run(`${order.id}:${event}:${email.suffix}`, email.to, email.subject, email.html)
 }
 
@@ -224,18 +224,22 @@ export async function startCheckout(input, { accountId } = {}) {
   })
 }
 
-// Espace OA: cancels a paid order and refunds it in full (the stock is
-// released since cancelled orders no longer hold any). An order still
-// awaiting payment is simply cancelled.
-export async function cancelOrder(reservationId) {
+// /admin: cancels a paid order and refunds it according to the CGV (art. 7 and
+// 8): 100 %, 50 % or nothing. The stock is released since cancelled orders no
+// longer hold any. An order still awaiting payment is simply cancelled.
+const REFUND_PERCENTS = [100, 50, 0]
+export async function cancelOrder(reservationId, { refundPercent = 100 } = {}) {
+  if (!REFUND_PERCENTS.includes(refundPercent)) throw orderError('Taux de remboursement invalide.', 400)
   return withPaymentLock(reservationId, async () => {
     const order = await db.prepare('SELECT * FROM reservations WHERE id = ?').get(reservationId)
     if (order.order_kind !== 'rental') throw orderError('Seules les commandes en ligne peuvent être annulées ici.', 400)
     const payment = await db.prepare('SELECT * FROM payments WHERE reservation_id = ?').get(reservationId)
     const intent = payment?.stripe_payment_intent_id ? await (await getStripe()).paymentIntents.retrieve(payment.stripe_payment_intent_id) : null
+    const paid = intent?.status === 'succeeded'
+    const refundedAmount = paid ? Math.round(order.grand_total * refundPercent) / 100 : 0
     let refundId = null
-    if (intent?.status === 'succeeded') {
-      const refund = await refundOrderPayment(intent.id, reservationId)
+    if (refundedAmount > 0) {
+      const refund = await refundOrderPayment(intent.id, reservationId, refundedAmount)
       if (!['succeeded', 'pending', 'requires_action'].includes(refund.status)) throw orderError(`Le remboursement a été refusé par Stripe (${refund.status}). Vérifiez dans le tableau de bord Stripe.`, 502)
       refundId = refund.id
     } else if (intent && !['canceled', 'succeeded'].includes(intent.status)) {
@@ -243,11 +247,12 @@ export async function cancelOrder(reservationId) {
     }
     await db.writeTransaction(async tx => {
       await tx.prepare("UPDATE reservations SET status = 'cancelled', expires_at = NULL WHERE id = ?").run(reservationId)
-      if (payment) await tx.prepare('UPDATE payments SET status = ?, refund_id = ?, refunded_at = ? WHERE id = ?').run(refundId ? 'refunded' : 'canceled', refundId, refundId ? new Date().toISOString() : null, payment.id)
-      if (refundId) await queueEmails(tx, order, 'cancelled')
+      // Nothing refunded on a paid order: the payment stays recorded as paid.
+      if (payment) await tx.prepare('UPDATE payments SET status = ?, refund_id = ?, refunded_at = ?, refunded_amount = ? WHERE id = ?').run(refundId ? 'refunded' : paid ? 'paid' : 'canceled', refundId, refundId ? new Date().toISOString() : null, refundId ? refundedAmount : null, payment.id)
+      if (paid) await queueEmails(tx, order, 'cancelled', refundedAmount)
     })
     await flushOrderEmails()
-    return { status: 'cancelled', refunded: !!refundId, amount: refundId ? order.grand_total : 0 }
+    return { status: 'cancelled', refunded: !!refundId, amount: refundedAmount }
   })
 }
 
@@ -258,7 +263,7 @@ export async function recordExternalRefund(charge) {
   if (!payment || payment.status === 'refunded') return
   await db.writeTransaction(async tx => {
     const order = await tx.prepare('SELECT * FROM reservations WHERE id = ?').get(payment.reservation_id)
-    await tx.prepare("UPDATE payments SET status = 'refunded', refunded_at = COALESCE(refunded_at, ?) WHERE id = ?").run(new Date().toISOString(), payment.id)
+    await tx.prepare("UPDATE payments SET status = 'refunded', refunded_at = COALESCE(refunded_at, ?), refunded_amount = amount WHERE id = ?").run(new Date().toISOString(), payment.id)
     if (order && order.status === 'confirmed') {
       await tx.prepare("UPDATE reservations SET status = 'cancelled' WHERE id = ?").run(order.id)
       await queueEmails(tx, order, 'cancelled')

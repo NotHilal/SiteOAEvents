@@ -116,12 +116,14 @@ export async function createOrderPaymentIntent(order) {
   }, { idempotencyKey: `order-payment:${order.id}` })
 }
 
-// Full refund of an order's payment (Annuler et rembourser).
-export async function refundOrderPayment(paymentIntentId, reservationId) {
+// Refund of an order's payment, full or partial (Annuler et rembourser).
+export async function refundOrderPayment(paymentIntentId, reservationId, amount) {
+  const cents = Math.round(amount * 100)
   return (await getStripe()).refunds.create({
     payment_intent: paymentIntentId,
+    amount: cents,
     metadata: { reservation_id: reservationId },
-  }, { idempotencyKey: `order-refund:${reservationId}` })
+  }, { idempotencyKey: `order-refund:${reservationId}:${cents}` })
 }
 
 // Réglages > « Tester » : checks the keys against Stripe without charging anything.

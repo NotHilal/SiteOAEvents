@@ -33,7 +33,7 @@ gunzip -c /var/www/oa-evenementiel/backups/oa-AAAAMMJJ-HHMMSS.sql.gz | psql "$DB
 pm2 start oa-evenementiel
 ```
 
-Les sauvegardes restent sur le même disque que le site : copiez-les régulièrement ailleurs. Ne changez jamais `SETTINGS_ENCRYPTION_KEY`, qui chiffre les clés Stripe. La configuration de Stripe et de Resend est décrite aux § 4 et 6.
+Les sauvegardes restent sur le même disque que le site : copiez-les régulièrement ailleurs. Ne changez jamais `SETTINGS_ENCRYPTION_KEY`, qui chiffre les clés Stripe. La configuration de Stripe et des e-mails est décrite aux § 4 et 6.
 
 **Apple Pay :** déclarez aussi `oa-evenementiel.fr` dans Stripe, *Paramètres → Moyens de paiement → Domaines*.
 
@@ -50,7 +50,7 @@ Sur un serveur dont les ports 80 et 443 sont libres, tout peut tourner dans Dock
 | `caddy` | HTTPS automatique (Let's Encrypt), redirection `www` → domaine |
 | `backup` | Sauvegarde de la base chaque nuit à 3 h dans `./backups` |
 
-Aucun service externe n'est nécessaire pour la base de données. Stripe (paiement) et Resend (e-mails) sont les seuls services tiers.
+Aucun service externe n'est nécessaire pour la base de données. Stripe (paiement) et la messagerie OVH (e-mails) sont les seuls services tiers.
 
 ---
 
@@ -86,7 +86,7 @@ Dans `.env`, remplissez au minimum :
 | `POSTGRES_PASSWORD` | `openssl rand -hex 24` (lettres et chiffres uniquement) |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | identifiants de l'administration |
 | `JWT_SECRET`, `CUSTOMER_JWT_SECRET`, `SETTINGS_ENCRYPTION_KEY` | chacun : `openssl rand -hex 32` |
-| `RESEND_API_KEY`, `EMAIL_FROM`, `NOTIFICATION_EMAIL` | e-mails (voir § 6) |
+| `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM`, `NOTIFICATION_EMAIL` | e-mails (voir § 6) |
 
 > ⚠️ Ne changez **jamais** `SETTINGS_ENCRYPTION_KEY` après coup : elle chiffre les clés Stripe enregistrées dans l'admin.
 
@@ -140,9 +140,9 @@ gunzip -c backups/last/oa-latest.sql.gz | docker compose exec -T db psql -U oa -
 docker compose start app
 ```
 
-## 6. E-mails (Resend)
+## 6. E-mails (SMTP OVH)
 
-Créez un compte sur [resend.com](https://resend.com). Vérifiez le domaine en ajoutant les enregistrements DNS indiqués par Resend, puis renseignez `RESEND_API_KEY` et `EMAIL_FROM` dans `.env` et lancez `docker compose up -d`. Sans cela, le site fonctionne mais n'envoie aucun e-mail (confirmations de commande, mot de passe oublié).
+Le site envoie ses e-mails avec la boîte `contact@oa-evenementiel.fr` : `SMTP_HOST=ssl0.ovh.net`, `SMTP_PORT=465`, `SMTP_USER` (adresse complète) et `SMTP_PASSWORD`. **Si le mot de passe de la boîte change, mettez-le aussi à jour dans `.env`** puis redémarrez le site, sinon plus aucun e-mail ne part. Les e-mails de commande non envoyés restent en attente et repartent ensuite. Sans cette configuration, le site fonctionne mais n'envoie rien.
 
 ## 7. Mettre à jour le site
 

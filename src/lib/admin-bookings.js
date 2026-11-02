@@ -62,7 +62,8 @@ export function normalizeBooking(row, payments = []) {
   let amountPaid = Number(row.amount_paid) || 0
   if (kind === 'site') {
     const paid = payments.filter(p => p.status === 'paid')
-    amountPaid = money(paid.reduce((s, p) => s + Number(p.amount || 0), 0))
+    // What the company keeps: paid payments, plus the rest of a partial refund.
+    amountPaid = money(payments.reduce((s, p) => s + (p.status === 'paid' ? Number(p.amount || 0) : p.status === 'refunded' && p.refunded_amount != null ? Number(p.amount || 0) - Number(p.refunded_amount) : 0), 0))
     paymentStatus = payments.some(p => p.status === 'refunded') ? 'refunded'
       : paid.length ? 'paid'
       : row.status === 'awaiting_payment' ? 'pending' : 'unpaid'
@@ -118,7 +119,7 @@ export async function getBooking(id) {
   const row = await db.prepare('SELECT * FROM reservations WHERE id = ?').get(id)
   if (!row) throw bookingError('Commande introuvable. Rechargez la page.', 404)
   const payments = await db.prepare('SELECT * FROM payments WHERE reservation_id = ? ORDER BY installment_index').all(id)
-  return { ...normalizeBooking(row, payments), payments: payments.map(p => ({ id: p.id, amount: Number(p.amount), status: p.status, method: p.method, paidAt: p.paid_at, refundedAt: p.refunded_at })) }
+  return { ...normalizeBooking(row, payments), payments: payments.map(p => ({ id: p.id, amount: Number(p.amount), status: p.status, method: p.method, paidAt: p.paid_at, refundedAt: p.refunded_at, refundedAmount: p.refunded_amount == null ? null : Number(p.refunded_amount) })) }
 }
 
 async function loadMaterials(q = db) {

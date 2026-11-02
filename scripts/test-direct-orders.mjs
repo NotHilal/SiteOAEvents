@@ -30,6 +30,7 @@ process.env.JWT_SECRET = crypto.randomBytes(32).toString('hex')
 process.env.NOTIFICATION_EMAIL = 'notifications@example.test'
 process.env.EMAIL_FROM = 'OA Événementiel <contact@oa-evenementiel.fr>'
 const delivered = new Map()
+const contactMails = []
 let geoFails = false
 let mailFails = false
 globalThis.fetch = async (url, options = {}) => {
@@ -37,7 +38,9 @@ globalThis.fetch = async (url, options = {}) => {
   if (String(url).startsWith('https://router.project-osrm.org/')) return Response.json({ code: 'Ok', routes: [{ distance: 10000, duration: 900 }] })
   if (String(url) === 'https://api.resend.com/emails') {
     if (mailFails) return Response.json({ message: 'temporary' }, { status: 503 })
-    delivered.set(options.headers['Idempotency-Key'], JSON.parse(options.body))
+    const key = options.headers['Idempotency-Key']
+    if (key) delivered.set(key, JSON.parse(options.body))
+    else contactMails.push(JSON.parse(options.body))
     return Response.json({ id: 'mail_test' })
   }
   throw new Error(`Unexpected network call: ${url}`)
@@ -214,6 +217,35 @@ try {
   await emit({ type: 'payment_intent.succeeded', data: { object: intents.get(dashboardRefund.paymentIntentId) } })
   await emit({ type: 'charge.refunded', data: { object: { id: 'ch_test', payment_intent: dashboardRefund.paymentIntentId, refunded: true } } })
   assert.equal((await order(dashboardRefund.reference)).status, 'cancelled')
+
+  // Refund according to the CGV: 50 % or nothing.
+  const halfOrder = await startCheckout(input())
+  pay(halfOrder.paymentIntentId)
+  await emit({ type: 'payment_intent.succeeded', data: { object: intents.get(halfOrder.paymentIntentId) } })
+  const halfId = (await order(halfOrder.reference)).id
+  const half = await call(adminOrders, { body: { id: halfId, action: 'cancel', refundPercent: 50 }, admin: true })
+  assert.deepEqual(half.body.data, { status: 'cancelled', refunded: true, amount: 19.5 })
+  assert.equal(refunds.at(-1).amount, 1950)
+  assert.equal((await paymentOf(halfId)).refunded_amount, 19.5)
+  const noneOrder = await startCheckout(input())
+  pay(noneOrder.paymentIntentId)
+  await emit({ type: 'payment_intent.succeeded', data: { object: intents.get(noneOrder.paymentIntentId) } })
+  const noneId = (await order(noneOrder.reference)).id
+  const refundCount = refunds.length
+  const none = await call(adminOrders, { body: { id: noneId, action: 'cancel', refundPercent: 0 }, admin: true })
+  assert.deepEqual(none.body.data, { status: 'cancelled', refunded: false, amount: 0 })
+  assert.equal(refunds.length, refundCount, 'no Stripe refund at 0 %')
+  assert.equal((await paymentOf(noneId)).status, 'paid')
+  assert.ok(delivered.get(`${noneId}:cancelled:client`)?.subject.includes('annulée'))
+  assert.ok(!delivered.get(`${noneId}:cancelled:client`)?.subject.includes('remboursée'))
+  assert.equal((await call(adminOrders, { body: { id: halfId, action: 'cancel', refundPercent: 30 }, admin: true })).statusCode, 400)
+
+  // Contact form: saved, emailed to the company, answer goes to the visitor.
+  const { default: contactApi } = await import('../pages/api/contact.js')
+  const contacted = await call(contactApi, { body: { prenom: 'Ana', nom: 'Test', email: 'ana@example.test', message: 'Bonjour, une question sur les tentes.' } })
+  assert.equal(contacted.statusCode, 200, JSON.stringify(contacted.body))
+  assert.equal(contactMails.at(-1).reply_to, 'ana@example.test')
+  assert.equal(contactMails.at(-1).to, 'notifications@example.test')
 
   // (The generic /api/db refusals are checked over HTTP: it uses bundler-style imports.)
 

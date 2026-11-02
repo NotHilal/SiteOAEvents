@@ -236,4 +236,8 @@ CREATE TABLE files (                          -- uploaded photos / videos, serve
 );
 `,
   },
+  {
+    id: '002_partial_refunds',
+    sql: `ALTER TABLE payments ADD COLUMN refunded_amount double precision;`,
+  },
 ]

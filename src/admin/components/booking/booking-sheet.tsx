@@ -34,6 +34,7 @@ export function BookingSheet({
   const [busy, setBusy] = useState("");
   const [paid, setPaid] = useState("");
   const confirm = useConfirm();
+  const [refundPercent, setRefundPercent] = useState(100);
   const today = todayISO();
 
   async function load(bookingId: string) {
@@ -80,16 +81,21 @@ export function BookingSheet({
 
   async function cancelOnline() {
     if (!booking) return;
+    const paid = booking.status === "confirmed";
+    const percent = paid ? refundPercent : 0;
+    const refund = Math.round((booking.total || 0) * percent) / 100;
     const ok = await confirm({
-      title: "Annuler et rembourser ?",
-      description: `La commande ${booking.reference} sera annulée et ${money(booking.amountPaid)} remboursés au client par Stripe. Le matériel redevient disponible.`,
-      confirm: "Annuler et rembourser",
+      title: paid ? (percent ? `Annuler et rembourser ${percent} % ?` : "Annuler sans rembourser ?") : "Annuler la commande ?",
+      description: paid
+        ? `La commande ${booking.reference} sera annulée${percent ? ` et ${money(refund)} remboursés au client par Stripe` : ", sans remboursement"}. Le client est prévenu par email et le matériel redevient disponible.`
+        : `La commande ${booking.reference} sera annulée. Le matériel redevient disponible.`,
+      confirm: paid ? (percent ? "Annuler et rembourser" : "Annuler sans rembourser") : "Annuler la commande",
       destructive: true,
     });
     if (!ok) return;
     setBusy("refund");
     try {
-      const r = await api<{ data: { refunded: boolean; amount: number } }>("/api/admin/orders", { method: "POST", json: { id: booking.id, action: "cancel" } });
+      const r = await api<{ data: { refunded: boolean; amount: number } }>("/api/admin/orders", { method: "POST", json: { id: booking.id, action: "cancel", refundPercent: percent } });
       toast.success(r.data.refunded ? `Commande annulée, ${money(r.data.amount)} remboursés.` : "Commande annulée.");
       changed();
       await load(booking.id);
@@ -202,7 +208,7 @@ export function BookingSheet({
                     <span>
                       {PAY_LABEL[p.status] || p.status} {p.paidAt ? `· ${fmtDateTime(p.paidAt)}` : ""}
                     </span>
-                    <span className="tabular-nums">{money(p.amount)}</span>
+                    <span className="tabular-nums">{money(p.status === "refunded" && p.refundedAmount != null ? p.refundedAmount : p.amount)}{p.status === "refunded" && p.refundedAmount != null && p.refundedAmount < p.amount ? ` sur ${money(p.amount)}` : ""}</span>
                   </p>
                 ))}
               </div>
@@ -302,9 +308,21 @@ export function BookingSheet({
                 </>
               )}
 
+              {b.kind === "site" && b.status === "confirmed" && (
+                <div className="flex items-center justify-between gap-2 text-sm">
+                  <span className="text-muted-foreground">Remboursement (selon les CGV)</span>
+                  <div className="flex gap-1">
+                    {[100, 50, 0].map((percent) => (
+                      <Button key={percent} type="button" size="sm" variant={refundPercent === percent ? "default" : "outline"} onClick={() => setRefundPercent(percent)}>
+                        {percent} %
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {b.kind === "site" && (b.status === "confirmed" || b.status === "awaiting_payment") && (
                 <Button variant="ghost" className="text-destructive" disabled={!!busy} onClick={cancelOnline}>
-                  {busy === "refund" ? <Spinner /> : <Ban />} {b.status === "confirmed" ? "Annuler et rembourser" : "Annuler la commande"}
+                  {busy === "refund" ? <Spinner /> : <Ban />} {b.status === "confirmed" ? (refundPercent ? `Annuler et rembourser ${refundPercent} %` : "Annuler sans rembourser") : "Annuler la commande"}
                 </Button>
               )}
               {b.kind === "site" && <p className="text-xs text-muted-foreground">Commande passée et payée sur le site : son contenu ne se modifie pas.</p>}

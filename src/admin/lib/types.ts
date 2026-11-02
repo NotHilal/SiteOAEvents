@@ -29,7 +29,7 @@ export type Booking = {
   createdAt: string | null;
   updatedAt: string | null;
   active: boolean;
-  payments?: { id: string; amount: number; status: string; method: string; paidAt: string | null; refundedAt: string | null }[];
+  payments?: { id: string; amount: number; status: string; method: string; paidAt: string | null; refundedAt: string | null; refundedAmount: number | null }[];
 };
 
 export type PlanningMaterial = {

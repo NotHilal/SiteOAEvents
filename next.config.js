@@ -14,9 +14,8 @@ const googleAnalytics = 'https://*.google-analytics.com https://*.analytics.goog
 
 // Content Security Policy — only the third parties the site really uses:
 // Stripe (card payments), Google Tag Manager / Analytics, Webflow's CDN
-// (template assets referenced by furnish.css), Unsplash (photos) and
-// Web3Forms (contact form). Fonts, Bootstrap and Font Awesome are self-hosted
-// (see _app.jsx).
+// (template assets referenced by furnish.css) and Unsplash (photos). Fonts,
+// Bootstrap and Font Awesome are self-hosted (see _app.jsx).
 // 'unsafe-inline' for styles is needed by React inline styles; scripts
 // stay strict in production — which is why `npm run build` uses webpack:
 // Turbopack's production output injects an inline bootstrap <script> on
@@ -27,7 +26,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data: https://cdn.prod.website-files.com",
   `img-src 'self' data: blob: https://images.unsplash.com https://cdn.prod.website-files.com https://*.stripe.com ${googleTag} ${googleAnalytics}`,
-  `connect-src 'self' https://api.web3forms.com https://api.stripe.com https://*.stripe.com ${googleTag} ${googleAnalytics} ${analyticsOrigin}${isDev ? ' ws: wss:' : ''}`,
+  `connect-src 'self' https://api.stripe.com https://*.stripe.com ${googleTag} ${googleAnalytics} ${analyticsOrigin}${isDev ? ' ws: wss:' : ''}`,
   "frame-src 'self' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com",
   "media-src 'self' blob:",
   "object-src 'none'",

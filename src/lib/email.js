@@ -1,17 +1,58 @@
-// Resend REST API directly via fetch — no SDK dependency, consistent with
-// how this project already talks to Nominatim/OSRM/BAN. Stays inert (never
-// throws, just skips) until RESEND_API_KEY is set, same pattern as
-// src/lib/stripe.js's isStripeConfigured().
+import crypto from 'node:crypto';
+import nodemailer from 'nodemailer';
+
+// Outgoing email: SMTP (SMTP_HOST, the company mailbox at OVH) or, failing
+// that, the Resend REST API. Stays inert (never throws, just skips) until one
+// of them is configured, same pattern as src/lib/stripe.js's isStripeConfigured().
 const RESEND_API_URL = 'https://api.resend.com/emails';
 
 export function isEmailConfigured() {
-  return !!process.env.RESEND_API_KEY;
+  return !!(process.env.SMTP_HOST || process.env.RESEND_API_KEY);
 }
 
-export async function sendEmail({ to, subject, html, idempotencyKey, timeoutMs = 10000 }) {
+let smtpTransport = null;
+function getSmtpTransport() {
+  if (smtpTransport) return smtpTransport;
+  const port = Number(process.env.SMTP_PORT) || 465;
+  smtpTransport = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port,
+    secure: port === 465,
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
+  });
+  return smtpTransport;
+}
+
+function htmlToText(html) {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<(br|\/p|\/div|\/tr|\/h\d)[^>]*>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\n\s*\n\s*/g, '\n\n')
+    .trim();
+}
+
+export async function sendEmail({ to, subject, html, replyTo, idempotencyKey, timeoutMs = 10000 }) {
   if (!isEmailConfigured()) {
-    console.warn(`[email] RESEND_API_KEY manquant — email "${subject}" à ${to} non envoyé.`);
+    console.warn(`[email] aucun envoi configuré — email "${subject}" à ${to} non envoyé.`);
     return { skipped: true };
+  }
+  if (process.env.SMTP_HOST) {
+    return getSmtpTransport().sendMail({
+      from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+      to,
+      subject,
+      html,
+      text: htmlToText(html),
+      replyTo,
+      // A retried outbox message keeps its id, so mail servers can spot the duplicate.
+      messageId: idempotencyKey ? `<${crypto.createHash('sha256').update(idempotencyKey).digest('hex')}@oa-evenementiel.fr>` : undefined,
+    });
   }
   const from = process.env.EMAIL_FROM || 'OA Événementiel <onboarding@resend.dev>';
   const res = await fetch(RESEND_API_URL, {
@@ -21,7 +62,7 @@ export async function sendEmail({ to, subject, html, idempotencyKey, timeoutMs =
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
     },
-    body: JSON.stringify({ from, to, subject, html }),
+    body: JSON.stringify({ from, to, subject, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (!res.ok) {
@@ -92,17 +133,32 @@ export function confirmationEmail({ name, reference, dateLabel, grandTotal, trac
   return { subject, html };
 }
 
-export function cancellationEmail({ name, reference, grandTotal, trackingUrl }) {
-  const subject = `Commande ${reference} annulée et remboursée — OA Événementiel`;
+export function cancellationEmail({ name, reference, refundedAmount, trackingUrl }) {
+  const refunded = refundedAmount > 0;
+  const subject = `Commande ${reference} annulée${refunded ? ' et remboursée' : ''} — OA Événementiel`;
   const html = layout(subject, `
     <p>Bonjour ${escapeHtml(name)},</p>
     <p>Votre commande <strong>${escapeHtml(reference)}</strong> a été annulée.</p>
     <p style="background:#f7f6f4;border-radius:4px;padding:16px 20px;margin:20px 0;">
-      Montant remboursé : <strong>${grandTotal.toFixed(2)} €</strong>
+      Montant remboursé : <strong>${refundedAmount.toFixed(2)} €</strong>
     </p>
-    <p>Le remboursement est fait sur le moyen de paiement utilisé ; il apparaît généralement sous 5 à 10 jours ouvrés selon votre banque.</p>
+    ${refunded
+      ? '<p>Le remboursement est fait sur le moyen de paiement utilisé ; il apparaît généralement sous 5 à 10 jours ouvrés selon votre banque.</p>'
+      : '<p>Conformément à nos conditions générales de vente, cette annulation ne donne pas lieu à un remboursement.</p>'}
     <p>Une question ? Répondez simplement à cet email.</p>
     ${trackingButton(trackingUrl)}
+  `);
+  return { subject, html };
+}
+
+export function contactEmail({ prenom, nom, email, telephone, typeEvenement, message }) {
+  const name = [prenom, nom].filter(Boolean).join(' ') || email;
+  const subject = `Nouvelle demande de contact : ${name}`;
+  const rows = [['Nom', name], ['Email', email], ['Téléphone', telephone], ['Événement', typeEvenement]].filter(([, value]) => value);
+  const html = layout(subject, `
+    ${rows.map(([label, value]) => `<p style="margin:4px 0;"><strong>${label} :</strong> ${escapeHtml(value)}</p>`).join('')}
+    <p style="background:#f7f6f4;border-radius:4px;padding:16px 20px;margin:20px 0;white-space:pre-line;">${escapeHtml(message)}</p>
+    <p>Répondez à cet email pour écrire directement au client. Le message est aussi dans l'administration, Clients, Messages.</p>
   `);
   return { subject, html };
 }
