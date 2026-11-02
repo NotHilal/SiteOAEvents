@@ -333,7 +333,7 @@ export default function Checkout() {
             ) : null}
             {showErrors && !valid && <p className="ck-field-error">Complétez les informations signalées ci-dessus.</p>}
             <p className="ck-legal">
-              En payant, vous acceptez nos <Link href="/cgv">conditions générales de vente</Link>. Vos données servent uniquement à traiter votre commande (<Link href="/confidentialite">confidentialité</Link>).
+              En payant, vous acceptez nos <Link href="/cgv">conditions générales de vente</Link> et, si votre événement a lieu moins de 14 jours après la commande, vous demandez que la location soit exécutée avant la fin du délai de rétractation. Vos données servent uniquement à traiter votre commande (<Link href="/confidentialite">confidentialité</Link>).
             </p>
           </section>
         </div>

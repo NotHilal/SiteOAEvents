@@ -2,7 +2,9 @@
 
 État au **31 octobre 2026**. Ce dossier sert de liste de suivi à transmettre à l’équipe. Il ne contient ni clé API, ni mot de passe, ni RIB complet.
 
-L’activation du domaine et des emails est **mise en attente à la demande du client**. Les informations manquantes ne sont pas inventées ; elles restent signalées sur les pages concernées.
+L’activation du domaine et des emails est **mise en attente à la demande du client**. **Reste obligatoire avant les paiements réels : désigner un médiateur de la consommation et l'indiquer à l'article 12 de `pages/cgv.jsx`. Les CGV (rétractation notamment) n'ont pas été relues par un juriste.**
+
+Les informations manquantes ne sont pas inventées ; elles restent signalées sur les pages concernées.
 
 | Sujet | Déjà réalisé | Ce qui manque | Fiche |
 | --- | --- | --- | --- |

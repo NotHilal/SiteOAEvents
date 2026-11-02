@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import LegalPage, { ToFill, ToValidate } from '../src/components/LegalPage.jsx'
+import LegalPage, { ToFill } from '../src/components/LegalPage.jsx'
 import { SITE } from '../src/lib/site.js'
 
 export default function MentionsLegales() {
@@ -8,14 +8,8 @@ export default function MentionsLegales() {
       title="Mentions légales"
       description="Mentions légales du site OA Événementiel : éditeur, hébergeur, propriété intellectuelle et contact."
       path="/mentions-legales"
-      updated="30 octobre 2026"
+      updated="2 novembre 2026"
     >
-      <ToValidate>
-        les coordonnées téléphoniques, les informations de TVA et l’hébergement restent à compléter
-        avant la mise en ligne. Les informations d’identification de la société sont issues du Kbis
-        daté du 8 octobre 2026.
-      </ToValidate>
-
       <h2>1. Éditeur du site</h2>
       <p>Le présent site est édité par :</p>
       <ul>
@@ -26,7 +20,7 @@ export default function MentionsLegales() {
         <li>SIREN : 131 239 949</li>
         <li>Immatriculation : 131 239 949 RCS Versailles</li>
         <li>Date d’immatriculation : 8 octobre 2026</li>
-        <li>N° de TVA intracommunautaire : <ToFill>numéro attribué ou régime applicable à confirmer par l’entreprise</ToFill></li>
+        <li>N° de TVA intracommunautaire : FR60 131 239 949</li>
         <li>Email : <a href={`mailto:${SITE.email}`}>{SITE.email}</a></li>
         <li>Téléphone : {SITE.phone ? <a href={`tel:${SITE.phone}`}>{SITE.phone}</a> : <ToFill>numéro professionnel</ToFill>}</li>
       </ul>
@@ -37,13 +31,11 @@ export default function MentionsLegales() {
       <h2>3. Hébergement</h2>
       <p>Le site est hébergé par :</p>
       <ul>
-        <li><ToFill>dénomination de l’hébergeur retenu pour la mise en ligne</ToFill></li>
-        <li><ToFill>adresse postale de l'hébergeur</ToFill></li>
-        <li><ToFill>téléphone ou moyen de contact de l'hébergeur</ToFill></li>
+        <li>OVH SAS</li>
+        <li>2 rue Kellermann, 59100 Roubaix, France</li>
+        <li>Téléphone : +33 9 72 10 10 07</li>
       </ul>
-      <p>
-        Base de données : <ToFill>prestataire et localisation à confirmer avec l’hébergement de production</ToFill>
-      </p>
+      <p>La base de données du site est hébergée sur le même serveur, chez OVH.</p>
 
       <h2>4. Propriété intellectuelle</h2>
       <p>
@@ -53,7 +45,7 @@ export default function MentionsLegales() {
       </p>
       <p>
         Certaines photographies d'illustration proviennent de la banque d'images Unsplash et sont utilisées
-        conformément à sa licence. <ToFill>préciser les crédits des photos de réalisations, le cas échéant</ToFill>
+        conformément à sa licence.
       </p>
 
       <h2>5. Données personnelles et cookies</h2>

@@ -41,7 +41,7 @@ async function getDrivingDistanceKm(origin, dest) {
 }
 
 async function getDepotCoords() {
-  const address = await getSetting('depot_address', '72 rue Victor Basch, 92120 Montrouge, France');
+  const address = await getSetting('depot_address', '8 rue de la Butte des Groux, 78570 Chanteloup-les-Vignes, France');
   if (depotCoordsCache.has(address)) return depotCoordsCache.get(address);
   const coords = await geocodeAddress(address);
   depotCoordsCache.set(address, coords);

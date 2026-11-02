@@ -50,13 +50,6 @@ const ETAPES = [
   { title: 'Payez, c’est réservé', text: 'Réglez en ligne par carte : votre location est confirmée aussitôt, suivez-la depuis votre commande.' },
 ]
 
-const STATS = [
-  { count: '150+', label: 'Fêtes Réussies' },
-  { count: '120+', label: 'Couples Heureux' },
-  { count: '5+', label: "Ans d'Expertise" },
-  { count: '99%', label: 'Satisfaction Client' },
-]
-
 const HOME_FAQ = [
   { q: 'Quel matériel événementiel peut-on louer ?', a: 'Des [tentes de réception](/location/tentes), des [tables](/location/tables), des [chaises](/location/chaises), des [banquettes](/location/banquettes), de la [vaisselle](/location/vaisselle-art-de-la-table), de la [décoration](/location/decorations) et des [accessoires](/location/options-accessoires) comme l’éclairage ou le chauffage.' },
   { q: 'Dans quels départements livrez-vous ?', a: 'Nous livrons toute l’Île-de-France : Paris, Yvelines, Hauts-de-Seine, Val-d’Oise, Essonne, Seine-Saint-Denis, Val-de-Marne et Seine-et-Marne.' },
@@ -254,17 +247,6 @@ export default function Home({ realisations, selection, productCount }) {
           </div>
         </section>
 
-        {/* CHIFFRES CLÉS */}
-        <section className="oa-section-tight oa-stats-band">
-          <div className="oa-container oa-stats-grid" data-reveal>
-            {STATS.map(s => (
-              <div className="oa-stat" key={s.label}>
-                <span className="oa-stat-count">{s.count}</span>
-                <span className="oa-stat-label">{s.label}</span>
-              </div>
-            ))}
-          </div>
-        </section>
 
         {/* LOCATION EN ÎLE-DE-FRANCE — occasions, zones, guides and FAQ */}
         <section className="oa-section seo-home" aria-labelledby="seo-home-title">

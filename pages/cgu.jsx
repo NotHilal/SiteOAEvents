@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import LegalPage, { ToValidate } from '../src/components/LegalPage.jsx'
+import LegalPage from '../src/components/LegalPage.jsx'
 import { SITE } from '../src/lib/site.js'
 
 export default function Cgu() {
@@ -8,14 +8,12 @@ export default function Cgu() {
       title="Conditions générales d'utilisation"
       description="Conditions générales d'utilisation du site OA Événementiel : accès, usage du site, formulaires et responsabilités."
       path="/cgu"
-      updated="11 octobre 2026"
+      updated="2 novembre 2026"
     >
-      <ToValidate>texte à faire relire avant la mise en ligne.</ToValidate>
-
       <h2>1. Objet</h2>
       <p>
         Les présentes conditions encadrent l'accès et l'utilisation du site OA Événementiel. En naviguant sur le
-        site, l'utilisateur les accepte. Les réservations et locations sont régies par les{' '}
+        site, l'utilisateur les accepte. Les commandes et locations sont régies par les{' '}
         <Link href="/cgv">conditions générales de vente</Link>.
       </p>
 
@@ -29,7 +27,8 @@ export default function Cgu() {
       <h2>3. Services proposés</h2>
       <ul>
         <li>présentation du catalogue de location et de nos réalisations ;</li>
-        <li>demande de réservation et paiement en ligne ;</li>
+        <li>commande et paiement en ligne ;</li>
+        <li>espace client pour retrouver ses commandes ;</li>
         <li>suivi de commande à l'aide de l'email et du numéro de commande ;</li>
         <li>formulaire de contact.</li>
       </ul>
@@ -40,7 +39,7 @@ export default function Cgu() {
         <li>fournir des informations exactes dans les formulaires ;</li>
         <li>ne pas utiliser le site à des fins illicites, frauduleuses ou de prospection non sollicitée ;</li>
         <li>ne pas tenter d'accéder aux espaces réservés ni de perturber le fonctionnement du site (envois automatisés, tentatives d'intrusion…) ;</li>
-        <li>conserver la confidentialité de son numéro de commande.</li>
+        <li>conserver la confidentialité de son mot de passe et de son numéro de commande.</li>
       </ul>
 
       <h2>5. Propriété intellectuelle</h2>
@@ -52,7 +51,7 @@ export default function Cgu() {
       <h2>6. Responsabilité</h2>
       <p>
         OA Événementiel met en œuvre les moyens raisonnables pour assurer un accès fiable au site, sans garantie
-        d'absence d'interruption ou d'erreur. Les estimations de prix affichées en ligne sont indicatives. Les liens
+        d'absence d'interruption ou d'erreur. Le prix d'une commande est celui présenté avant le paiement. Les liens
         vers des sites tiers sont fournis à titre informatif ; OA Événementiel n'est pas responsable de leur contenu.
       </p>
 

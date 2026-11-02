@@ -36,12 +36,3 @@ export default function LegalPage({ title, description, path, updated, children 
 export function ToFill({ children }) {
   return <mark className="legal-tofill">[À compléter : {children}]</mark>
 }
-
-// Clauses that need a lawyer's review before going live.
-export function ToValidate({ children }) {
-  return (
-    <aside className="legal-note" role="note">
-      <strong>À valider juridiquement :</strong> {children}
-    </aside>
-  )
-}
