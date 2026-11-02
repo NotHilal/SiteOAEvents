@@ -11,7 +11,6 @@ Disallow: /espace-oa
 Disallow: /admin
 Disallow: /api/
 Disallow: /example
-Disallow: /catalogue-reference.html
 
 Sitemap: ${SITE_URL}/sitemap.xml
 `

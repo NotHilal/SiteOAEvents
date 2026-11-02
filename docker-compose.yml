@@ -3,21 +3,38 @@
 #   docker compose up -d --build
 # Full guide: DEPLOIEMENT.md
 
+# Logs rotate (3 × 10 Mo per service) so they can never fill the VPS disk.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-database-url: &database-url
+  DATABASE_URL: postgres://${POSTGRES_USER:-oa}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-oa}
+
 services:
   db:
     image: postgres:17-alpine
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-oa}
       POSTGRES_USER: ${POSTGRES_USER:-oa}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env}
+      TZ: Europe/Paris
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # Docker's default 64 Mo of shared memory is too small for some queries.
+    shm_size: 256mb
+    # Let PostgreSQL finish writing before it is stopped (no recovery on restart).
+    stop_grace_period: 60s
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 30s
 
   app:
     build:
@@ -27,17 +44,23 @@ services:
         NEXT_PUBLIC_SITE_PHONE: ${NEXT_PUBLIC_SITE_PHONE:-}
         NEXT_PUBLIC_PLAUSIBLE_DOMAIN: ${NEXT_PUBLIC_PLAUSIBLE_DOMAIN:-}
         NEXT_PUBLIC_PLAUSIBLE_SRC: ${NEXT_PUBLIC_PLAUSIBLE_SRC:-}
+    image: oa-app:latest
     restart: unless-stopped
+    logging: *logging
     env_file: .env
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-oa}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-oa}
+      <<: *database-url
+      TZ: Europe/Paris
+    stop_grace_period: 30s
     depends_on:
       db:
         condition: service_healthy
+        restart: true
 
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    logging: *logging
     ports:
       - "80:80"
       - "443:443"
@@ -55,6 +78,7 @@ services:
   backup:
     image: prodrigestivill/postgres-backup-local:17
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_HOST: db
       POSTGRES_DB: ${POSTGRES_DB:-oa}
@@ -80,9 +104,10 @@ services:
     build:
       context: .
       target: build
+    logging: *logging
     env_file: .env
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-oa}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-oa}
+      <<: *database-url
     volumes:
       - ./data:/import:ro
     depends_on:

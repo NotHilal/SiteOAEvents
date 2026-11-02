@@ -269,7 +269,7 @@ body { font-family: var(--oa-font-body); }
 
 
 /* ===== BUTTONS =====
-   .btn / .btn-rose-gold only ever existed in public/css/style.css, the
+   .btn / .btn-rose-gold only ever existed in public/css/style.css (now deleted), the
    legacy pre-Next.js stylesheet that isn't loaded by the app anymore
    (src/index.css only imports src/styles/*.css). So every button using
    these classes (reservation wizard "Continuer"/"Envoyer ma demande",

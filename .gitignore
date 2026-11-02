@@ -1,44 +1,28 @@
-# ───── Fichiers sensibles ─────
-js/supabase-config.js
+# Secrets
 .env
 .env*.local
 
-# ───── Système ─────
+# Dependencies & build
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+npm-debug.log*
+
+# Local data (old SQLite base, server backups)
+data/
+backups/
+restores/
+
+# System & editors
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# ───── Éditeurs ─────
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# ───── Node (si jamais utilisé) ─────
-node_modules/
-npm-debug.log*
-
-# ───── Next.js & SQLite ─────
-.next/
-*.sqlite
-*.sqlite.bak
-*.sqlite-journal
-*.sqlite-wal
-*.sqlite-shm
-data/.jwt_dev_secret
-data/.customer_jwt_dev_secret
-
-# ───── Serveur local ─────
-serveur-local.ps1
-
-# Sauvegardes privées (base, médias et manifestes)
-backups/
-restores/
-
-# ───── Agents & Outils locaux ─────
+# Local agents & tools
 .agents/
 .codex/
-
-# TypeScript (admin)
-next-env.d.ts
-*.tsbuildinfo

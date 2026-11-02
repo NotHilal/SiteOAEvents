@@ -22,6 +22,9 @@ VPS Linux (Ubuntu 24.04 conseillé), 2 Go de RAM minimum.
 curl -fsSL https://get.docker.com | sh
 # Pare-feu : SSH + web uniquement
 sudo ufw allow OpenSSH && sudo ufw allow 80 && sudo ufw allow 443 && sudo ufw enable
+# Swap de 2 Go : évite que la compilation du site (`--build`) manque de mémoire
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
 **DNS** : chez le registraire du domaine, faites pointer `oa-evenementiel.fr` et `www.oa-evenementiel.fr` (enregistrements A, et AAAA si IPv6) vers l'IP du VPS.
@@ -106,15 +109,19 @@ Créez un compte sur [resend.com](https://resend.com). Vérifiez le domaine en a
 cd ~/oa && git pull && docker compose up -d --build
 ```
 
-Les nouvelles migrations de base s'appliquent automatiquement au démarrage.
+Les nouvelles migrations de base s'appliquent automatiquement au démarrage. Pendant le redémarrage, Caddy fait patienter les visiteurs (jusqu'à 30 s) au lieu d'afficher une erreur.
+
+Pour libérer de la place de temps en temps : `docker image prune -f` (anciennes versions du site).
+
+## 8. Surveiller
+
+```bash
+docker compose ps                 # « healthy » = site et base répondent
+docker compose logs --tail 100 app
+```
+
+Chaque service redémarre seul en cas de plantage ou de redémarrage du VPS. Les journaux sont limités à 30 Mo par service, ils ne peuvent pas remplir le disque.
 
 ## Développement en local
 
-```bash
-npm install
-npm run db:up                     # PostgreSQL local (Docker)
-echo 'DATABASE_URL=postgres://oa:oa_dev_pw@localhost:5432/oa' >> .env.local
-npm run db:import-sqlite -- data/db.sqlite   # facultatif : reprendre les données locales
-npm run dev
-npm test                          # tests d'intégration (bases PostgreSQL temporaires)
-```
+Voir [README.md](README.md#développement).

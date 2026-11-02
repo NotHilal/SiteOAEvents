@@ -24,7 +24,14 @@ types.setTypeParser(114, v => v)                                  // json → JS
 function createPool() {
   const connectionString = process.env.DATABASE_URL
   if (!connectionString) throw new Error('DATABASE_URL manquant : configurez la connexion PostgreSQL (voir .env.example).')
-  const pool = new Pool({ connectionString, max: Number(process.env.DATABASE_POOL_MAX) || 10, idleTimeoutMillis: 30000 })
+  const pool = new Pool({
+    connectionString,
+    max: Number(process.env.DATABASE_POOL_MAX) || 10,
+    idleTimeoutMillis: 30000,
+    // Fail fast (error, not a hung request) when PostgreSQL is unreachable.
+    connectionTimeoutMillis: 10000,
+    keepAlive: true,
+  })
   pool.on('error', error => console.error('[db] idle client error', error.message))
   return pool
 }
@@ -119,6 +126,7 @@ const db = {
     await ready()
     for (let attempt = 1; ; attempt++) {
       const client = await pool().connect()
+      let broken = false
       try {
         await client.query('BEGIN')
         await client.query('SELECT pg_advisory_xact_lock(727002)')
@@ -126,10 +134,11 @@ const db = {
         await client.query('COMMIT')
         return result
       } catch (error) {
-        await client.query('ROLLBACK').catch(() => {})
+        // A connection that can't even roll back is dead: don't reuse it.
+        await client.query('ROLLBACK').catch(() => { broken = true })
         if (!RETRYABLE.has(error?.code) || attempt >= 3) throw error
       } finally {
-        client.release()
+        client.release(broken)
       }
     }
   },

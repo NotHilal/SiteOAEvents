@@ -109,7 +109,7 @@ const nextConfig = {
       // styles and media. They are isolated in same-origin iframes.
       // /admin is excluded: it gets its own nonce-based CSP from proxy.js
       // (the App Router needs inline scripts); the other headers still apply.
-      { source: '/((?!example|catalogue-reference\\.html|admin).*)', headers: securityHeaders },
+      { source: '/((?!example|admin).*)', headers: securityHeaders },
       { source: '/admin/:path*', headers: securityHeaders.filter(h => h.key !== 'Content-Security-Policy') },
       { source: '/admin', headers: securityHeaders.filter(h => h.key !== 'Content-Security-Policy') },
       // Admin, API and order tracking never belong in search results.

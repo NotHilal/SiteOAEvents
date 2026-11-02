@@ -1,14 +1,31 @@
+# Only what `next build` needs goes into the image build context.
 .git
 .next
 node_modules
-data
-backups
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+*.log
+.DS_Store
+
+# Secrets and server data
 .env
 .env.*
 !.env.example
-photos-originales
-exemple
-pics
-catalogue_images
-*.log
+data
+backups
+restores
+
+# Source media, docs and tooling (not served by the site)
+medias
+docs
+*.md
 .claude
+.agents
+.codex
+skills-lock.json
+
+# Docker files themselves
+Dockerfile
+docker-compose*.yml
+deploy

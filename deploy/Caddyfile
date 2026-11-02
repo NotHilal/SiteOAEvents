@@ -1,7 +1,12 @@
 # HTTPS certificates are obtained and renewed automatically (Let's Encrypt).
 {$DOMAIN} {
 	encode zstd gzip
-	reverse_proxy app:3000
+	reverse_proxy app:3000 {
+		# While the site restarts (update, crash), hold requests up to 30 s
+		# instead of answering 502 right away.
+		lb_try_duration 30s
+		lb_try_interval 1s
+	}
 }
 
 www.{$DOMAIN} {

@@ -20,7 +20,7 @@ export default function Footer() {
           <div className="footer-cols">
             <div className="footer-brand-col">
               <Link href="/" className="footer-logo-link w-inline-block">
-                {/* Transparent version of the logo — LogoOA.png has the marble
+                {/* Transparent version of the logo — medias/logo-oa.png has the marble
                     background baked into the image. */}
                 <img
                   loading="lazy"

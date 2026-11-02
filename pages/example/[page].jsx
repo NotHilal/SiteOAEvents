@@ -9,6 +9,7 @@ const PAGES = {
   // Templates for the catalogue product pages (/catalogue/[slug]):
   'product-single': { file: 'product-single.html', title: 'fiche produit, option unique' },
   'product-multiple': { file: 'product-multiple.html', title: 'fiche produit, options multiples' },
+  catalogue: { file: 'catalogue.html', title: 'options.fr, catalogue' },
 }
 
 export function getStaticPaths() {

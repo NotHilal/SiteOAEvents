@@ -1,6 +1,6 @@
 // Temporary PostgreSQL databases for the test scripts. Needs a server the
 // tests may create databases on: TEST_DATABASE_URL (default: the local
-// docker-compose one, see DEPLOIEMENT.md).
+// docker-compose.dev.yml one, see README.md).
 //   const t = await createTestDatabase(); … t.url … await t.drop()
 import crypto from 'node:crypto'
 import pg from 'pg'
