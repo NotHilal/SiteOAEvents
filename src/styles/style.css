@@ -1259,6 +1259,20 @@ body::before {
 .oah-icon:hover { color: var(--oah-ivory); background: rgba(243, 237, 225, .07); }
 .oah-icon.is-current,
 .oah-account.is-open > .oah-icon { color: var(--oah-gold); }
+/* Floating pill: the catalogue icon replaces the account. A catalogue link
+   is what the visitor needs mid-page, once the category strip has gone. */
+.oah-icon-catalogue { display: none; }
+.oah-scrolled .oah-icon-catalogue {
+  display: inline-flex;
+  animation: oah-icon-in .2s var(--oah-ease);
+}
+.oah-scrolled .oah-right > .oah-account { display: none; }
+@keyframes oah-icon-in {
+  from { opacity: 0; transform: scale(.9); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oah-scrolled .oah-icon-catalogue { animation: none; }
+}
 .oah-divider {
   width: 1px;
   height: 22px;
@@ -1421,6 +1435,13 @@ body::before {
   transform: translateY(-10px);
   pointer-events: none;
   transition: opacity .2s ease, transform .4s var(--oah-ease), visibility 0s .2s;
+}
+/* Réserver stays in the strip for phones only: the gold button replaces it
+   wherever the bar shows that button. First in line, as the strip scrolls
+   sideways and the last links start off-screen. */
+.oah .oah-catbar-book { display: none; }
+@media (max-width: 560px) {
+  .oah .oah-catbar-book { display: inline-flex; order: -1; }
 }
 .oah .oah-catbar-link { color: var(--oah-ivory-soft); }
 .oah .oah-catbar-link::after { background: var(--oah-gold); }

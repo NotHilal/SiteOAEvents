@@ -21,6 +21,7 @@
 @import './styles/realisations.css';
 @import './styles/account.css';
 @import './styles/seo.css';
+@import './styles/home.css';
 
 /* Swiper hero overrides */
 .hero-swiper,

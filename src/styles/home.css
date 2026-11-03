@@ -1,0 +1,447 @@
+/* =====================================================
+   Accueil — sections de vente dans l'univers « Nuit & or » du header.
+   Chargé en dernier : tout est limité aux classes de la page d'accueil, car
+   .shop-card, .seo-faq et .shop-btn servent aussi au catalogue et aux pages SEO.
+
+   Mouvement : ce que l'on survole souvent reste sous 250 ms, sur transform et
+   opacity, et seulement avec une vraie souris. Seule l'apparition au scroll,
+   vue une fois par visite, peut prendre plus de temps.
+   ===================================================== */
+:root {
+  --home-paper: #f4efe6;
+  --home-ease: cubic-bezier(.23, 1, .32, 1);
+}
+
+/* Titres : serif, avec un mot en italique or. */
+.home-title {
+  margin: 0;
+  color: var(--oa-text);
+  font-family: var(--oah-font-serif);
+  font-size: clamp(2.2rem, 4.2vw, 3.7rem);
+  font-weight: 400;
+  line-height: 1.06;
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+.home-title em { color: var(--oa-accent-ink); font-style: italic; }
+.home-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 32px;
+  margin-bottom: clamp(28px, 3.4vw, 44px);
+}
+.home-head-note {
+  flex-shrink: 0;
+  margin: 0 0 .5em;
+  color: var(--oa-muted);
+  font-size: 1rem;
+}
+
+/* ---------- Arguments : prolonge le hero, comme un socle sombre ---------- */
+.shop-usp {
+  border-top: 1px solid var(--oah-line);
+  border-bottom: 0;
+  background: var(--oah-ink);
+}
+.shop-usp-list li { gap: 14px; padding: clamp(22px, 2.4vw, 32px) clamp(14px, 1.6vw, 24px); }
+.shop-usp-list li:first-child { padding-left: 0; }
+.shop-usp-list li + li { border-left-color: var(--oah-line); }
+.shop-usp-list svg { color: var(--oah-gold); }
+.shop-usp-list span { gap: 4px; }
+.shop-usp-list strong {
+  color: var(--oah-ivory);
+  font-family: var(--oah-font-serif);
+  font-size: clamp(1.05rem, 1.25vw, 1.2rem);
+  font-weight: 500;
+  line-height: 1.2;
+}
+.shop-usp-list small { color: var(--oah-ivory-soft); font-size: .84rem; line-height: 1.4; }
+@media (max-width: 991px) {
+  .shop-usp-list li:nth-child(3) { padding-left: 0; }
+  .shop-usp-list li:nth-child(n + 3) { border-top-color: var(--oah-line); }
+}
+@media (max-width: 520px) {
+  .shop-usp-list li { padding: 16px 0; }
+  .shop-usp-list li + li { border-top-color: var(--oah-line); }
+}
+
+/* ---------- Notre sélection : une pièce mise en avant, puis la vitrine ---------- */
+.shop-home-selection .shop-grid { gap: 18px; }
+.shop-home-selection .shop-card {
+  overflow: hidden;
+  border: 1px solid var(--oa-border);
+  border-radius: 6px;
+  background: #fff;
+  transition: transform .22s var(--home-ease), box-shadow .22s ease, border-color .2s ease;
+}
+.shop-home-selection .shop-card-media { background: var(--home-paper); }
+.shop-home-selection .shop-card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 16px 18px 18px;
+  border-top: 1px solid var(--oa-border);
+}
+.shop-home-selection .shop-card-cat { color: var(--oa-accent-ink); font-weight: 600; }
+.shop-home-selection .shop-card-name {
+  font-family: var(--oah-font-serif);
+  font-size: 1.22rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.shop-home-selection .shop-card-foot { margin-top: auto; padding-top: 10px; }
+.shop-home-selection .shop-card-price strong { font-size: 1.16rem; font-variant-numeric: tabular-nums; }
+.shop-home-selection .shop-card-action { transition: background-color .15s ease, color .15s ease, transform .12s ease; }
+.shop-home-selection .shop-card-action:active { transform: scale(.97); }
+@media (hover: hover) and (pointer: fine) {
+  .shop-home-selection .shop-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(201, 161, 90, .5);
+    box-shadow: 0 24px 44px -26px rgba(22, 20, 15, .4);
+  }
+}
+
+/* La première carte occupe quatre cases et porte le ruban de la maison. */
+.shop-home-selection .shop-card:first-child { grid-column: span 2; grid-row: span 2; }
+.shop-home-selection .shop-card:first-child .shop-card-media { flex: 1; aspect-ratio: auto; min-height: 260px; }
+.shop-home-selection .shop-card:first-child .shop-card-body { flex: none; padding: 20px 24px 22px; }
+.shop-home-selection .shop-card:first-child .shop-card-name { font-size: clamp(1.5rem, 2.2vw, 2rem); }
+.shop-home-selection .shop-card:first-child .shop-card-price strong { font-size: 1.4rem; }
+.shop-home-selection .shop-card:first-child .shop-card-media::after {
+  content: 'Choix OA';
+  position: absolute;
+  top: 14px;
+  right: 0;
+  z-index: 1;
+  padding: 7px 14px 7px 22px;
+  background: var(--oah-ink);
+  color: var(--oah-gold);
+  font-family: var(--oa-font-heading);
+  font-size: .66rem;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  pointer-events: none;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 9px 50%);
+}
+
+/* Dernière case : l'accès au catalogue complet, à la place d'un bouton isolé. */
+.home-sel-all {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 180px;
+  padding: clamp(20px, 2vw, 28px);
+  border-radius: 6px;
+  background: var(--oah-ink);
+  color: var(--oah-ivory);
+  text-decoration: none;
+  transition: background-color .2s ease, transform .12s ease;
+}
+.home-sel-all:hover { background: var(--oah-ink-raised); color: var(--oah-ivory); }
+.home-sel-all:active { transform: scale(.98); }
+.home-sel-all:focus-visible { outline: 2px solid var(--oa-accent-ink); outline-offset: 3px; }
+.home-sel-all strong {
+  font-family: var(--oah-font-serif);
+  font-size: clamp(1.5rem, 2.1vw, 1.95rem);
+  font-weight: 400;
+  line-height: 1.1;
+}
+.home-sel-all span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--oah-gold);
+  font-size: .95rem;
+}
+.home-sel-all i { transition: transform .2s var(--home-ease); }
+@media (hover: hover) and (pointer: fine) {
+  .home-sel-all:hover i { transform: translateX(5px); }
+}
+
+/* Les cartes arrivent l'une après l'autre, une seule fois par visite. */
+@media (prefers-reduced-motion: no-preference) {
+  html.reveal-on .shop-home-selection .shop-grid[data-reveal-state='hidden'] > * { opacity: 0; translate: 0 14px; }
+  html.reveal-on .shop-home-selection .shop-grid[data-reveal-state='shown'] > * {
+    transition: opacity .45s ease, translate .6s var(--home-ease), transform .22s var(--home-ease), box-shadow .22s ease, border-color .2s ease, background-color .2s ease;
+  }
+  .shop-home-selection .shop-grid[data-reveal-state='shown'] > :nth-child(2) { transition-delay: 50ms, 50ms, 0s, 0s, 0s, 0s; }
+  .shop-home-selection .shop-grid[data-reveal-state='shown'] > :nth-child(3) { transition-delay: 100ms, 100ms, 0s, 0s, 0s, 0s; }
+  .shop-home-selection .shop-grid[data-reveal-state='shown'] > :nth-child(4) { transition-delay: 150ms, 150ms, 0s, 0s, 0s, 0s; }
+  .shop-home-selection .shop-grid[data-reveal-state='shown'] > :nth-child(n + 5) { transition-delay: 200ms, 200ms, 0s, 0s, 0s, 0s; }
+}
+
+@media (max-width: 860px) {
+  .shop-home-selection .shop-grid { gap: 12px; }
+  .shop-home-selection .shop-card:first-child { grid-row: auto; }
+  .shop-home-selection .shop-card:first-child .shop-card-media { flex: none; aspect-ratio: 4 / 3; min-height: 0; }
+  .shop-home-selection .shop-card-body { padding: 12px 12px 14px; }
+  .shop-home-selection .shop-card-name { font-size: 1.08rem; }
+  .home-sel-all { grid-column: span 2; min-height: 0; }
+}
+@media (max-width: 640px) {
+  .home-head { flex-direction: column; align-items: flex-start; }
+  .home-head-note { margin: 0; }
+}
+
+/* ---------- Louez en 4 étapes : une ligne que l'on suit, sur fond papier ---------- */
+.oa-steps {
+  --step-num: clamp(4.2rem, 6vw, 5.6rem);
+  padding-block: clamp(56px, 7vw, 96px);
+  background: var(--home-paper);
+}
+.oa-steps .home-head .shop-btn { flex-shrink: 0; }
+.oa-steps-list { position: relative; gap: clamp(24px, 3vw, 44px); }
+.oa-steps-list::before {
+  content: '';
+  position: absolute;
+  top: calc(var(--step-num) + 8px);
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--oah-gold);
+  transform-origin: left;
+}
+.oa-step { display: block; position: relative; }
+.oa-step-num {
+  display: block;
+  width: auto;
+  height: var(--step-num);
+  color: var(--oa-accent-ink);
+  font-family: var(--oah-font-serif);
+  font-size: var(--step-num);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1;
+  text-align: left;
+}
+.oa-step-body { position: relative; padding-top: 34px; }
+/* Le point qui marque l'étape sur la ligne. */
+.oa-step-body::before {
+  position: absolute;
+  top: 3px;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  margin: 0;
+  border-radius: 50%;
+  background: var(--oah-ink);
+  box-shadow: 0 0 0 4px var(--home-paper);
+}
+.oa-step-title {
+  margin-bottom: 8px;
+  font-family: var(--oah-font-serif);
+  font-size: clamp(1.25rem, 1.6vw, 1.45rem);
+  font-weight: 500;
+  line-height: 1.2;
+}
+.oa-step-text { color: #5f594d; font-size: 1rem; }
+@media (prefers-reduced-motion: no-preference) {
+  html.reveal-on .oa-steps-list[data-reveal-state='hidden']::before { transform: scaleX(0); }
+  html.reveal-on .oa-steps-list[data-reveal-state='shown']::before { transition: transform 1.1s var(--home-ease) .15s; }
+}
+@media (max-width: 991px) {
+  .oa-steps-list::before { display: none; }
+  .oa-step-body { padding-top: 12px; }
+  .oa-step-body::before { display: none; }
+}
+@media (max-width: 560px) {
+  .oa-steps { --step-num: 3.6rem; }
+  .oa-step { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px; }
+  .oa-step-body { padding-top: 6px; }
+  .oa-steps .home-head .shop-btn { width: 100%; }
+}
+
+/* ---------- Votre loueur en Île-de-France : bandeau nuit, liens en lignes ---------- */
+.home-loueur.oa-section {
+  padding-block: clamp(64px, 8vw, 112px);
+  background: var(--oah-ink);
+  color: var(--oah-ivory);
+}
+.home-loueur .oa-container {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(32px, 6vw, 96px);
+  align-items: start;
+}
+.home-loueur-intro { position: sticky; top: calc(var(--oa-header-h-compact) + 28px); }
+.home-loueur .home-title { color: var(--oah-ivory); font-size: clamp(2.1rem, 3.5vw, 3.2rem); }
+.home-loueur .home-title em { color: var(--oah-gold); }
+.home-loueur-intro p {
+  margin: 22px 0 0;
+  max-width: 52ch;
+  color: var(--oah-ivory-soft);
+  font-size: 1.04rem;
+  line-height: 1.75;
+}
+.seo-home.home-loueur .home-loueur-intro a:not(.shop-btn) {
+  color: var(--oah-ivory);
+  text-decoration-color: var(--oah-gold);
+  text-underline-offset: 4px;
+}
+.seo-home.home-loueur .home-loueur-intro a:not(.shop-btn):hover { color: var(--oah-gold); }
+.home-loueur-intro .home-loueur-sign {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 28px 0 0;
+  max-width: none;
+  color: var(--oah-gold);
+  font-family: var(--oah-font-serif);
+  font-size: 1.1rem;
+  font-style: italic;
+}
+.home-loueur-sign::before {
+  content: '';
+  flex-shrink: 0;
+  width: 36px;
+  height: 28px;
+  background: currentColor;
+  -webkit-mask: url(/logo-icon-h128.webp) center / contain no-repeat;
+  mask: url(/logo-icon-h128.webp) center / contain no-repeat;
+}
+.home-loueur .seo-link-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* La colonne des zones est la plus longue : la 1re ligne reste à sa hauteur
+     de contenu pour que « Nos conseils » suive directement. */
+  grid-template-rows: auto 1fr;
+  gap: 40px clamp(24px, 3vw, 48px);
+  margin: 0;
+}
+.home-loueur .seo-link-columns > div:nth-child(2) { grid-column: 2; grid-row: 1 / span 2; }
+.home-loueur .seo-link-columns h3 {
+  margin: 0 0 10px;
+  color: var(--oah-gold);
+  font-family: var(--oah-font-serif);
+  font-size: 1.3rem;
+  font-weight: 400;
+  font-style: italic;
+}
+.home-loueur .seo-link-columns li { margin: 0; font-size: 1rem; }
+.seo-home.home-loueur .seo-link-columns a:not(.shop-btn) {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--oah-line);
+  color: var(--oah-ivory);
+  line-height: 1.4;
+  text-decoration: none;
+  transition: color .15s ease, border-color .15s ease;
+}
+.home-loueur .seo-link-columns a::after {
+  content: '\f061';
+  flex-shrink: 0;
+  color: var(--oah-gold);
+  font-family: 'Font Awesome 6 Free';
+  font-size: .72rem;
+  font-weight: 900;
+  opacity: .55;
+  transition: transform .2s var(--home-ease), opacity .15s ease;
+}
+.seo-home.home-loueur .seo-link-columns a:not(.shop-btn):hover { color: var(--oah-gold); border-color: var(--oah-gold); }
+.seo-home.home-loueur a:focus-visible { outline: 2px solid var(--oah-gold); outline-offset: 3px; }
+@media (hover: hover) and (pointer: fine) {
+  .home-loueur .seo-link-columns a:hover::after { opacity: 1; transform: translateX(4px); }
+}
+@media (max-width: 991px) {
+  .home-loueur .oa-container { grid-template-columns: 1fr; }
+  .home-loueur-intro { position: static; }
+}
+@media (max-width: 640px) {
+  .home-loueur .seo-link-columns { grid-template-columns: 1fr; grid-template-rows: none; }
+  .home-loueur .seo-link-columns > div:nth-child(2) { grid-column: auto; grid-row: auto; }
+}
+
+/* ---------- Vos questions sur la location : titre à gauche, réponses à droite ---------- */
+.home-faq { padding-block: clamp(64px, 8vw, 104px); }
+.home-faq .seo-faq {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  column-gap: clamp(32px, 6vw, 96px);
+  margin: 0;
+}
+.home-faq .seo-faq h2 {
+  grid-column: 1;
+  grid-row: 1 / span 12;
+  align-self: start;
+  position: sticky;
+  top: calc(var(--oa-header-h-compact) + 28px);
+  margin: 0;
+  color: var(--oa-text);
+  font-family: var(--oah-font-serif);
+  font-size: clamp(2.1rem, 3.5vw, 3.2rem);
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+.home-faq .seo-faq details,
+.home-faq .seo-faq-more { grid-column: 2; }
+.home-faq .seo-faq details { border-bottom: 1px solid rgba(22, 20, 15, .16); }
+.home-faq .seo-faq details:first-of-type { border-top: 1px solid rgba(22, 20, 15, .16); }
+.home-faq .seo-faq summary {
+  padding: 20px 44px 20px 0;
+  color: var(--oa-text);
+  font-family: var(--oah-font-serif);
+  font-size: clamp(1.12rem, 1.4vw, 1.28rem);
+  font-weight: 500;
+  line-height: 1.3;
+  transition: color .15s ease;
+}
+.home-faq .seo-faq summary:hover { color: var(--oa-accent-ink); }
+.home-faq .seo-faq summary:focus-visible { outline: 2px solid var(--oa-accent-ink); outline-offset: 2px; }
+/* Le « + » devient une croix : une seule forme qui tourne, jamais de saut. */
+.home-faq .seo-faq summary::after {
+  content: '';
+  top: 50%;
+  right: 6px;
+  width: 15px;
+  height: 15px;
+  margin-top: -7.5px;
+  background:
+    linear-gradient(var(--oa-accent-ink), var(--oa-accent-ink)) center / 100% 1.5px no-repeat,
+    linear-gradient(var(--oa-accent-ink), var(--oa-accent-ink)) center / 1.5px 100% no-repeat;
+  transition: transform .2s var(--home-ease);
+}
+.home-faq .seo-faq details[open] summary::after { content: ''; transform: rotate(45deg); }
+.home-faq .seo-faq details p {
+  margin: 0;
+  padding: 0 44px 22px 0;
+  max-width: 62ch;
+  color: #5f594d;
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+.home-faq .seo-faq details a,
+.home-faq .seo-faq-more a { color: var(--oa-text); text-underline-offset: 3px; }
+.home-faq .seo-faq details a:hover,
+.home-faq .seo-faq-more a:hover { color: var(--oa-accent-ink); }
+.home-faq .seo-faq-more { margin: 24px 0 0; }
+/* Ouverture fluide là où le navigateur sait animer jusqu'à une hauteur auto ;
+   ailleurs ces règles sont ignorées et la réponse s'ouvre d'un coup. */
+@media (prefers-reduced-motion: no-preference) {
+  .home-faq .seo-faq details { interpolate-size: allow-keywords; }
+  .home-faq .seo-faq details::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition: block-size .24s var(--home-ease), content-visibility .24s allow-discrete;
+  }
+  .home-faq .seo-faq details[open]::details-content { block-size: auto; }
+}
+@media (max-width: 991px) {
+  .home-faq .seo-faq { grid-template-columns: 1fr; }
+  .home-faq .seo-faq h2 { grid-row: auto; position: static; margin-bottom: 24px; }
+  .home-faq .seo-faq details,
+  .home-faq .seo-faq-more { grid-column: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-home-selection .shop-card,
+  .home-sel-all,
+  .home-sel-all i,
+  .home-faq .seo-faq summary::after { transition: none; }
+}

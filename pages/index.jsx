@@ -177,32 +177,33 @@ export default function Home({ realisations, selection, productCount }) {
         {selection.length > 0 && (
           <section className="oa-section oa-section-tight shop-home-selection" aria-labelledby="shop-selection-title">
             <div className="oa-container">
-              <div className="shop-section-head" data-reveal>
-                <div>
-                  <span className="oa-eyebrow">À louer dès maintenant</span>
-                  <h2 id="shop-selection-title" className="oa-section-title">Notre sélection</h2>
-                </div>
-                <Link href="/catalogue/complet" className="shop-link-arrow">Tout le catalogue ({productCount}) <i className="fas fa-arrow-right" /></Link>
+              <div className="home-head" data-reveal>
+                <h2 id="shop-selection-title" className="home-title">Notre <em>sélection</em></h2>
+                <p className="home-head-note">À louer dès maintenant</p>
               </div>
               <div className="shop-grid" data-reveal>
                 {selection.map((card, i) => (
                   <ShopCard key={card.key} card={card} inCart={inCartOf(card)} onQuickView={setQuick} eager={i < 4} place="accueil" />
                 ))}
-              </div>
-              <div className="oa-center-cta" data-reveal>
-                <Link href="/catalogue/complet" className="shop-btn shop-btn-dark shop-btn-xl">
-                  Voir tout le catalogue <i className="fas fa-arrow-right" />
+                <Link href="/catalogue/complet" className="home-sel-all">
+                  <strong>Voir tout le catalogue</strong>
+                  <span>{productCount} articles <i className="fas fa-arrow-right" aria-hidden="true" /></span>
                 </Link>
               </div>
             </div>
           </section>
         )}
 
-        {/* LOUEZ EN 4 ÉTAPES — options.fr step strip */}
+        {/* LOUEZ EN 4 ÉTAPES */}
         <section className="oa-section-tight oa-steps" aria-labelledby="oa-steps-title">
           <div className="oa-container">
-            <h2 id="oa-steps-title" className="oa-section-title">Louez en 4 étapes</h2>
-            <ol className="oa-steps-list">
+            <div className="home-head" data-reveal>
+              <h2 id="oa-steps-title" className="home-title">Louez en <em>4 étapes</em></h2>
+              <Link href="/catalogue/complet" className="shop-btn shop-btn-gold shop-btn-xl" onClick={() => track('Clic Réserver', { emplacement: 'étapes' })}>
+                <i className="far fa-calendar-check" /> Commencer ma sélection
+              </Link>
+            </div>
+            <ol className="oa-steps-list" data-reveal>
               {ETAPES.map((e, i) => (
                 <li className="oa-step" key={e.title}>
                   <span className="oa-step-num" aria-hidden="true">{i + 1}</span>
@@ -213,11 +214,6 @@ export default function Home({ realisations, selection, productCount }) {
                 </li>
               ))}
             </ol>
-            <div className="oa-center-cta">
-              <Link href="/catalogue/complet" className="shop-btn shop-btn-gold shop-btn-xl" onClick={() => track('Clic Réserver', { emplacement: 'étapes' })}>
-                <i className="far fa-calendar-check" /> Commencer ma sélection
-              </Link>
-            </div>
           </div>
         </section>
 
@@ -248,13 +244,13 @@ export default function Home({ realisations, selection, productCount }) {
         </section>
 
 
-        {/* LOCATION EN ÎLE-DE-FRANCE — occasions, zones, guides and FAQ */}
-        <section className="oa-section seo-home" aria-labelledby="seo-home-title">
+        {/* LOCATION EN ÎLE-DE-FRANCE — occasions, zones and guides */}
+        <section className="oa-section seo-home home-loueur" aria-labelledby="seo-home-title">
           <div className="oa-container">
-            <div className="seo-home-intro" data-reveal>
-              <span className="oa-eyebrow">Votre loueur en Île-de-France</span>
-              <h2 id="seo-home-title" className="oa-section-title">Tout le matériel de votre événement, au même endroit</h2>
+            <div className="home-loueur-intro" data-reveal>
+              <h2 id="seo-home-title" className="home-title">Tout le matériel de votre événement, <em>au même endroit</em></h2>
               <p><RichText text="OA Événementiel loue aux particuliers et aux professionnels le matériel de leurs réceptions : [tentes](/location/tentes), [tables](/location/tables), [chaises](/location/chaises), [banquettes](/location/banquettes), [vaisselle](/location/vaisselle-art-de-la-table) et [décoration](/location/decorations). Les prix sont affichés en ligne et le total, livraison comprise, est calculé avant le paiement." /></p>
+              <p className="home-loueur-sign">Votre loueur en Île-de-France</p>
             </div>
             <div className="seo-link-columns" data-reveal>
               <div>
@@ -270,9 +266,15 @@ export default function Home({ realisations, selection, productCount }) {
                 <ul>{GUIDES.map(g => <li key={g.slug}><Link href={`/guides/${g.slug}`}>{g.title}</Link></li>)}</ul>
               </div>
             </div>
-            <Faq items={HOME_FAQ} title="Vos questions sur la location" more />
           </div>
         </section>
+
+        {/* VOS QUESTIONS */}
+        <div className="home-faq">
+          <div className="oa-container" data-reveal>
+            <Faq items={HOME_FAQ} title="Vos questions sur la location" more />
+          </div>
+        </div>
 
         {/* CTA FINALE */}
         <section className="apropos-cta-section">

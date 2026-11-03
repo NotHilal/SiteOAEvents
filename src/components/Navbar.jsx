@@ -44,15 +44,13 @@ const SERVICE_LINKS = [
 ]
 // Text links beside the Menu toggle in the full bar.
 const QUICK_LINKS = [
-  { href: '/catalogue', label: 'Catalogue' },
+  { href: '/evenements', label: 'Événements' },
   { href: '/nos-realisations', label: 'Réalisations' },
 ]
-// Contact icons in the full bar (the phone dropdown is rendered separately).
-// `current` marks the one icon whose page it is, so /contact doesn't light
-// up multiple icons at once.
+// Contact icons in the full bar (the phone dropdown, rendered separately,
+// already offers e-mail and the contact form).
 const ICON_LINKS = [
   { href: LOCATION_HREF, label: 'Nous trouver', icon: 'location' },
-  { href: '/contact', label: 'Contactez-nous', icon: 'mail', current: true },
 ]
 
 export default function Navbar() {
@@ -189,7 +187,7 @@ export default function Navbar() {
             <span className="oah-logo-mark" aria-hidden="true" />
             <span className="oah-logo-words oah-fold">
               <span className="oah-logo-name">OA Événementiel</span>
-              <span className="oah-logo-tagline">Événementiel · Location</span>
+              <span className="oah-logo-tagline">Location · Île-de-France</span>
             </span>
           </Link>
         </div>
@@ -202,7 +200,7 @@ export default function Navbar() {
                 key={link.label}
                 href={link.href}
                 {...(link.href === LOCATION_HREF && { scroll: false })}
-                className={`oah-icon oah-icon-secondary${link.current && isCurrent(link.href) ? ' is-current' : ''}`}
+                className="oah-icon oah-icon-secondary"
                 aria-label={link.label}
               >
                 <Icon name={link.icon} ion size={28} />
@@ -212,6 +210,11 @@ export default function Navbar() {
             <span className="oah-divider" aria-hidden="true" />
           </nav>
           <AccountMenu />
+          {/* Takes the account's place in the floating pill (see style.css). */}
+          <Link href="/catalogue" className={`oah-icon oah-icon-catalogue${isCurrent('/catalogue') ? ' is-current' : ''}`} aria-label="Catalogue">
+            <Icon name="book" ion size={25} />
+            <span className="oah-tooltip" aria-hidden="true">Catalogue</span>
+          </Link>
           <button
             ref={cartToggleRef}
             type="button"
