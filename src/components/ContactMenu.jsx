@@ -85,7 +85,7 @@ export default function ContactMenu() {
         aria-controls="oah-contact-menu"
         onClick={onButtonClick}
       >
-        <Icon name="phone" ion size={32} />
+        <Icon name="phone" ion size={26} />
         <span className="oah-tooltip" aria-hidden="true">Nous contacter</span>
       </button>
 

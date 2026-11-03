@@ -12,6 +12,7 @@
     "test": "node scripts/test-direct-orders.mjs && node scripts/test-access.mjs && node scripts/test-realisations.mjs && node scripts/test-customer-welcome.mjs && node scripts/test-password-reset.mjs"
   },
   "dependencies": {
+    "@fontsource/bodoni-moda": "5.2.7",
     "@fontsource/lato": "5.2.5",
     "@fontsource/montserrat": "5.2.5",
     "@fortawesome/fontawesome-free": "6.4.0",
