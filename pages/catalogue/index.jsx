@@ -5,11 +5,10 @@ import { categoryTitle, sortCategories } from '../../src/lib/catalogue-pages.js'
 
 const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1478146059778-26028b07395a?w=1600&q=75&auto=format&fit=crop'
 
-// Catalogue landing: one tile per category (Espace OA > Catalogue), laid out
-// like options.fr's category landing (3-column masonry, portrait and square
-// tiles alternating). Each tile opens the full catalogue on that filter.
-// Every tile on one page, scrolled through (the old /catalogue-2, -3… pages
-// redirect here, see next.config.js).
+// Catalogue landing: one tile per category (Espace OA > Catalogue), then a
+// closing tile for the whole catalogue. Each tile opens that category. Every
+// tile on one page, scrolled through (the old /catalogue-2, -3… pages redirect
+// here, see next.config.js).
 export async function getServerSideProps() {
   const { default: db } = await import('../../src/lib/db/index.js')
   const rows = sortCategories(await db.prepare('SELECT id, name, label, description, image_url, position, created_at FROM categories').all())
@@ -24,15 +23,25 @@ export async function getServerSideProps() {
   return { props: { tiles, productCount: Number(productCount) || 0 } }
 }
 
-// Desktop places tiles row by row into 3 columns (1·4, 2·5, 3·6), like the
-// reference masonry: tiles 1, 3 and 5 are portrait (3:4), the others square.
-// Below 992px the columns dissolve (display: contents) and `order` restores
-// the reading order.
-function toColumns(tiles) {
-  return [0, 1, 2].map(c => tiles.map((tile, i) => ({ ...tile, i, tall: i % 2 === 0 })).filter(tile => tile.i % 3 === c))
+// Lookbook rhythm on a 12-column grid: rows of two (7 + 5, then 5 + 7) and
+// three (4 + 4 + 4) alternate. A last row short of items takes the width left,
+// so any number of categories fills the grid without a hole.
+function rowSpans(count) {
+  const spans = []
+  let pairs = 0
+  let three = false
+  while (spans.length < count) {
+    const size = Math.min(three ? 3 : 2, count - spans.length)
+    if (size === 3) spans.push(4, 4, 4)
+    else if (size === 2) spans.push(...(pairs++ % 2 ? [5, 7] : [7, 5]))
+    else spans.push(12)
+    three = !three
+  }
+  return spans
 }
 
 export default function Catalogue({ tiles, productCount }) {
+  const spans = rowSpans(tiles.length + 1)
   return (
     <>
       <Seo
@@ -59,51 +68,43 @@ export default function Catalogue({ tiles, productCount }) {
 
         <section className="oa-section oa-cat-landing">
           <div className="oa-container">
-            <p className="oa-cat-landing-intro" data-reveal>
-              OA Événementiel vous propose à la location le mobilier, la décoration et les accessoires de vos réceptions.
-              Choisissez une catégorie, ou parcourez tous nos articles d’un coup.
-            </p>
-
-            <Link href="/catalogue/complet" className="shop-allcat" data-reveal>
-              <span className="shop-allcat-text">
-                <span className="shop-allcat-eyebrow">{productCount} articles à louer</span>
-                <span className="shop-allcat-title">Voir tout le catalogue</span>
-              </span>
-              <span className="shop-allcat-arrow" aria-hidden="true"><i className="fas fa-arrow-right" /></span>
-            </Link>
+            <div className="oa-cat-head" data-reveal>
+              <p className="oa-cat-landing-intro">
+                OA Événementiel vous propose à la location le mobilier, la décoration et les accessoires de vos réceptions.
+                Choisissez une catégorie, ou parcourez tous nos articles d’un coup.
+              </p>
+              <Link href="/catalogue/complet" className="oa-cat-head-link">
+                Voir tout le catalogue <i className="fas fa-arrow-right" aria-hidden="true" />
+              </Link>
+            </div>
 
             {tiles.length > 0 ? (
-              <div className="oa-cat-masonry" data-reveal>
-                {toColumns(tiles).map((col, c) => (
-                  <div className="oa-cat-col" key={c}>
-                    {col.map(tile => (
-                      <Link
-                        key={tile.key}
-                        href={catalogueCategoryHref(tile.value)}
-                        className={`oa-cat-tile${tile.tall ? ' oa-cat-tile-tall' : ''}${tile.img ? '' : ' oa-cat-tile-empty'}`}
-                        style={{ order: tile.i }}
-                      >
-                        {tile.img && <img src={tile.img} alt={`Location : ${tile.label}`} loading={tile.i < 3 ? 'eager' : 'lazy'} decoding="async" />}
-                        <h2 className="oa-cat-title">{tile.label}</h2>
-                        <span className="oa-cat-detail">
-                          {tile.text && <span className="oa-cat-text">{tile.text}</span>}
-                          <span className="oa-cat-btn">Découvrir</span>
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
+              <div className="oa-cat-grid" data-reveal>
+                {tiles.map((tile, i) => (
+                  <Link
+                    key={tile.key}
+                    href={catalogueCategoryHref(tile.value)}
+                    className="oa-cat-tile"
+                    style={{ '--span': spans[i] }}
+                  >
+                    {tile.img && <img src={tile.img} alt={`Location : ${tile.label}`} loading={i < 3 ? 'eager' : 'lazy'} decoding="async" />}
+                    <span className="oa-cat-tile-arrow" aria-hidden="true"><i className="fas fa-arrow-right" /></span>
+                    <div className="oa-cat-tile-body">
+                      <h2 className="oa-cat-title">{tile.label}</h2>
+                      {tile.text && (
+                        <div className="oa-cat-more"><div><span className="oa-cat-text">{tile.text}</span></div></div>
+                      )}
+                    </div>
+                  </Link>
                 ))}
+                <Link href="/catalogue/complet" className="oa-cat-all" style={{ '--span': spans[tiles.length] }}>
+                  <strong>Voir tout le catalogue</strong>
+                  <span>{productCount} articles à louer <i className="fas fa-arrow-right" aria-hidden="true" /></span>
+                </Link>
               </div>
             ) : (
               <p className="no-mat-msg"><i className="fas fa-info-circle me-2" />Aucune catégorie pour le moment.</p>
             )}
-
-
-            <div className="oa-center-cta" data-reveal>
-              <Link href="/catalogue/complet" className="shop-btn shop-btn-dark shop-btn-xl">
-                Voir tout le catalogue <i className="fas fa-arrow-right" />
-              </Link>
-            </div>
           </div>
         </section>
       </div>

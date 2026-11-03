@@ -314,37 +314,6 @@
 .shop-help h2 { margin: 0 0 4px; font-family: var(--oa-font-heading); font-size: 1.15rem; color: var(--oa-text); }
 .shop-help p { margin: 0; color: var(--oa-muted); }
 
-/* ---------- Catalogue landing: big "Voir tout le catalogue" ---------- */
-.shop-allcat {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  margin: 0 0 40px;
-  padding: clamp(22px, 3vw, 34px) clamp(22px, 4vw, 48px);
-  background: var(--oa-text);
-  color: #fff;
-  text-decoration: none;
-  transition: background .25s;
-}
-.shop-allcat:hover { background: #2a261d; color: #fff; }
-.shop-allcat-text { display: flex; flex-direction: column; gap: 6px; }
-.shop-allcat-eyebrow { color: var(--oa-accent); font-family: var(--oa-font-heading); font-size: .74rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
-.shop-allcat-title { font-family: var(--oa-font-heading); font-size: clamp(1.4rem, 3vw, 2.2rem); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
-.shop-allcat-arrow {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: clamp(52px, 6vw, 72px);
-  height: clamp(52px, 6vw, 72px);
-  background: var(--oa-accent);
-  color: var(--oa-text);
-  font-size: 1.3rem;
-  transition: transform .3s var(--oa-ease-out);
-}
-.shop-allcat:hover .shop-allcat-arrow { transform: translateX(6px); }
-
 /* ---------- Gallery (product page + quick view) ---------- */
 .pdp .pdp-media { aspect-ratio: auto; height: auto; max-height: none; padding: 0; background: none; }
 .shop-gallery { display: flex; flex-direction: column; gap: 12px; }
@@ -710,5 +679,5 @@
 .mat-card-img img { object-fit: cover; padding: 0; }
 
 @media (prefers-reduced-motion: reduce) {
-  .shop-card-photo img, .shop-card-actions, .shop-modal, .shop-modal-overlay, .shop-allcat-arrow { transition: none; animation: none; }
+  .shop-card-photo img, .shop-card-actions, .shop-modal, .shop-modal-overlay { transition: none; animation: none; }
 }

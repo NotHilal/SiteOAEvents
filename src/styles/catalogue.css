@@ -1,158 +1,212 @@
 /* ===== CATALOGUE LANDING (/catalogue) =====
-   Category tiles modelled on options.fr's category landing: 3-column
-   masonry of portrait (3:4) and square photos, title centred on the photo;
-   on hover the photo darkens, a gold frame appears and the title gives way
-   to a short description and a "Découvrir" button. */
+   Lookbook of the categories: photo tiles of varied widths on a 12-column
+   grid, the name in serif over a dark scrim, the description unfolding on
+   hover, and a closing ink tile for the whole catalogue. The widths come from
+   rowSpans() in pages/catalogue/index.jsx, through --span. */
 
+.oa-cat-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px clamp(32px, 6vw, 96px);
+  margin-bottom: clamp(32px, 4vw, 48px);
+}
 .oa-cat-landing-intro {
-  max-width: 760px;
-  margin: 0 auto clamp(36px, 5vw, 50px);
-  color: var(--oa-muted);
-  font-size: 1rem;
-  line-height: 1.75;
-  text-align: center;
+  margin: 0;
+  max-width: 56ch;
+  color: var(--oa-text);
+  font-family: var(--oah-font-serif);
+  font-size: clamp(1.25rem, 1.8vw, 1.6rem);
+  line-height: 1.35;
+  text-wrap: pretty;
 }
-.oa-cat-landing-intro a {
-  color: var(--oa-accent-dark);
-  font-weight: 700;
-}
-.oa-cat-landing-intro a:hover { color: var(--oa-text); }
-
-.oa-cat-masonry {
-  display: flex;
-  align-items: flex-start;
-  gap: 30px;
-}
-.oa-cat-col {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
-}
-
-.oa-cat-tile {
-  position: relative;
-  display: block;
-  aspect-ratio: 1 / 1;
-  overflow: hidden;
-  color: inherit;
+.oa-cat-head-link {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--oa-accent);
+  color: var(--oa-text);
+  font-family: var(--oa-font-heading);
+  font-size: .74rem;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
   text-decoration: none;
+  transition: color .15s ease;
+}
+.oa-cat-head-link i { color: var(--oa-accent-ink); transition: transform .2s var(--oah-ease); }
+.oa-cat-head-link:hover { color: var(--oa-accent-ink); }
+
+.oa-cat-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: clamp(300px, 30vw, 430px);
+  gap: 14px;
+}
+.oa-cat-tile,
+.oa-cat-all {
+  position: relative;
+  grid-column: span var(--span, 4);
+  overflow: hidden;
+  border-radius: 6px;
+  text-decoration: none;
+}
+.oa-cat-tile {
+  display: flex;
+  align-items: flex-end;
+  background: var(--oah-ink-raised);
+  color: var(--oah-ivory);
   isolation: isolate;
 }
-.oa-cat-tile-tall { aspect-ratio: 3 / 4; }
 .oa-cat-tile img {
   position: absolute;
   inset: 0;
+  z-index: -2;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform .6s cubic-bezier(.2, .7, .2, 1);
+  transition: transform .5s var(--oah-ease);
 }
-/* Dark veil + gold frame, shown on hover/focus. */
-.oa-cat-tile::before,
+/* Scrim: the photos are light and pastel, the ivory name needs it to read. */
 .oa-cat-tile::after {
   content: '';
   position: absolute;
   inset: 0;
-  z-index: 1;
-  opacity: 0;
-  transition: opacity .3s ease;
-  pointer-events: none;
+  z-index: -1;
+  background: linear-gradient(to top, rgba(14, 11, 7, .86) 0%, rgba(14, 11, 7, .42) 34%, rgba(14, 11, 7, 0) 62%);
 }
-.oa-cat-tile::before { background: rgba(22, 20, 15, .55); }
-.oa-cat-tile::after { border: 3px solid var(--oa-accent); }
-
+.oa-cat-tile-body {
+  width: 100%;
+  padding: clamp(18px, 2vw, 28px);
+  padding-right: 72px;
+}
 .oa-cat-title {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  z-index: 2;
   margin: 0;
-  padding: 0 20px;
-  transform: translateY(-50%);
-  color: var(--oa-text);
-  font-family: var(--oa-font-heading);
-  font-size: clamp(1.2rem, 1.7vw, 1.5rem);
-  font-weight: 700;
-  letter-spacing: .06em;
-  line-height: 1.25;
-  text-align: center;
-  text-transform: uppercase;
-  text-shadow: 0 0 5px #fff, 0 0 5px #fff;
-  transition: opacity .25s ease;
+  color: var(--oah-ivory);
+  font-family: var(--oah-font-serif);
+  font-size: clamp(1.55rem, 2.3vw, 2.3rem);
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: 0;
+  text-transform: none;
 }
-
-.oa-cat-detail {
+.oa-cat-tile-arrow {
   position: absolute;
-  inset: 0;
-  z-index: 2;
+  right: clamp(16px, 1.6vw, 24px);
+  bottom: clamp(16px, 1.8vw, 26px);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 28px;
-  padding: 30px clamp(24px, 3vw, 40px);
-  color: #fff;
-  text-align: center;
-  opacity: 0;
-  transform: translateY(12px);
-  transition: opacity .3s ease, transform .3s ease;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--oah-gold);
+  color: var(--oah-ink);
+  font-size: .82rem;
+  transition: transform .2s var(--oah-ease), background-color .15s ease;
 }
+/* The description folds to zero height, so names sit on one line at rest. */
+.oa-cat-more {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .24s var(--oah-ease);
+}
+.oa-cat-more > div { min-height: 0; overflow: hidden; }
 .oa-cat-text {
-  font-size: .95rem;
-  line-height: 1.7;
+  display: block;
+  max-width: 44ch;
+  padding-top: 10px;
+  color: var(--oah-ivory-soft);
+  font-size: .98rem;
+  line-height: 1.5;
+  opacity: 0;
+  transition: opacity .18s ease;
 }
-.oa-cat-btn {
-  display: inline-block;
-  padding: 15px 30px;
-  background: var(--oa-text);
-  color: #fff;
-  font-family: var(--oa-font-heading);
-  font-size: .8rem;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  transition: background .2s ease, color .2s ease;
+.oa-cat-tile:focus-visible .oa-cat-more { grid-template-rows: 1fr; }
+.oa-cat-tile:focus-visible .oa-cat-text { opacity: 1; }
+.oa-cat-tile:active .oa-cat-tile-arrow { transform: scale(.94); }
+.oa-cat-tile:focus-visible,
+.oa-cat-all:focus-visible,
+.oa-cat-head-link:focus-visible { outline: 2px solid var(--oa-accent-ink); outline-offset: 3px; }
+
+@media (hover: hover) and (pointer: fine) {
+  .oa-cat-tile:hover img { transform: scale(1.035); }
+  .oa-cat-tile:hover .oa-cat-more { grid-template-rows: 1fr; }
+  .oa-cat-tile:hover .oa-cat-text { opacity: 1; transition-delay: .06s; }
+  .oa-cat-tile:hover .oa-cat-tile-arrow { background: var(--oah-gold-bright); transform: translateX(3px); }
+  .oa-cat-head-link:hover i,
+  .oa-cat-all:hover i { transform: translateX(5px); }
 }
-.oa-cat-btn:hover { background: var(--oa-accent); color: var(--oa-text); }
-
-@media (hover: hover) {
-  .oa-cat-tile:hover img { transform: scale(1.04); }
-  .oa-cat-tile:hover::before,
-  .oa-cat-tile:hover::after,
-  .oa-cat-tile:hover .oa-cat-detail { opacity: 1; transform: none; }
-  .oa-cat-tile:hover .oa-cat-title { opacity: 0; }
+/* No hover on touch screens: the description simply stays open. */
+@media (hover: none) {
+  .oa-cat-more { grid-template-rows: 1fr; }
+  .oa-cat-text { opacity: 1; }
 }
-.oa-cat-tile:focus-visible { outline: none; }
-.oa-cat-tile:focus-visible::before,
-.oa-cat-tile:focus-visible::after,
-.oa-cat-tile:focus-visible .oa-cat-detail { opacity: 1; transform: none; }
-.oa-cat-tile:focus-visible .oa-cat-title { opacity: 0; }
 
-/* Category saved without a photo: plain warm panel behind the title. */
-.oa-cat-tile-empty { background: #f4efe6; }
+.oa-cat-all {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+  padding: clamp(22px, 2.6vw, 36px);
+  background: var(--oah-ink);
+  color: var(--oah-ivory);
+  transition: background-color .2s ease, transform .12s ease;
+}
+.oa-cat-all:hover { background: var(--oah-ink-raised); color: var(--oah-ivory); }
+.oa-cat-all:active { transform: scale(.99); }
+.oa-cat-all strong {
+  max-width: 12ch;
+  font-family: var(--oah-font-serif);
+  font-size: clamp(2rem, 3.6vw, 3.4rem);
+  font-weight: 400;
+  line-height: 1.05;
+}
+.oa-cat-all span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--oah-gold);
+  font-size: 1rem;
+}
+.oa-cat-all i { transition: transform .2s var(--oah-ease); }
 
-/* Tablet: 2 equal columns in reading order (mixed heights would leave
-   holes in a plain grid, so every tile becomes 4:5). Phone: 1 column. */
-@media (max-width: 991px) {
-  .oa-cat-masonry {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px;
+/* The tiles arrive one after another, once per visit. */
+@media (prefers-reduced-motion: no-preference) {
+  html.reveal-on .oa-cat-grid[data-reveal-state='hidden'] > * { opacity: 0; translate: 0 14px; }
+  html.reveal-on .oa-cat-grid[data-reveal-state='shown'] > * {
+    transition: opacity .45s ease, translate .6s var(--oah-ease), background-color .2s ease, transform .12s ease;
   }
-  .oa-cat-col { display: contents; }
-  .oa-cat-tile,
-  .oa-cat-tile-tall { aspect-ratio: 4 / 5; }
+  .oa-cat-grid[data-reveal-state='shown'] > :nth-child(2) { transition-delay: 50ms, 50ms, 0s, 0s; }
+  .oa-cat-grid[data-reveal-state='shown'] > :nth-child(3) { transition-delay: 100ms, 100ms, 0s, 0s; }
+  .oa-cat-grid[data-reveal-state='shown'] > :nth-child(4) { transition-delay: 150ms, 150ms, 0s, 0s; }
+  .oa-cat-grid[data-reveal-state='shown'] > :nth-child(n + 5) { transition-delay: 200ms, 200ms, 0s, 0s; }
 }
-@media (max-width: 575px) {
-  .oa-cat-masonry { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+
+@media (max-width: 860px) {
+  .oa-cat-head { flex-direction: column; align-items: flex-start; }
+  .oa-cat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: clamp(240px, 52vw, 400px);
+    gap: 10px;
+  }
   .oa-cat-tile,
-  .oa-cat-tile-tall { aspect-ratio: 4 / 3; }
+  .oa-cat-all { grid-column: auto; }
+  .oa-cat-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+@media (max-width: 520px) {
+  .oa-cat-grid { grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto; }
+  .oa-cat-tile { aspect-ratio: 4 / 3; }
+  .oa-cat-all { min-height: 180px; }
+  .oa-cat-tile-body { padding-right: 68px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .oa-cat-tile img,
-  .oa-cat-detail { transition: none; }
+  .oa-cat-tile-arrow,
+  .oa-cat-more,
+  .oa-cat-text,
+  .oa-cat-all i { transition: none; }
 }
