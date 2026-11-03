@@ -78,7 +78,7 @@ export default function AccountMenu() {
         aria-label="Mon compte"
         onClick={() => setOpen(false)}
       >
-        <Icon name="person" ion size={32} />
+        <Icon name="person" ion size={28} />
         <span className="oah-tooltip" aria-hidden="true">Mon compte</span>
       </Link>
 

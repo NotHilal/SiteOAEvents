@@ -49,10 +49,10 @@
   --oa-size-body   : 1.02rem;
   --oa-size-small  : .82rem;
 
-  /* Header (options.fr pattern): tall bar with the full logo lockup at the
-     top of the page, compacting once scrolled. */
-  --oa-header-h        : 112px;
-  --oa-header-h-compact: 68px;
+  /* Header ("Nuit & or"): full ink bar at the top of the page; once
+     scrolled it floats as a pill (18px gap + 58px pill = compact height). */
+  --oa-header-h        : 92px;
+  --oa-header-h-compact: 76px;
   --oa-ease-out        : cubic-bezier(.16, 1, .3, 1);
 
   --oa-container-max: 1360px;
@@ -999,433 +999,596 @@ body { background-color: var(--oa-background); }
   margin: 14px auto;
 }
 
-/* ===== HEADER — options.fr pattern (Navbar.jsx) =====
-   Three equal columns: Menu toggle + CTA | centered logo | icon row.
-   Reference copy of the original lives at /example. No transform/filter on
-   .oah itself: either would make it the containing block for the
-   position:fixed drawer and overlay, shrinking them to the bar's height. */
+/* ===== HEADER — "Nuit & or" (Navbar.jsx) =====
+   Full-width ink bar at the top of the page; once scrolled the same bar
+   detaches into a compact floating pill. The extras (quick links, wordmark,
+   contact icons) fold away with max-width + opacity so the change reads as
+   one movement. No transform/filter on .oah itself: either would make it
+   the containing block for the position:fixed menu, overlay and cart. */
+:root {
+  --oah-ink        : #14110c;
+  --oah-ink-raised : #1f1a13;
+  --oah-ivory      : #f3ede1;
+  --oah-ivory-soft : rgba(243, 237, 225, .68);
+  --oah-ivory-dim  : rgba(243, 237, 225, .4);
+  --oah-gold       : #c9a15a;
+  --oah-gold-bright: #ddba79;
+  --oah-line       : rgba(201, 161, 90, .24);
+  --oah-font-serif : 'Bodoni Moda', Didot, 'Times New Roman', serif;
+  --oah-pill-w     : 660px;
+  --oah-pill-h     : 58px;
+  --oah-pill-gap   : 18px;
+  --oah-ease       : cubic-bezier(.22, 1, .36, 1);
+}
+
 .oah {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(255, 255, 255, .97);
-  border-bottom: 1px solid transparent;
-  transition: border-color .35s ease, box-shadow .35s ease;
+  height: var(--oa-header-h);
+  /* New formatting context: without it the pill's margin-top collapses
+     through .oah and the pill sticks to the very top of the viewport. */
+  display: flow-root;
+  /* Once the bar floats, the transparent band around it must not swallow
+     clicks meant for the page underneath. */
+  pointer-events: none;
 }
 .oah.is-menu-open { z-index: 1500; }
-.oah-scrolled {
-  border-bottom-color: var(--oa-border);
-  box-shadow: 0 6px 20px rgba(22, 20, 15, .06);
-}
+.oah-bar,
+.oah-drawer,
+.oah-cart-drawer { pointer-events: auto; }
+
 .oah-bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  min-height: var(--oa-header-h);
+  column-gap: 24px;
+  width: 100%;
+  height: var(--oa-header-h);
+  margin: 0 auto;
   padding: 0 var(--oa-container-pad);
-  transition: min-height .45s var(--oa-ease-out);
+  background: var(--oah-ink);
+  color: var(--oah-ivory);
+  border: 1px solid transparent;
+  border-bottom-color: var(--oah-line);
+  border-radius: 0;
+  transition:
+    width .65s var(--oah-ease),
+    height .65s var(--oah-ease),
+    margin-top .65s var(--oah-ease),
+    padding .65s var(--oah-ease),
+    column-gap .65s var(--oah-ease),
+    border-radius .65s var(--oah-ease),
+    border-color .4s ease,
+    background-color .4s ease,
+    box-shadow .65s var(--oah-ease);
 }
-.oah-scrolled .oah-bar { min-height: var(--oa-header-h-compact); }
-.oah-left, .oah-center, .oah-right { flex: 1 1 0; display: flex; align-items: center; min-width: 0; }
-.oah-left { gap: 28px; }
-.oah-center { justify-content: center; }
-.oah-right { justify-content: flex-end; gap: clamp(0px, 1.1vw, 16px); }
+.oah-scrolled .oah-bar {
+  width: min(var(--oah-pill-w), calc(100% - 2 * var(--oah-pill-gap)));
+  height: var(--oah-pill-h);
+  margin-top: var(--oah-pill-gap);
+  padding: 0 7px 0 20px;
+  column-gap: 12px;
+  /* The pill's sides are uneven (Menu vs account, cart, Réserver): size
+     them to their content so the monogram sits at equal distance from
+     both groups instead of at the pill's geometric centre. */
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  border-color: var(--oah-line);
+  border-radius: 999px;
+  background: rgba(20, 17, 12, .88);
+  /* Keeps the pill legible over photos and white sections alike. */
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: 0 20px 40px -20px rgba(10, 8, 5, .6), 0 2px 8px rgba(10, 8, 5, .16);
+}
+/* Folded extras must not leave their gaps and padding behind. */
+.oah-scrolled .oah-left,
+.oah-scrolled .oah-right,
+.oah-scrolled .oah-logo { gap: 0; }
+.oah-scrolled .oah-quick { padding-left: 0; border-left-width: 0; }
+/* Optical centre: halfway between "equal gaps" and the pill's true centre,
+   since the heavier right group (account, cart, Réserver) otherwise pulls
+   the eye's centre to the right. */
+@media (min-width: 992px) {
+  .oah-scrolled .oah-center { padding-left: 64px; }
+}
+
+.oah-left, .oah-right { display: flex; align-items: center; min-width: 0; }
+.oah-left { gap: 26px; }
+.oah-right { justify-content: flex-end; gap: 2px; }
+.oah-center { display: flex; justify-content: center; }
 
 .oah a:focus-visible,
 .oah button:focus-visible {
-  outline: 2px solid var(--oa-accent-ink);
+  outline: 2px solid var(--oah-gold);
   outline-offset: 3px;
+  border-radius: 6px;
 }
 
-/* Menu toggle — icon + uppercase label, like options.fr's "☰ MENU". */
-.oah-menu-toggle {
-  display: inline-flex;
+/* Folding extras: present in the full bar, collapsed in the pill. */
+.oah-fold {
+  display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 4px;
-  border: 0;
-  background: none;
-  color: var(--oa-text);
-  cursor: pointer;
-  transition: color .2s ease;
+  max-width: 560px;
+  opacity: 1;
+  transition: max-width .6s var(--oah-ease), opacity .35s ease .1s, visibility 0s;
 }
-.oah-menu-toggle:hover { color: var(--oa-accent-ink); }
-.oah-menu-label {
-  font-family: var(--oa-font-heading);
-  font-size: .95rem;
-  font-weight: 600;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+.oah-scrolled .oah-fold {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  visibility: hidden;
+  transition: max-width .6s var(--oah-ease), opacity .2s ease, visibility 0s .6s;
 }
 
-/* Primary CTA — stands in for options.fr's "Créez votre table idéale":
-   outline icon + small uppercase label, no fill, so the logo stays the
-   loudest thing in the bar. */
-.oah-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 4px;
-  color: var(--oa-text);
-  font-family: var(--oa-font-heading);
-  font-size: .74rem;
-  font-weight: 600;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  text-decoration: none;
-  white-space: nowrap;
-  transition: color .2s ease;
-}
-.oah-cta svg { color: var(--oa-accent-dark); }
-.oah-cta span {
-  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
-  padding-bottom: 2px;
-  transition: background-size .35s var(--oa-ease-out);
-}
-.oah-cta:hover { color: var(--oa-accent-ink); }
-.oah-cta:hover span { background-size: 100% 1px; }
-
-/* Centered logo lockup — tagline folds away once scrolled, the way
-   options.fr drops the text under its logo in the sticky state. */
-.oah-logo {
+/* Menu toggle — two hairlines that the close button turns into a cross. */
+.oah-menu-toggle,
+.oah-drawer-close {
   display: inline-flex;
   align-items: center;
   gap: 14px;
-  color: var(--oa-text);
+  padding: 8px 2px;
+  border: 0;
+  background: none;
+  color: var(--oah-ivory);
+  font-family: var(--oa-font-heading);
+  font-size: .7rem;
+  font-weight: 500;
+  letter-spacing: .24em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.oah-burger {
+  position: relative;
+  display: inline-block;
+  width: 24px;
+  height: 10px;
+}
+.oah-burger span {
+  position: absolute;
+  left: 0;
+  height: 1.5px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: width .4s var(--oah-ease), transform .4s var(--oah-ease), top .4s var(--oah-ease);
+}
+.oah-burger span:first-child { top: 0; width: 24px; }
+.oah-burger span:last-child { top: 8.5px; width: 15px; background: var(--oah-gold); }
+.oah-menu-toggle:hover .oah-burger span:last-child { width: 24px; }
+.oah-burger.is-cross span { top: 4.25px; width: 22px; background: currentColor; }
+.oah-burger.is-cross span:first-child { transform: rotate(45deg); }
+.oah-burger.is-cross span:last-child { transform: rotate(-45deg); }
+.oah-drawer-close:hover .oah-burger.is-cross span:first-child { transform: rotate(135deg); }
+.oah-drawer-close:hover .oah-burger.is-cross span:last-child { transform: rotate(45deg); }
+
+.oah-quick {
+  gap: 26px;
+  padding-left: 26px;
+  border-left: 1px solid var(--oah-line);
+}
+.oah-quick-link {
+  position: relative;
+  padding: 6px 0;
+  color: var(--oah-ivory-soft);
+  font-family: var(--oa-font-heading);
+  font-size: .84rem;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color .25s ease;
+}
+.oah-quick-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--oah-gold);
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform .45s var(--oah-ease);
+}
+.oah-quick-link:hover,
+.oah-quick-link.is-current { color: var(--oah-ivory); }
+.oah-quick-link:hover::after,
+.oah-quick-link.is-current::after { transform: scaleX(1); transform-origin: left; }
+
+/* Logo — the monogram is drawn in gold through a mask of the transparent
+   logo file, so the mark follows the palette instead of staying black. */
+.oah-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--oah-ivory);
   text-decoration: none;
 }
 .oah-logo-mark {
-  width: auto;
-  height: 62px;
-  transition: height .45s var(--oa-ease-out);
+  flex-shrink: 0;
+  display: block;
+  width: 59px;
+  height: 46px;
+  background: var(--oah-gold);
+  -webkit-mask: url(/logo-icon-h128.webp) center / contain no-repeat;
+  mask: url(/logo-icon-h128.webp) center / contain no-repeat;
+  transition: width .6s var(--oah-ease), height .6s var(--oah-ease), background-color .3s ease;
 }
-.oah-scrolled .oah-logo-mark { height: 40px; }
-.oah-logo-words { display: flex; flex-direction: column; }
+.oah-logo:hover .oah-logo-mark { background: var(--oah-gold-bright); }
+.oah-scrolled .oah-logo-mark { width: 44px; height: 34px; }
+.oah-logo-words { flex-direction: column; align-items: flex-start; }
 .oah-logo-name {
-  font-family: var(--oa-font-heading);
-  font-size: 1.15rem;
-  font-weight: 600;
-  letter-spacing: .22em;
-  text-transform: uppercase;
+  font-family: var(--oah-font-serif);
+  font-size: 1.4rem;
+  font-weight: 500;
+  letter-spacing: .01em;
+  line-height: 1.1;
   white-space: nowrap;
 }
 .oah-logo-tagline {
+  margin-top: 5px;
+  color: var(--oah-gold);
   font-family: var(--oa-font-heading);
-  font-size: .68rem;
+  font-size: .58rem;
   font-weight: 500;
-  letter-spacing: .3em;
+  letter-spacing: .34em;
   text-transform: uppercase;
-  color: var(--oa-muted);
   white-space: nowrap;
-  max-height: 1.6em;
-  margin-top: 4px;
-  overflow: hidden;
-  transition: max-height .35s var(--oa-ease-out), opacity .25s ease, margin-top .35s var(--oa-ease-out);
 }
-.oah-scrolled .oah-logo-tagline { max-height: 0; opacity: 0; margin-top: 0; }
 
-/* Icon row with dark tooltips — six options.fr glyphs (Icon `ion`) at
-   32px on a ~62px pitch, like the reference header. */
+/* Icons, account and cart. */
+.oah-contact { gap: 2px; }
 .oah-icon {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
+  width: 48px;
   height: 48px;
   padding: 0;
-  background: none;
   border: 0;
-  color: var(--oa-text);
+  border-radius: 50%;
+  background: none;
+  color: var(--oah-ivory-soft);
   text-decoration: none;
   cursor: pointer;
-  transition: color .18s ease;
+  transition: color .2s ease, background-color .2s ease;
 }
-.oah-icon:hover,
-.oah-icon.is-current { color: var(--oa-accent-ink); }
-.oah-tooltip {
-  position: absolute;
-  left: 50%;
-  min-width: 135px;
-  max-width: 200px;
-  text-align: center;
-  padding: 4px 8px;
-  border-radius: 4px;
-  background: #000;
-  color: #fff;
-  font-family: Lato, arial, tahoma;
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 24.5px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity .3s;
-  z-index: 1;
-}
-.oah-tooltip::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  margin-left: -5px;
-  border: 5px solid transparent;
-}
-
-/* Big header: every label uses the same /example anchor and top spacing. */
-.oah:not(.oah-scrolled) .oah-tooltip {
-  top: -31px;
-  right: auto;
-  bottom: auto;
-  left: -40px;
-  transform: none;
-}
-.oah:not(.oah-scrolled) .oah-tooltip::before {
-  top: 100%;
-  bottom: auto;
-  border-top-color: #000;
-  border-bottom-color: transparent;
-}
-.oah:not(.oah-scrolled) .oah-icon:hover .oah-tooltip,
-.oah:not(.oah-scrolled) .oah-icon:focus-visible .oah-tooltip {
-  opacity: 1;
-  visibility: visible;
-  transform: none;
-}
-
-/* Scrolled / compact header: tooltip appears below the icon */
-.oah-scrolled .oah-tooltip {
-  top: calc(100% + 8px);
-  bottom: auto;
-  transform: translate(-50%, -4px);
-}
-.oah-scrolled .oah-tooltip::before {
-  bottom: 100%;
-  top: auto;
-  border-bottom-color: #000;
-  border-top-color: transparent;
-}
-.oah-scrolled .oah-icon:hover .oah-tooltip,
-.oah-scrolled .oah-icon:focus-visible .oah-tooltip {
-  opacity: 1;
-  visibility: visible;
-  transform: translate(-50%, 0);
-}
-.oah-scrolled .oah-right > .oah-icon:last-child .oah-tooltip,
-.oah-scrolled .oah-right .oah-icon-cart .oah-tooltip {
-  left: auto;
-  right: 0;
-  transform: translateY(-4px);
-}
-.oah-scrolled .oah-right > .oah-icon:last-child .oah-tooltip::before,
-.oah-scrolled .oah-right .oah-icon-cart .oah-tooltip::before {
-  left: auto;
-  right: 18px;
-  margin-left: 0;
-}
-.oah-scrolled .oah-right > .oah-icon:last-child:hover .oah-tooltip,
-.oah-scrolled .oah-right > .oah-icon:last-child:focus-visible .oah-tooltip,
-.oah-scrolled .oah-right .oah-icon-cart:hover .oah-tooltip,
-.oah-scrolled .oah-right .oah-icon-cart:focus-visible .oah-tooltip {
-  transform: translateY(0);
+.oah-icon:hover { color: var(--oah-ivory); background: rgba(243, 237, 225, .07); }
+.oah-icon.is-current,
+.oah-account.is-open > .oah-icon { color: var(--oah-gold); }
+.oah-divider {
+  width: 1px;
+  height: 22px;
+  margin: 0 12px;
+  background: var(--oah-line);
 }
 .oah-cart-count {
   position: absolute;
   top: 3px;
-  right: 0;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
+  right: 1px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
   border-radius: 999px;
-  background: var(--oa-accent);
-  color: var(--oa-text);
+  background: var(--oah-gold);
+  color: var(--oah-ink);
   font-family: var(--oa-font-heading);
-  font-size: .66rem;
+  font-size: .62rem;
   font-weight: 700;
-  line-height: 18px;
+  line-height: 17px;
   text-align: center;
 }
 
-/* Phone + "Mon compte" dropdowns. The panel uses the same 20px vertical
-   drop, square white surface and soft blue-grey shadow as /example, while
-   retaining OA's own content and outline icons. */
+.oah-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  margin-left: 12px;
+  padding: 0 24px;
+  border-radius: 999px;
+  background: var(--oah-gold);
+  color: var(--oah-ink);
+  font-family: var(--oa-font-heading);
+  font-size: .7rem;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color .25s ease, transform .25s var(--oah-ease);
+}
+.oah-cta:hover { background: var(--oah-gold-bright); color: var(--oah-ink); }
+.oah-cta:active { transform: scale(.97); }
+.oah-scrolled .oah-bar .oah-cta { margin-left: 8px; }
+
+/* Tooltips: small ivory labels under the icon, in both states. The account
+   dropdown labels itself, so its tooltip stays off. */
+.oah-tooltip {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  z-index: 1;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--oah-ivory);
+  color: var(--oah-ink);
+  font-family: var(--oa-font-body);
+  font-size: .76rem;
+  line-height: 1.5;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -4px);
+  transition: opacity .2s ease, transform .3s var(--oah-ease), visibility 0s .2s;
+}
+.oah-icon:hover .oah-tooltip,
+.oah-icon:focus-visible .oah-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+  transition: opacity .2s ease .15s, transform .3s var(--oah-ease) .15s, visibility 0s;
+}
+.oah-account .oah-tooltip { display: none; }
+
+/* Phone + "Mon compte" dropdowns. */
 .oah-account { position: relative; display: flex; }
-.oah-account.is-open > .oah-icon { color: var(--oa-accent-ink); }
 .oah-account-menu {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 12px);
   left: 50%;
   z-index: 10;
   width: max-content;
-  min-width: 244px;
+  min-width: 230px;
   max-width: calc(100vw - 24px);
-  margin-top: 0;
-  padding: 10px 0;
-  background: #fff;
-  border: 0;
-  border-radius: 0;
-  box-shadow: 0 0 20px rgba(96, 109, 166, .3);
+  padding: 8px;
+  background: var(--oah-ink-raised);
+  border: 1px solid var(--oah-line);
+  border-radius: 16px;
+  box-shadow: 0 24px 48px -16px rgba(10, 8, 5, .55);
   text-align: left;
   opacity: 0;
   visibility: hidden;
-  transform: translate(-50%, 20px);
-  transition: opacity .1s ease-in, transform .1s ease-in, visibility 0s linear .1s;
+  transform: translate(-50%, 8px);
+  transition: opacity .12s ease-in, transform .12s ease-in, visibility 0s linear .12s;
+}
+/* Bridges the gap to the trigger so the hover menu doesn't drop. */
+.oah-account-menu::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 14px;
 }
 .oah-account.is-open .oah-account-menu {
   opacity: 1;
   visibility: visible;
   transform: translate(-50%, 0);
-  transition: opacity .3s ease, transform .3s var(--oa-ease-out), visibility 0s;
+  transition: opacity .25s ease, transform .35s var(--oah-ease), visibility 0s;
 }
+.oah-right > .oah-account .oah-account-menu { right: -8px; left: auto; transform: translateY(8px); }
+.oah-right > .oah-account.is-open .oah-account-menu { transform: translateY(0); }
 .oah-account-list { margin: 0; padding: 0; list-style: none; }
 .oah-account-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 7px 30px;
-  background: none;
+  padding: 10px 14px;
   border: 0;
-  border-radius: 0;
-  color: #696969;
-  font-family: 'Lato', Arial, sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: normal;
-  line-height: 1.5;
+  border-radius: 10px;
+  background: none;
+  color: var(--oah-ivory-soft);
+  font-family: var(--oa-font-body);
+  font-size: .9rem;
+  line-height: 1.4;
   text-align: left;
   text-decoration: none;
-  text-transform: uppercase;
   white-space: nowrap;
   cursor: pointer;
-  transition: color .2s ease;
+  transition: color .2s ease, background-color .2s ease;
 }
 .oah-account-item:hover,
-.oah-account-item:focus-visible { color: var(--oa-accent-ink); }
-.oah-account-item svg { flex-shrink: 0; color: currentColor; }
+.oah-account-item:focus-visible { color: var(--oah-ivory); background: rgba(243, 237, 225, .06); }
+.oah-account-item svg { flex-shrink: 0; color: var(--oah-gold); }
 .oah .oah-account-item:focus-visible { outline-offset: -2px; }
-.oah-account-sep { height: 1px; margin: 6px 30px; background: rgba(22, 20, 15, .08); }
+.oah-account-sep { height: 1px; margin: 6px 14px; background: var(--oah-line); }
 
-/* Keep the last account panel inside the viewport while retaining the same
-   vertical animation as the centred reference dropdown. */
-.oah-right > .oah-account:not(.oah-contact-menu) .oah-account-menu {
-  right: -8px;
-  left: auto;
-  transform: translateY(20px);
-}
-.oah-right > .oah-account:not(.oah-contact-menu).is-open .oah-account-menu {
-  transform: translateY(0);
-}
-
-/* Slide-in drawer from the left. */
+/* Backdrop behind the cart panel. */
 .oah-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(22, 20, 15, .5);
+  background: rgba(10, 8, 5, .55);
   opacity: 0;
   pointer-events: none;
   transition: opacity .4s ease;
 }
 .oah-overlay.is-open { opacity: 1; pointer-events: auto; }
+
+/* ----- Full-screen editorial menu -----
+   Wipes down from the top. Page names in large serif on the left; the
+   hovered (or current) page's photo on the right; practical links last. */
 .oah-drawer {
   position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: min(420px, 88vw);
-  display: flex;
-  flex-direction: column;
-  gap: 40px;
-  padding: 104px 34px 48px;
-  background: #fff;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  padding: 0 var(--oa-container-pad) 28px;
+  background: var(--oah-ink);
+  color: var(--oah-ivory);
   overflow-y: auto;
   overscroll-behavior: contain;
-  box-shadow: 12px 0 40px rgba(22, 20, 15, .18);
-  transform: translateX(-100%);
+  clip-path: inset(0 0 100% 0);
   visibility: hidden;
-  transition: transform .55s var(--oa-ease-out), visibility 0s .55s;
+  transition: clip-path .75s var(--oah-ease), visibility 0s .75s;
 }
 .oah-drawer.is-open {
-  transform: translateX(0);
+  clip-path: inset(0 0 0 0);
   visibility: visible;
-  transition: transform .55s var(--oa-ease-out), visibility 0s;
+  transition: clip-path .75s var(--oah-ease), visibility 0s;
 }
-.oah-drawer-close {
-  position: absolute;
-  top: 30px;
-  left: 30px;
+.oah-drawer-top {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  height: var(--oa-header-h);
+  border-bottom: 1px solid var(--oah-line);
+}
+.oah-drawer-close { justify-self: start; }
+.oah-drawer-brand {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 4px;
-  border: 0;
-  background: none;
-  color: var(--oa-text);
-  font-family: var(--oa-font-heading);
-  font-size: .75rem;
-  font-weight: 500;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  cursor: pointer;
-}
-.oah-drawer-close svg { transition: transform .4s var(--oa-ease-out); }
-.oah-drawer-close:hover svg { transform: rotate(180deg); }
-
-.oah-drawer-main { display: flex; flex-direction: column; }
-.oah-drawer-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 0;
-  color: var(--oa-text);
-  font-family: var(--oa-font-heading);
-  font-size: clamp(1.3rem, 5vw, 1.65rem);
-  font-weight: 400;
-  line-height: 1.1;
-  text-transform: uppercase;
+  gap: 14px;
+  color: var(--oah-ivory);
   text-decoration: none;
-  opacity: 0;
-  transform: translateX(-16px);
-  transition: color .2s ease, opacity .5s var(--oa-ease-out), transform .5s var(--oa-ease-out);
 }
-.oah-drawer.is-open .oah-drawer-link {
-  opacity: 1;
-  transform: translateX(0);
-  transition-delay: 0s, calc(.12s + var(--i) * .045s), calc(.12s + var(--i) * .045s);
+.oah-drawer-brand .oah-logo-mark { width: 44px; height: 34px; }
+.oah-drawer-top .oah-cta { justify-self: end; margin-left: 0; }
+
+.oah-drawer-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+  align-items: center;
+  gap: clamp(32px, 6vw, 110px);
+  padding: clamp(28px, 6vh, 72px) 0;
 }
-.oah-drawer-link:hover,
-.oah-drawer-link.is-current { color: var(--oa-accent-ink); }
+.oah-drawer-main { display: flex; flex-direction: column; align-items: flex-start; }
+.oah-drawer-link {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: .06em 0 .1em;
+  overflow: hidden;
+  color: var(--oah-ivory-dim);
+  font-family: var(--oah-font-serif);
+  font-size: clamp(2.3rem, 5vw, 4.6rem);
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -.01em;
+  text-decoration: none;
+  transition: color .35s ease;
+}
+.oah-drawer-link-text {
+  display: inline-block;
+  transform: translateY(105%);
+  transition: transform .8s var(--oah-ease), font-style 0s;
+}
+.oah-drawer.is-open .oah-drawer-link-text {
+  transform: translateY(0);
+  transition-delay: calc(.18s + var(--i) * .06s);
+}
+.oah-drawer-link.is-shown { color: var(--oah-ivory); }
+.oah-drawer-link.is-shown .oah-drawer-link-text { font-style: italic; }
+.oah-drawer-link:hover { color: var(--oah-ivory); }
+/* Current page: a small gold point after the name. */
+.oah-drawer-link.is-current .oah-drawer-link-text::after {
+  content: '';
+  display: inline-block;
+  width: .14em;
+  height: .14em;
+  margin-left: .22em;
+  border-radius: 50%;
+  background: var(--oah-gold);
+  vertical-align: .5em;
+}
 .oah-drawer-badge {
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
+  margin-top: .5em;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
   border-radius: 999px;
-  background: var(--oa-accent);
-  color: var(--oa-text);
+  background: var(--oah-gold);
+  color: var(--oah-ink);
+  font-family: var(--oa-font-heading);
   font-size: .72rem;
   font-weight: 700;
-  line-height: 22px;
+  font-style: normal;
+  line-height: 24px;
   text-align: center;
 }
+
+.oah-drawer-visual {
+  position: relative;
+  justify-self: end;
+  width: min(100%, 440px);
+  aspect-ratio: 4 / 5;
+  max-height: 60vh;
+  margin: 0;
+  padding-bottom: 40px;
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity .6s ease, transform .9s var(--oah-ease);
+}
+.oah-drawer.is-open .oah-drawer-visual {
+  opacity: 1;
+  transform: none;
+  transition-delay: .3s;
+}
+.oah-drawer-visual img {
+  position: absolute;
+  inset: 0 0 40px;
+  width: 100%;
+  height: calc(100% - 40px);
+  object-fit: cover;
+  border-radius: 2px;
+  opacity: 0;
+  transform: scale(1.06);
+  transition: opacity .55s ease, transform 1.4s var(--oah-ease);
+}
+.oah-drawer-visual img.is-shown { opacity: 1; transform: scale(1); }
+.oah-drawer-visual figcaption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  color: var(--oah-ivory-soft);
+  font-family: var(--oa-font-heading);
+  font-size: .66rem;
+  font-weight: 500;
+  letter-spacing: .18em;
+  line-height: 1.5;
+  text-align: left;
+  text-transform: uppercase;
+}
+
 .oah-drawer-services {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-top: 28px;
-  border-top: 1px solid var(--oa-border);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 30px;
+  padding-top: 22px;
+  border-top: 1px solid var(--oah-line);
+  opacity: 0;
+  transition: opacity .5s ease;
 }
+.oah-drawer.is-open .oah-drawer-services { opacity: 1; transition-delay: .45s; }
 .oah-drawer-service {
-  padding: 7px 0;
-  color: var(--oa-accent-ink);
+  color: var(--oah-gold);
   font-family: var(--oa-font-heading);
-  font-size: .88rem;
+  font-size: .7rem;
   font-weight: 600;
-  letter-spacing: .1em;
+  letter-spacing: .16em;
   text-transform: uppercase;
   text-decoration: none;
   transition: color .2s ease;
 }
 .oah-drawer-service:hover,
-.oah-drawer-service.is-current { color: var(--oa-text); }
+.oah-drawer-service.is-current { color: var(--oah-ivory); }
+.oah-drawer-mail {
+  margin-left: auto;
+  color: var(--oah-ivory-soft);
+  font-family: var(--oa-font-body);
+  font-size: .92rem;
+  text-decoration: none;
+  transition: color .2s ease;
+}
+.oah-drawer-mail:hover { color: var(--oah-ivory); }
 
 /* Cart drawer: the header cart opens a persistent selection panel from the
    right. It shares the main drawer's backdrop and motion, while keeping the
@@ -1682,53 +1845,64 @@ a.oah-cart-item-name:hover { color: var(--oa-accent-ink); }
   .oah-cart-quantity { grid-template-columns: 29px 34px 29px; }
 }
 
-/* Narrow desktop: six icons still on one line, packed tighter. */
+/* Narrow desktop: the quick links give way before the icons do. */
+/* Small laptops: the contact icons (also in the menu) give way so the
+   larger icon row never reaches the centred logo. */
 @media (min-width: 992px) and (max-width: 1199px) {
-  .oah-right { gap: 0; }
-  .oah-icon { width: 40px; }
+  .oah-contact { display: none; }
+}
+@media (min-width: 992px) and (max-width: 1239px) {
+  .oah-quick { display: none; }
+  .oah-logo-name { font-size: 1.2rem; }
+  .oah-icon { width: 42px; }
+  .oah-divider { margin: 0 6px; }
 }
 
-/* Tablet/phone: menu, logo, then Mon compte + cart — phone, find us,
-   contact and catalogue move into the drawer. */
+/* Tablet/phone: Menu | logo | account, cart (+ Réserver when it fits).
+   Quick links and contact icons live in the menu. */
 @media (max-width: 991px) {
-  :root { --oa-header-h: 76px; --oa-header-h-compact: 62px; }
-  .oah-cta,
-  .oah-icon-secondary { display: none; }
-  .oah-logo-mark { height: 42px; }
-  .oah-scrolled .oah-logo-mark { height: 34px; }
-  .oah-logo-name { font-size: .95rem; letter-spacing: .16em; }
+  :root { --oa-header-h: 68px; --oa-header-h-compact: 64px; --oah-pill-h: 50px; --oah-pill-gap: 14px; }
+  .oah-quick,
+  .oah-contact { display: none; }
+  .oah-bar { column-gap: 12px; }
+  .oah-scrolled .oah-bar { padding: 0 6px 0 16px; }
+  .oah-logo { gap: 12px; }
+  .oah-logo-mark { width: 46px; height: 36px; }
+  .oah-scrolled .oah-logo-mark { width: 40px; height: 31px; }
+  .oah-logo-name { font-size: 1.08rem; }
   .oah-logo-tagline { display: none; }
   .oah-tooltip { display: none; }
-  /* Side columns shrink to their content so the logo centers on the
-     viewport instead of being squeezed into a third of it. */
-  .oah-left, .oah-right { flex: 0 0 auto; min-width: 48px; }
-  .oah-center { flex: 1 1 auto; }
+  .oah-cta { height: 38px; padding: 0 18px; }
+
+  .oah-drawer-body { grid-template-columns: 1fr; align-items: start; }
+  .oah-drawer-visual { display: none; }
+  .oah-drawer-body { align-content: center; }
+  .oah-drawer-link { font-size: clamp(2.2rem, 10.5vw, 3.6rem); }
+  .oah-drawer-link.is-shown { color: var(--oah-ivory-dim); }
+  .oah-drawer-link.is-shown .oah-drawer-link-text { font-style: normal; }
+  .oah-drawer-link.is-current { color: var(--oah-ivory); }
+  .oah-drawer-mail { margin-left: 0; flex-basis: 100%; }
 }
 @media (max-width: 560px) {
-  .oah-menu-label { display: none; }
-  /* Two icons on the right (Mon compte + cart) vs one on the left: the
-     left column takes the same 80px when there's room, so the logo stays
-     centred, and gives some back on the narrowest phones rather than
-     letting the logo overlap the menu button. */
-  .oah-icon { width: 40px; }
-  /* Shrink weights: the left column gives up its spare 32px first, only
-     then does the logo column narrow (as it always has on tiny screens). */
-  .oah-left { flex: 0 20 80px; min-width: 48px; }
-  .oah-right { flex: 0 0 auto; min-width: 0; }
-  .oah-center { flex: 1 1 auto; min-width: 0; }
-  .oah-logo { gap: 10px; }
-  .oah-logo-name { font-size: .8rem; letter-spacing: .12em; }
+  .oah-menu-label,
+  .oah-bar .oah-cta,
+  .oah-drawer-brand .oah-logo-name { display: none; }
+  .oah-left { gap: 0; }
+  /* Uneven sides (menu vs account + cart): centre the logo between them. */
+  .oah-bar { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .oah-icon { width: 40px; height: 40px; }
+  /* Phones keep the glyphs a step smaller so the wordmark has room. */
+  .oah-icon svg { width: 24px; height: 24px; }
+  .oah-logo-name { font-size: 1rem; }
+  .oah-drawer-close .oah-burger + span { display: none; }
+  .oah-drawer-services { gap: 12px 22px; }
 }
-/* Small phones: the full-size wordmark plus two icons no longer fit, so
-   the logo scales down a touch (same lockup, smaller) and the icon hit
-   areas narrow to 36px — the 32px glyphs themselves stay. */
+/* Small phones: the wordmark scales down rather than crowding the icons. */
 @media (max-width: 400px) {
   .oah-icon { width: 36px; }
-  .oah-right { gap: 2px; }
-  .oah-logo { gap: 8px; }
-  .oah-logo-mark { height: 36px; }
-  .oah-scrolled .oah-logo-mark { height: 32px; }
-  .oah-logo-name { font-size: clamp(.6rem, 3vw, .8rem); letter-spacing: .1em; }
+  .oah-logo { gap: 9px; }
+  .oah-logo-mark { width: 40px; height: 31px; }
+  .oah-logo-name { font-size: clamp(.82rem, 4vw, 1rem); }
 }
 @media (max-width: 374px) {
   .oah-bar { padding: 0 12px; }
@@ -1968,7 +2142,6 @@ a.oah-cart-item-name:hover { color: var(--oa-accent-ink); }
 .oa-assurance-intro p:last-child { margin-bottom: 0; }
 /* ~45px from the intro to "Nos univers / Un événement, une histoire". */
 .oa-section-tight.oa-assurance { padding-bottom: 0; }
-.oa-assurance + .oa-section.oa-univers { padding-top: 46px; }
 
 @media (max-width: 991px) {
   .oa-assurance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 40px; }
@@ -2132,28 +2305,163 @@ html.reveal-on [data-reveal-state="shown"] {
 
 .oa-center-cta { text-align: center; margin-top: 44px; }
 
-/* Nos Univers */
-.oa-univers-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 28px;
+/* Nos Univers — ink band in the header's "Nuit & or" palette. Three photo
+   panels share the row; the active one (hover/focus, first by default)
+   widens and reveals its text. Stacked with everything visible on phones. */
+.oa-section.oa-univers,
+.oa-assurance + .oa-section.oa-univers {
+  padding: clamp(64px, 8vw, 112px) 0;
+  background: var(--oah-ink);
+  color: var(--oah-ivory);
 }
-.oa-univers-card {
-  display: block;
+.oa-univers-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: clamp(32px, 4vw, 48px);
+}
+.oa-univers-title {
+  margin: 0;
+  color: var(--oah-ivory);
+  font-family: var(--oah-font-serif);
+  font-size: clamp(2.3rem, 4.6vw, 4rem);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+.oa-univers-title em { color: var(--oah-gold); font-style: italic; }
+.oa-univers-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--oah-line);
+  color: var(--oah-ivory-soft);
+  font-family: var(--oa-font-heading);
+  font-size: .74rem;
+  font-weight: 500;
+  letter-spacing: .16em;
+  text-transform: uppercase;
   text-decoration: none;
-  border: 1px solid var(--oa-border);
-  background: var(--oa-surface);
-  transition: transform .35s ease, box-shadow .35s ease;
+  transition: color .25s ease, border-color .25s ease;
 }
-.oa-univers-card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(22,20,15,.1); }
-.oa-univers-image {
-  height: 260px;
-  background-size: cover;
-  background-position: center;
+.oa-univers-all i { color: var(--oah-gold); transition: transform .4s var(--oah-ease); }
+.oa-univers-all:hover { color: var(--oah-ivory); border-color: var(--oah-gold); }
+.oa-univers-all:hover i { transform: translateX(4px); }
+
+.oa-univers-panels {
+  display: flex;
+  gap: 14px;
+  height: clamp(440px, 58vh, 580px);
 }
-.oa-univers-body { padding: 28px 26px 32px; }
-.oa-univers-body h3 { margin-bottom: 10px; }
-.oa-univers-body p { margin-bottom: 18px; }
+.oa-univers-panel {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 4px;
+  color: var(--oah-ivory);
+  text-decoration: none;
+  isolation: isolate;
+  transition: flex-grow .8s var(--oah-ease);
+}
+.oa-univers-panel.is-active { flex-grow: 2.3; }
+.oa-univers-panel img {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.04);
+  filter: saturate(.85);
+  transition: transform 1.2s var(--oah-ease), filter .6s ease;
+}
+.oa-univers-panel.is-active img { transform: scale(1); filter: saturate(1); }
+/* Bottom scrim so ivory text stays legible on any photo. */
+.oa-univers-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(to top, rgba(14, 11, 7, .92) 0%, rgba(14, 11, 7, .45) 42%, rgba(14, 11, 7, .1) 70%);
+  transition: opacity .6s ease;
+}
+.oa-univers-panel:focus-visible { outline: 2px solid var(--oah-gold); outline-offset: 4px; }
+.oa-univers-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: clamp(22px, 2.6vw, 36px);
+}
+.oa-univers-body h3 {
+  margin: 0;
+  color: var(--oah-ivory);
+  font-family: var(--oah-font-serif);
+  font-size: clamp(1.45rem, 2.2vw, 2.1rem);
+  font-weight: 400;
+  line-height: 1.1;
+}
+/* Text under the title collapses to zero height when inactive, so every
+   title stays on the same bottom line. */
+.oa-univers-more {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .7s var(--oah-ease);
+}
+.oa-univers-more > div { min-height: 0; overflow: hidden; }
+.oa-univers-panel.is-active .oa-univers-more { grid-template-rows: 1fr; }
+.oa-univers-body p,
+.oa-univers-cta {
+  max-width: 36ch;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity .3s ease, transform .5s var(--oah-ease);
+}
+.oa-univers-body p {
+  margin: 14px 0 0;
+  color: var(--oah-ivory-soft);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.oa-univers-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  color: var(--oah-gold);
+  font-family: var(--oa-font-heading);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.oa-univers-cta i { transition: transform .4s var(--oah-ease); }
+.oa-univers-panel:hover .oa-univers-cta i { transform: translateX(4px); }
+.oa-univers-panel.is-active .oa-univers-body p,
+.oa-univers-panel.is-active .oa-univers-cta {
+  opacity: 1;
+  transform: none;
+  transition: opacity .5s ease .25s, transform .7s var(--oah-ease) .25s;
+}
+
+@media (max-width: 767px) {
+  .oa-univers-head { flex-direction: column; align-items: flex-start; }
+  .oa-univers-panels { flex-direction: column; height: auto; }
+  .oa-univers-panel,
+  .oa-univers-panel.is-active { flex: none; height: 340px; }
+  .oa-univers-more { grid-template-rows: 1fr; }
+  .oa-univers-body p,
+  .oa-univers-cta { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .oa-univers-panel, .oa-univers-panel img, .oa-univers-more,
+  .oa-univers-body p, .oa-univers-cta { transition: none !important; }
+}
 .oa-univers-link {
   display: inline-flex;
   align-items: center;
@@ -2177,36 +2485,36 @@ html.reveal-on [data-reveal-state="shown"] {
 }
 .oa-univers-link i { transition: transform .5s var(--oa-ease-out); }
 a.oa-univers-link:hover,
-a.oa-univers-link:focus-visible,
-.oa-univers-card:hover .oa-univers-link,
-.oa-univers-card:focus-visible .oa-univers-link {
+a.oa-univers-link:focus-visible {
   background-color: rgba(201, 161, 90, .16);
   color: var(--oa-accent-ink);
   transition-duration: .25s;
 }
 a.oa-univers-link:hover i,
-a.oa-univers-link:focus-visible i,
-.oa-univers-card:hover .oa-univers-link i,
-.oa-univers-card:focus-visible .oa-univers-link i { transform: translateX(4px); transition-duration: .3s; }
+a.oa-univers-link:focus-visible i { transform: translateX(4px); transition-duration: .3s; }
 a.oa-univers-link:focus-visible { outline: 2px solid var(--oa-accent-ink); outline-offset: 2px; }
 
-/* Nos Prestations */
-/* Prestation cards reuse .oa-product-card (see "Product card" below);
-   only the link reset and the gold icon above the title are specific. */
-.oa-prestation-card { color: inherit; text-decoration: none; }
-.oa-prestation-card:hover { color: inherit; }
-.oa-prestation-card:focus-visible { outline: 2px solid var(--oa-text); outline-offset: 3px; }
-.oa-prestation-card .oa-product-add i { font-size: .75rem; }
-.oa-prestation-icon {
-  width: 56px; height: 56px;
-  margin: 0 auto 14px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(201,161,90,.12);
-  border: 1px solid rgba(201,161,90,.3);
-  color: var(--oa-accent-dark);
-  font-size: 1.1rem;
+/* Nos Prestations — same expanding panels as Nos Univers, kept on the
+   white page: only the heading and the "voir tout" link switch to ink.
+   The panels themselves stay dark (photo + scrim, ivory text). */
+.oa-panels-light .oa-univers-title { color: var(--oa-text); }
+.oa-panels-light .oa-univers-title em { color: var(--oa-accent-ink); }
+.oa-panels-light .oa-univers-all { color: var(--oa-muted); border-bottom-color: var(--oa-border); }
+.oa-panels-light .oa-univers-all i { color: var(--oa-accent-ink); }
+.oa-panels-light .oa-univers-all:hover { color: var(--oa-text); border-color: var(--oa-accent); }
+.oa-panels-light .oa-univers-panel { box-shadow: 0 24px 48px -28px rgba(22, 20, 15, .45); }
+.oa-panels-light .oa-univers-panel:focus-visible { outline-color: var(--oa-accent-ink); }
+/* Four panels instead of three: the active one widens less and the
+   closed titles step down a size so long names fit their column. */
+.oa-panels-light .oa-univers-panel.is-active { flex-grow: 1.7; }
+.oa-panels-light .oa-univers-body { padding: clamp(20px, 2vw, 30px); }
+.oa-panels-light .oa-univers-body h3 {
+  font-size: clamp(1.2rem, 1.55vw, 1.55rem);
+  overflow-wrap: break-word;
+  hyphens: auto;
+  transition: font-size .6s var(--oah-ease);
 }
+.oa-panels-light .oa-univers-panel.is-active .oa-univers-body h3 { font-size: clamp(1.45rem, 2.1vw, 2rem); }
 
 /* Catalogue teaser (homepage) — quick "add to cart" preview of a few
    materials, one per category; the real browsing/filtering happens on
@@ -2294,6 +2602,92 @@ a.oa-univers-link:focus-visible { outline: 2px solid var(--oa-accent-ink); outli
 /* Touch screens have no hover: keep the button visible. */
 @media (hover: none) {
   .oa-product-add { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+}
+/* Homepage catalogue teaser — shop cards in the "Nuit & or" voice. Scoped
+   to .oa-catalogue-teaser: ProductLayout reuses .oa-product-card as is. */
+.oa-catalogue-teaser .oa-product-card {
+  border: 1px solid var(--oa-border);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: box-shadow .4s ease, transform .5s var(--oah-ease), border-color .4s ease;
+}
+.oa-catalogue-teaser .oa-product-card:hover,
+.oa-catalogue-teaser .oa-product-card:focus-within {
+  transform: translateY(-6px);
+  border-color: rgba(201, 161, 90, .45);
+  box-shadow: 0 28px 50px -24px rgba(22, 20, 15, .35);
+}
+.oa-catalogue-teaser .oa-product-media { background: #f4efe6; }
+/* "Choix OA" — the marketplace pick badge: ink tab, gold mark. */
+.oa-teaser-badge {
+  position: absolute;
+  top: 14px;
+  left: 0;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 20px 0 12px;
+  background: var(--oah-ink);
+  color: var(--oah-ivory);
+  font-family: var(--oa-font-heading);
+  font-size: .64rem;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 50%, 100% 100%, 0 100%);
+}
+.oa-teaser-badge em {
+  margin-left: .4em;
+  color: var(--oah-gold);
+  font-style: normal;
+}
+.oa-catalogue-teaser .oa-product-add {
+  border-radius: 999px;
+  box-shadow: 0 10px 24px -10px rgba(22, 20, 15, .5);
+}
+.oa-catalogue-teaser .oa-product-add:hover { background: var(--oah-ink); color: var(--oah-ivory); }
+.oa-catalogue-teaser .oa-product-card.is-added .oa-product-add { background: var(--oah-ink); color: var(--oah-ivory); }
+.oa-catalogue-teaser .oa-product-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px 20px 22px;
+  text-align: left;
+  border-top: 1px solid var(--oa-border);
+}
+.oa-teaser-category {
+  margin: 0;
+  color: var(--oa-accent-ink);
+  font-family: var(--oa-font-heading);
+  font-size: .66rem;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.oa-catalogue-teaser .oa-product-name {
+  margin: 0;
+  font-family: var(--oah-font-serif);
+  font-size: 1.32rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.oa-catalogue-teaser .oa-product-name a { color: inherit; text-decoration: none; transition: color .2s ease; }
+.oa-catalogue-teaser .oa-product-card:hover .oa-product-name a { color: var(--oa-accent-ink); }
+.oa-catalogue-teaser .oa-product-price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--oa-muted);
+  font-size: .85rem;
+}
+.oa-catalogue-teaser .oa-product-price strong {
+  color: var(--oa-text);
+  font-family: var(--oa-font-heading);
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 @media (max-width: 991px) { .oa-catalogue-teaser-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 560px) { .oa-catalogue-teaser-grid { grid-template-columns: 1fr; } }
@@ -2485,15 +2879,11 @@ a.oa-univers-link:focus-visible { outline: 2px solid var(--oa-accent-ink); outli
 .oa-temoignage-tag { font-size: .82rem; margin-top: 2px; }
 
 @media (max-width: 991px) {
-  .oa-univers-grid { grid-template-columns: repeat(2, 1fr); }
   .oa-temoignages-grid { grid-template-columns: 1fr; }
   .oa-stats-grid { grid-template-columns: repeat(2, 1fr); row-gap: 32px; }
 }
 @media (max-width: 640px) {
-  .oa-univers-grid { grid-template-columns: 1fr; }
   .oa-section-head-split { flex-direction: column; align-items: flex-start; }
-  .oa-prestation-card { padding: 24px 20px; }
-  .oa-prestation-icon { width: 46px; height: 46px; font-size: .95rem; margin-bottom: 14px; }
 }
 
 /* ===== LEGAL PAGES (src/components/LegalPage.jsx) ===== */

@@ -35,10 +35,10 @@ const UNIVERS = [
 
 // Photos: public/images/prestations/ (OA's own, 900px WebP).
 const PRESTATIONS = [
-  { icon: 'fas fa-heart', img: '/images/prestations/organisation-mariage.webp', title: 'Organisation de Mariage', text: "Recherche du lieu, prestataires, coordination du jour J." },
-  { icon: 'fas fa-birthday-cake', img: '/images/prestations/organisation-anniversaire.webp', title: "Organisation d'Anniversaire", text: 'Thème, décoration et animation sur mesure.' },
-  { icon: 'fas fa-briefcase', img: '/images/prestations/evenements-professionnels.webp', title: 'Événements Professionnels', text: 'Séminaires, galas et lancements d\'entreprise.' },
-  { icon: 'fas fa-star', img: '/images/prestations/location-decoration.webp', title: 'Location de Décoration', text: 'Vaisselle, mobilier et éclairage, livrés et installés.' },
+  { img: '/images/prestations/organisation-mariage.webp', title: 'Organisation de Mariage', text: "Recherche du lieu, prestataires, coordination du jour J." },
+  { img: '/images/prestations/organisation-anniversaire.webp', title: "Organisation d'Anniversaire", text: 'Thème, décoration et animation sur mesure.' },
+  { img: '/images/prestations/evenements-professionnels.webp', title: 'Événements Professionnels', text: 'Séminaires, galas et lancements d\'entreprise.' },
+  { img: '/images/prestations/location-decoration.webp', title: 'Location de Décoration', text: 'Vaisselle, mobilier et éclairage, livrés et installés.' },
 ]
 
 // "Nos catégories" mosaic, modelled on options.fr's home block: one tall
@@ -89,6 +89,8 @@ export default function Home({ realisations }) {
   // index.css) — it starts on first paint, no JS flag needed.
 
   const [images, setImages] = useState({})
+  const [activeUnivers, setActiveUnivers] = useState(0)
+  const [activePrestation, setActivePrestation] = useState(0)
   useEffect(() => {
     supabase.from('site_content').select('*').eq('key', 'images_home').then(({ data }) => {
       const row = data && data[0]
@@ -222,20 +224,35 @@ export default function Home({ realisations }) {
         </section>
 
         {/* NOS UNIVERS */}
+        {/* Ink band in the header's "Nuit & or" palette, so it reads apart
+            from the light Prestations cards below: three photo panels side
+            by side, the hovered/focused one widening to reveal its text. */}
         <section className="oa-section oa-univers">
           <div className="oa-container">
-            <div className="oa-section-head" data-reveal>
-              <span className="oa-eyebrow">Nos Univers</span>
-              <h2 className="oa-section-title">Un événement, une histoire</h2>
+            <div className="oa-univers-head" data-reveal>
+              <h2 className="oa-univers-title">Un événement, <em>une histoire</em></h2>
+              <Link href="/services" className="oa-univers-all">
+                Toutes nos prestations <i className="fas fa-arrow-right" />
+              </Link>
             </div>
-            <div className="oa-univers-grid" data-reveal>
+            <div className="oa-univers-panels" data-reveal onPointerLeave={() => setActiveUnivers(0)}>
               {UNIVERS.map((u, i) => (
-                <Link href="/services" key={u.title} className="oa-univers-card">
-                  <div className="oa-univers-image" style={{ backgroundImage: `url(${images[u.slotKey] || u.img})` }} />
+                <Link
+                  href="/services"
+                  key={u.title}
+                  className={`oa-univers-panel${activeUnivers === i ? ' is-active' : ''}`}
+                  onPointerEnter={() => setActiveUnivers(i)}
+                  onFocus={() => setActiveUnivers(i)}
+                >
+                  <img src={images[u.slotKey] || u.img} alt="" loading="lazy" decoding="async" />
                   <div className="oa-univers-body">
-                    <h3 className="oa-heading" style={{ fontSize: 'var(--oa-size-h3)' }}>{u.title}</h3>
-                    <p className="oa-text-muted">{u.text}</p>
-                    <span className="oa-univers-link">Découvrir <i className="fas fa-arrow-right" /></span>
+                    <h3>{u.title}</h3>
+                    <div className="oa-univers-more">
+                      <div>
+                        <p>{u.text}</p>
+                        <span className="oa-univers-cta">Découvrir <i className="fas fa-arrow-right" /></span>
+                      </div>
+                    </div>
                   </div>
                 </Link>
               ))}
@@ -244,54 +261,54 @@ export default function Home({ realisations }) {
         </section>
 
         {/* NOS PRESTATIONS */}
-        <section className="oa-section oa-section-tight oa-prestations">
+        {/* Same expanding photo panels as Nos Univers, on the page's white
+            background (.oa-panels-light) instead of the ink band. */}
+        <section className="oa-section oa-section-tight oa-prestations oa-panels-light">
           <div className="oa-container">
-            <div className="oa-section-head" data-reveal>
-              <span className="oa-eyebrow">Nos Prestations</span>
-              <h2 className="oa-section-title">Un accompagnement complet</h2>
+            <div className="oa-univers-head" data-reveal>
+              <h2 className="oa-univers-title">Un accompagnement <em>complet</em></h2>
+              <Link href="/services" className="oa-univers-all">
+                Voir toutes nos prestations <i className="fas fa-arrow-right" />
+              </Link>
             </div>
-            {/* Same card as "Choisissez votre mobilier" (.oa-product-card):
-                square photo, centered title + line, shadow and a button
-                rising at the bottom of the photo on hover. */}
-            <div className="oa-catalogue-teaser-grid" data-reveal>
-              {PRESTATIONS.map(p => (
-                <Link href="/services" className="oa-product-card oa-prestation-card" key={p.title}>
-                  <div className="oa-product-media">
-                    <img src={p.img} alt={p.title} width="900" height="900" loading="lazy" decoding="async" />
-                    <span className="oa-product-add" aria-hidden="true">
-                      <span>Découvrir</span>
-                      <i className="fas fa-arrow-right" />
-                    </span>
-                  </div>
-                  <div className="oa-product-details">
-                    <div className="oa-prestation-icon" aria-hidden="true"><i className={p.icon} /></div>
-                    <h3 className="oa-product-name">{p.title}</h3>
-                    <p className="oa-product-price">{p.text}</p>
+            <div className="oa-univers-panels" data-reveal onPointerLeave={() => setActivePrestation(0)}>
+              {PRESTATIONS.map((p, i) => (
+                <Link
+                  href="/services"
+                  key={p.title}
+                  className={`oa-univers-panel${activePrestation === i ? ' is-active' : ''}`}
+                  onPointerEnter={() => setActivePrestation(i)}
+                  onFocus={() => setActivePrestation(i)}
+                >
+                  <img src={p.img} alt="" width="900" height="900" loading="lazy" decoding="async" />
+                  <div className="oa-univers-body">
+                    <h3>{p.title}</h3>
+                    <div className="oa-univers-more">
+                      <div>
+                        <p>{p.text}</p>
+                        <span className="oa-univers-cta">Découvrir <i className="fas fa-arrow-right" /></span>
+                      </div>
+                    </div>
                   </div>
                 </Link>
               ))}
-            </div>
-            <div className="oa-center-cta" data-reveal>
-              <Link href="/services" className="btn btn-rose-gold">Voir toutes nos prestations</Link>
             </div>
           </div>
         </section>
 
         {/* CATALOGUE */}
         {catalogueTeaser.length > 0 && (
-          <section className="oa-section oa-section-tight oa-catalogue-teaser">
+          <section className="oa-section oa-section-tight oa-catalogue-teaser oa-panels-light">
             <div className="oa-container">
-              <div className="oa-section-head oa-section-head-split" data-reveal>
-                <div>
-                  <span className="oa-eyebrow">Catalogue</span>
-                  <h2 className="oa-section-title">Choisissez votre mobilier</h2>
-                </div>
-                <Link href="/catalogue" className="oa-univers-link">Voir tout le catalogue <i className="fas fa-arrow-right" /></Link>
+              <div className="oa-univers-head" data-reveal>
+                <h2 className="oa-univers-title">Choisissez votre <em>mobilier</em></h2>
+                <Link href="/catalogue" className="oa-univers-all">
+                  Voir tout le catalogue <i className="fas fa-arrow-right" />
+                </Link>
               </div>
-              {/* Product cards modelled on options.fr's "Notre sélection du
-                  moment": borderless, square image, centered name + price;
-                  on hover a soft shadow and an "Ajouter au panier" button
-                  rising at the bottom of the image. */}
+              {/* Shop-style cards: "Choix OA" badge on the photo, category,
+                  serif name and a prominent price; on hover the card lifts
+                  and the "Ajouter au panier" button rises from the photo. */}
               <div className="oa-catalogue-teaser-grid" data-reveal>
                 {catalogueTeaser.map(m => {
                   const tiers = catalogueTiers[String(m.id)]
@@ -301,6 +318,7 @@ export default function Home({ realisations }) {
                   return (
                     <article className={`oa-product-card${added ? ' is-added' : ''}`} key={m.id}>
                       <div className="oa-product-media">
+                        <span className="oa-teaser-badge">Choix <em>OA</em></span>
                         <Link href={m.href} className="oa-product-media-link" tabIndex={-1} aria-hidden="true">
                           {m.image_url
                             ? <img src={m.image_url} alt="" loading="lazy" />
@@ -325,8 +343,13 @@ export default function Home({ realisations }) {
                         )}
                       </div>
                       <div className="oa-product-details">
+                        {m.category && <p className="oa-teaser-category">{m.category.toLowerCase()}</p>}
                         <h3 className="oa-product-name"><Link href={m.href}>{m.displayName}</Link></h3>
-                        {price > 0 && <p className="oa-product-price">dès {price.toFixed(2)} €</p>}
+                        {price > 0 && (
+                          <p className="oa-product-price">
+                            <span>dès</span> <strong>{price.toFixed(2).replace('.', ',')} €</strong>
+                          </p>
+                        )}
                       </div>
                     </article>
                   )
