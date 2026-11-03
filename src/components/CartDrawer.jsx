@@ -90,7 +90,7 @@ export default function CartDrawer({ cart, closeRef, onClose, open }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="oah-cart-title"
-      inert={open ? undefined : ''}
+      inert={!open}
     >
       <div className="oah-cart-head">
         <div>

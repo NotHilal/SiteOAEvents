@@ -82,7 +82,7 @@ export default function AccountMenu() {
         <span className="oah-tooltip" aria-hidden="true">Mon compte</span>
       </Link>
 
-      <div id="oah-account-menu" className="oah-account-menu" inert={open ? undefined : ''}>
+      <div id="oah-account-menu" className="oah-account-menu" inert={!open}>
         <ul className="oah-account-list">
           {user ? <>
             <li><Link href="/mon-compte" className="oah-account-item"><Icon name="grid" size={18} strokeWidth={1.5} />Mon compte</Link></li>

@@ -89,7 +89,7 @@ export default function ContactMenu() {
         <span className="oah-tooltip" aria-hidden="true">Nous contacter</span>
       </button>
 
-      <div id="oah-contact-menu" className="oah-account-menu" inert={open ? undefined : ''}>
+      <div id="oah-contact-menu" className="oah-account-menu" inert={!open}>
         <ul className="oah-account-list">
           <li>
             {SITE.phone ? (

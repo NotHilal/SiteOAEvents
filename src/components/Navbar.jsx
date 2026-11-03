@@ -258,7 +258,7 @@ export default function Navbar() {
         role="dialog"
         aria-modal="true"
         aria-label="Menu"
-        inert={menuOpen ? undefined : ''}
+        inert={!menuOpen}
       >
         <div className="oah-drawer-top">
           <button
