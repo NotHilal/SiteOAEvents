@@ -25,10 +25,9 @@ const LOCATION_HREF = '/#nous-trouver'
 // Full-screen menu: each main page gets a photo that takes over the right
 // half of the menu while its link is hovered or focused.
 const MAIN_LINKS = [
-  { href: '/', label: 'Accueil', image: '/videos/oa-hero-poster.jpg', caption: "Location de matériel événementiel en Île-de-France" },
+  { href: '/', label: 'Accueil', image: '/videos/oa-hero-poster.jpg', caption: "Location de matériel événementiel dans toute la France" },
   { href: '/catalogue', label: 'Catalogue', image: '/catalogue/Tables_1200x670.jpg', caption: 'Location de mobilier et de décoration' },
   { href: '/evenements', label: 'Événements', image: '/pics/tables-rondes-sous-tente.jpg', caption: 'Le matériel à louer pour chaque occasion' },
-  { href: '/location-materiel-evenementiel', label: 'Zones de livraison', image: '/pics/tente-chaises-tables.jpg', caption: 'Livré et installé en Île-de-France' },
   { href: '/nos-realisations', label: 'Nos réalisations', image: '/catalogue/Decorations_800x800.jpg', caption: 'Nos événements en images' },
   { href: '/a-propos', label: 'À Propos', image: '/catalogue/Chaises_600x800.jpg', caption: 'La maison OA Événementiel' },
 ]
@@ -187,7 +186,7 @@ export default function Navbar() {
             <span className="oah-logo-mark" aria-hidden="true" />
             <span className="oah-logo-words oah-fold">
               <span className="oah-logo-name">OA Événementiel</span>
-              <span className="oah-logo-tagline">Location · Île-de-France</span>
+              <span className="oah-logo-tagline">Location · Toute la France</span>
             </span>
           </Link>
         </div>

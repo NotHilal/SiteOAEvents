@@ -139,7 +139,7 @@ export default function Contact() {
                 <p className="section-text">N'hésitez pas à nous contacter pour toute demande de renseignements ou pour démarrer la planification de votre événement.</p>
 
                 {[
-                  { icon: 'fas fa-map-marker-alt', title: 'Localisation', text: `${SITE.address.street}, ${SITE.address.postalCode} ${SITE.address.city}`, note: 'Livraison dans toute l’Île-de-France', id: 'localisation' },
+                  { icon: 'fas fa-map-marker-alt', title: 'Localisation', text: `${SITE.address.street}, ${SITE.address.postalCode} ${SITE.address.city}`, note: 'Livraison dans toute la France', id: 'localisation' },
                   { icon: 'fas fa-phone', title: 'Téléphone', text: 'Sur demande' },
                   { icon: 'fas fa-envelope', title: 'Email', text: 'contact@oa-evenementiel.fr', href: 'mailto:contact@oa-evenementiel.fr' },
                   { icon: 'fas fa-clock', title: 'Disponibilité', text: 'Lun – Dim : 9h – 20h', note: 'Livraison et installation possibles 24h/24, 7j/7' },

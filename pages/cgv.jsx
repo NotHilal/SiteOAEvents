@@ -67,9 +67,7 @@ export default function Cgv() {
       <h2>5. Livraison, installation et reprise</h2>
       <ul>
         <li>
-          Zone d'intervention : {SITE.region} (Paris, Seine-et-Marne, Yvelines, Essonne, Hauts-de-Seine,
-          Seine-Saint-Denis, Val-de-Marne et Val-d'Oise). Pour une livraison hors de cette zone, le Client
-          contacte le Prestataire avant de commander.
+          Zone d'intervention : toute la France métropolitaine. Le matériel est livré et installé à l'adresse indiquée par le Client lors de la commande.
         </li>
         <li>
           La livraison et la reprise sont possibles tous les jours. Le Prestataire contacte le Client avant

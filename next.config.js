@@ -85,6 +85,8 @@ const nextConfig = {
         permanent: true,
       },
       ...['/galerie', '/nos-experiences'].map(source => ({ source, destination: '/nos-realisations', permanent: true })),
+      { source: '/location-materiel-evenementiel/:path*', destination: '/', permanent: true },
+      { source: '/location-materiel-evenementiel', destination: '/', permanent: true },
       // The old one-page admin was replaced by /admin (App Router, src/admin/).
       { source: '/espace-oa', destination: '/admin', permanent: false },
       // The online quote simulation was removed — bookmarks land on the real booking.

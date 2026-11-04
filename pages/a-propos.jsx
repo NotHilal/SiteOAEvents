@@ -13,8 +13,8 @@ const VALUE_ICONS = ['/return.avif', '/delivery-truck.avif', '/customer-service.
 const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1600&q=75&auto=format&fit=crop'
 
 const DEFAULT_CONTENT = {
-  headline: "Location et décoration d'événements en Île-de-France",
-  story: "OA Événementiel est née en 2026 d'une conviction simple : chaque réception mérite un décor à la hauteur de ce qu'elle célèbre. Installée à Chanteloup-les-Vignes, dans les Yvelines, l'entreprise accompagne particuliers et professionnels partout en Île-de-France.\n\nMariages, anniversaires, baptêmes, séminaires ou soirées d'entreprise : nous louons le mobilier, la vaisselle et la décoration de vos événements, et nous pouvons aussi les imaginer, les coordonner et les installer de A à Z. Vous composez votre sélection en ligne, nous livrons, montons et reprenons le matériel.\n\nUne question, un projet ? Écrivez-nous à contact@oa-evenementiel.fr, nous vous répondons rapidement.",
+  headline: "Location et décoration d'événements dans toute la France",
+  story: "OA Événementiel est née en 2026 d'une conviction simple : chaque réception mérite un décor à la hauteur de ce qu'elle célèbre. Installée à Chanteloup-les-Vignes, dans les Yvelines, l'entreprise accompagne particuliers et professionnels partout en France.\n\nMariages, anniversaires, baptêmes, séminaires ou soirées d'entreprise : nous louons le mobilier, la vaisselle et la décoration de vos événements, et nous pouvons aussi les imaginer, les coordonner et les installer de A à Z. Vous composez votre sélection en ligne, nous livrons, montons et reprenons le matériel.\n\nUne question, un projet ? Écrivez-nous à contact@oa-evenementiel.fr, nous vous répondons rapidement.",
   photoUrl: null,
   headerImg: null,
   counters: [
@@ -61,7 +61,7 @@ export default function APropos() {
     <>
       <Seo
         title="À propos d'OA Événementiel, loueur dans les Yvelines"
-        description="Installée à Chanteloup-les-Vignes (78), OA Événementiel loue le matériel et la décoration de vos réceptions et les installe partout en Île-de-France."
+        description="Installée à Chanteloup-les-Vignes (78), OA Événementiel loue le matériel et la décoration de vos réceptions et les installe partout en France."
         path="/a-propos"
         breadcrumb={[{ name: 'À propos', path: '/a-propos' }]}
         preloadImage={PAGE_HEADER_DEFAULT}

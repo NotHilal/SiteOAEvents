@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { openCookieSettings } from '../lib/consent.js'
 import { SITE } from '../lib/site.js'
 import { CATEGORY_SEO } from '../lib/seo/catalogue.js'
-import { ZONES, EVENTS } from '../lib/seo/landings.js'
+import { EVENTS } from '../lib/seo/landings.js'
 
 const SOCIALS = [
   { key: 'facebook', label: 'Facebook', icon: 'fab fa-facebook-f' },
@@ -34,7 +34,7 @@ export default function Footer() {
                 />
               </Link>
               <p className="footer-text">
-                Location de matériel événementiel en Île-de-France : tentes, mobilier, vaisselle et décoration, livrés et installés.
+                Location de matériel événementiel dans toute la France : tentes, mobilier, vaisselle et décoration, livrés et installés.
               </p>
               {/* Social icons pointed to "#!" (dead links). They render again
                   as soon as real profile URLs are filled in SITE.social
@@ -114,11 +114,17 @@ export default function Footer() {
               </ul>
             </div>
             <div>
-              <h2 className="footer-widget-title">Zones de livraison</h2>
+              <h2 className="footer-widget-title">Livraison</h2>
               <ul role="list">
-                {ZONES.map(z => (
-                  <li key={z.slug}><Link href={`/location-materiel-evenementiel/${z.slug}`} className="list-text-link">{z.name} ({z.code})</Link></li>
-                ))}
+                <li className="list-text-link" style={{ color: 'var(--oah-ivory)', fontWeight: 600 }}>
+                  TOUTE la France
+                </li>
+                <li style={{ marginTop: '8px', color: 'var(--oa-muted)', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                  Livraison et installation 7j/7 partout en France métropolitaine.
+                </li>
+                <li style={{ marginTop: '10px' }}>
+                  <Link href="/catalogue/complet" className="list-text-link">Voir le catalogue complet →</Link>
+                </li>
               </ul>
             </div>
             <div>

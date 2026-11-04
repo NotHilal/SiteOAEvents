@@ -58,9 +58,9 @@ export default function CategoryPage({ slug, ...listing }) {
               </section>
             ))}
             <section>
-              <h2>Livraison dans toute l’Île-de-France</h2>
+              <h2>Livraison dans toute la France</h2>
               <p>
-                Nous livrons à <Link href="/location-materiel-evenementiel/paris">Paris</Link>, dans les <Link href="/location-materiel-evenementiel/yvelines">Yvelines</Link> et dans <Link href="/location-materiel-evenementiel">tous les départements franciliens</Link>.
+                Nous livrons et installons notre matériel dans <strong>toute la France</strong>, avec des frais calculés automatiquement selon la distance routière.
                 {' '}Une idée précise de votre événement ? Voir notre sélection pour {EVENTS.map((e, i) => (
                   <span key={e.slug}>{i > 0 && (i === EVENTS.length - 1 ? ' et ' : ', ')}<Link href={`/evenements/${e.slug}`}>{e.label}</Link></span>
                 ))}.

@@ -305,7 +305,7 @@ export const FAQ_GROUPS = [
   {
     h: 'Livraison et installation',
     items: [
-      { q: 'Dans quelles zones livrez-vous ?', a: 'Nous intervenons dans toute l’Île-de-France : [Paris](/location-materiel-evenementiel/paris), [Yvelines](/location-materiel-evenementiel/yvelines), [Hauts-de-Seine](/location-materiel-evenementiel/hauts-de-seine), [Val-d’Oise](/location-materiel-evenementiel/val-d-oise), [Essonne](/location-materiel-evenementiel/essonne), [Seine-Saint-Denis](/location-materiel-evenementiel/seine-saint-denis), [Val-de-Marne](/location-materiel-evenementiel/val-de-marne) et [Seine-et-Marne](/location-materiel-evenementiel/seine-et-marne).' },
+      { q: 'Dans quelles zones livrez-vous ?', a: 'Nous livrons dans TOUTE la France métropolitaine. Le montant de la livraison dépend de la distance routière entre notre dépôt et votre adresse et s’affiche automatiquement avant le paiement.' },
       { q: 'Combien coûte la livraison ?', a: 'Elle dépend de la distance routière entre notre dépôt et votre adresse (forfait fixe + prix au kilomètre). Le montant exact s’affiche avant le paiement.' },
       { q: 'Quand peut-on être livré ?', a: 'La livraison et l’installation sont possibles 24h/24 et 7j/7. Notre équipe vous répond tous les jours de 9h à 20h.' },
       { q: 'L’installation d’une tente est-elle incluse ?', a: 'Oui, l’installation, la désinstallation et le lestage sont inclus dans le prix des [tentes de réception](/location/tentes), hors frais kilométriques.' },

@@ -2,7 +2,7 @@ import { getRealisations } from '../src/lib/realisations-server.js'
 import { getCatalogueCards } from '../src/lib/catalogue-cards.js'
 import { catalogueCategoryHref } from '../src/components/product/productUtils.js'
 import { SITE_URL, PUBLIC_PAGES } from '../src/lib/site.js'
-import { ZONES, EVENTS, GUIDES } from '../src/lib/seo/landings.js'
+import { EVENTS, GUIDES } from '../src/lib/seo/landings.js'
 
 // Generated on request from PUBLIC_PAGES (src/lib/site.js) plus the catalogue
 // (categories and products at their canonical URLs; variants share their
@@ -48,7 +48,6 @@ async function realisationPages() {
 }
 
 const contentPages = [
-  ...ZONES.map(z => ({ path: `/location-materiel-evenementiel/${z.slug}`, images: [{ src: z.image }] })),
   ...EVENTS.map(e => ({ path: `/evenements/${e.slug}`, images: [{ src: e.image }] })),
   ...GUIDES.map(g => ({ path: `/guides/${g.slug}`, lastmod: g.updated || g.published, images: [{ src: g.image }] })),
 ]

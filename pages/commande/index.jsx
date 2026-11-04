@@ -379,7 +379,7 @@ export default function Checkout() {
             {!dates.length && <p className="ck-hint">Les tarifs s’ajustent à la date choisie (semaine ou week-end).</p>}
             <ul className="ck-trust">
               <li><i className="fas fa-lock" /> Paiement sécurisé par Stripe</li>
-              <li><i className="fas fa-truck" /> Livraison et installation en Île-de-France</li>
+              <li><i className="fas fa-truck" /> Livraison et installation dans toute la France</li>
               <li><i className="fas fa-envelope-open-text" /> Confirmation immédiate par email</li>
             </ul>
             <Link href="/catalogue/complet" className="ck-link ck-continue"><i className="fas fa-arrow-left" /> Continuer mes achats</Link>

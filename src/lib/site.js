@@ -14,7 +14,7 @@ export const SITE = {
   // the real number is known: the header's phone icon then leads to the
   // contact page instead of a tel: link.
   phone: process.env.NEXT_PUBLIC_SITE_PHONE || '',
-  region: 'Île-de-France',
+  region: 'Toute la France',
   // Registered office (Kbis, same as /mentions-legales). Keep name, address
   // and phone strictly identical on Google Business Profile and directories.
   legalName: 'OA Événementiel',
@@ -39,7 +39,7 @@ export const SITE = {
     pinterest: '',
   },
   description:
-    "Location de matériel événementiel en Île-de-France : tentes, tables, chaises, vaisselle et décoration pour mariages, anniversaires et événements d'entreprise.",
+    "Location de matériel événementiel dans toute la France : tentes, tables, chaises, vaisselle et décoration pour mariages, anniversaires et événements d'entreprise.",
 };
 
 // Static, indexable pages — drives the sitemap together with the generated
@@ -49,7 +49,6 @@ export const PUBLIC_PAGES = [
   '/',
   '/catalogue',
   '/catalogue/complet',
-  '/location-materiel-evenementiel',
   '/evenements',
   '/guides',
   '/faq',

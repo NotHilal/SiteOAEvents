@@ -46,7 +46,7 @@ export default function Catalogue({ tiles, productCount }) {
     <>
       <Seo
         title="Catalogue de location de matériel événementiel"
-        description="Tentes, tables, chaises, banquettes, vaisselle, décoration et accessoires : découvrez par catégorie tout le matériel à louer pour vos réceptions en Île-de-France."
+        description="Tentes, tables, chaises, banquettes, vaisselle, décoration et accessoires : découvrez par catégorie tout le matériel à louer pour vos réceptions partout en France."
         path="/catalogue"
         breadcrumb={[{ name: 'Catalogue', path: '/catalogue' }]}
         preloadImage={PAGE_HEADER_DEFAULT}

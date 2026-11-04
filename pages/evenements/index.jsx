@@ -6,7 +6,7 @@ import { EVENTS } from '../../src/lib/seo/landings.js'
 const PATH = '/evenements'
 const NAME = 'Événements'
 const PAGE = {
-  lead: 'Mariage, anniversaire, baptême, communion ou événement d’entreprise : découvrez le matériel à louer pour chaque occasion, livré en Île-de-France.',
+  lead: 'Mariage, anniversaire, baptême, communion ou événement d’entreprise : découvrez le matériel à louer pour chaque occasion, livré dans toute la France.',
   image: '/pics/tables-rondes-sous-tente.jpg',
   imageAlt: 'Tables rondes dressées sous une tente de réception',
 }
@@ -16,7 +16,7 @@ export default function EventsHub() {
     <>
       <Seo
         title="Location de matériel selon votre événement"
-        description="Mariage, anniversaire, baptême, communion ou séminaire : le matériel à louer pour chaque occasion, livré et installé en Île-de-France."
+        description="Mariage, anniversaire, baptême, communion ou séminaire : le matériel à louer pour chaque occasion, livré et installé dans toute la France."
         path={PATH}
         image={PAGE.image}
         imageAlt={PAGE.imageAlt}

@@ -20,7 +20,7 @@ export default function CatalogueComplet(props) {
     <>
       <Seo
         title="Tout le matériel à louer : tentes, tables, chaises, vaisselle"
-        description="Tous nos articles à louer en Île-de-France, avec leurs prix : tentes de réception, tables, chaises, banquettes, vaisselle, décoration et accessoires."
+        description="Tous nos articles à louer dans toute la France, avec leurs prix : tentes de réception, tables, chaises, banquettes, vaisselle, décoration et accessoires."
         path={PATH}
         breadcrumb={[{ name: 'Catalogue', path: '/catalogue' }, { name: props.title, path: PATH }]}
       />

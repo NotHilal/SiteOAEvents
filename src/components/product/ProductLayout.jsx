@@ -36,10 +36,10 @@ export default function ProductLayout({ product, images, imageAlt, imageCaption,
 
       {editorial && (
         <section className="seo-product-text" aria-labelledby="pdp-about-title">
-          <h2 id="pdp-about-title">{product.name} à louer en Île-de-France</h2>
+          <h2 id="pdp-about-title">{product.name} à louer dans toute la France</h2>
           <p>{editorial.lead}</p>
           <p><RichText text={editorial.body} /></p>
-          <p className="seo-product-delivery">Livraison dans toute l’Île-de-France, avec un total calculé avant le paiement. <Link href="/faq">Questions fréquentes</Link> · <Link href="/location-materiel-evenementiel">Zones de livraison</Link></p>
+          <p className="seo-product-delivery">Livraison et installation dans toute la France, avec un montant calculé automatiquement avant le paiement. <Link href="/faq">Questions fréquentes</Link></p>
         </section>
       )}
 
