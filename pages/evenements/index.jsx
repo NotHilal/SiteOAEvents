@@ -1,6 +1,6 @@
 import Seo from '../../src/components/Seo.jsx'
 import LandingPage from '../../src/components/seo/LandingPage.jsx'
-import HubCards from '../../src/components/seo/HubCards.jsx'
+import OccasionPanels from '../../src/components/seo/OccasionPanels.jsx'
 import { EVENTS } from '../../src/lib/seo/landings.js'
 
 const PATH = '/evenements'
@@ -24,7 +24,7 @@ export default function EventsHub() {
         breadcrumb={[{ name: NAME, path: PATH }]}
       />
       <LandingPage page={PAGE} h1="Location de matériel pour tous vos événements" crumbs={[{ name: NAME, path: PATH }]}>
-        <HubCards items={EVENTS.map(e => ({ href: `${PATH}/${e.slug}`, image: e.image, imageAlt: e.imageAlt, title: e.name, text: e.lead }))} />
+        <OccasionPanels items={EVENTS.map(e => ({ href: `${PATH}/${e.slug}`, image: e.image, imageAlt: e.imageAlt, title: e.name, text: e.lead }))} />
       </LandingPage>
     </>
   )

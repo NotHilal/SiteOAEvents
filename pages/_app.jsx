@@ -34,7 +34,7 @@ export default function App({ Component, pageProps }) {
   // iframe) and get the same bare layout.
   const isAdmin = router.pathname === '/espace-oa' || router.pathname.startsWith('/example')
   // asPath without its #hash: jumping to an anchor on the same page
-  // (e.g. the header's /contact#localisation) mustn't remount the page.
+  // (e.g. the header's /#nous-trouver) mustn't remount the page.
   const pagePath = router.asPath.split('#')[0]
 
   // 'idle' | 'loading' | 'done' — drives the top progress bar. 'loading'
@@ -78,11 +78,13 @@ export default function App({ Component, pageProps }) {
   // ends: that animation starts the content 28px lower and scaled down, so
   // the first landing spot is slightly off. Links to an anchor on another
   // page pass scroll={false} so Next's own hash scroll doesn't fight this.
+  // [data-scroll-flush] targets go to the very top instead: full-screen
+  // sections whose own padding clears the header.
   const scrollToHash = ({ immediate }) => {
     const id = decodeURIComponent(window.location.hash.slice(1))
     const target = id && document.getElementById(id)
     if (!target) return false
-    const offset = -((document.querySelector('.oah')?.offsetHeight || 0) + 16)
+    const offset = 'scrollFlush' in target.dataset ? 0 : -((document.querySelector('.oah')?.offsetHeight || 0) + 16)
     if (lenisRef.current) lenisRef.current.scrollTo(target, immediate ? { immediate: true, offset } : { offset, duration: 0.5 })
     else window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY + offset, behavior: immediate ? 'instant' : 'smooth' })
     return true

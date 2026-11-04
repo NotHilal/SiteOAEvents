@@ -255,7 +255,11 @@
 }
 
 /* ---------- Votre loueur en Île-de-France : bandeau nuit, liens en lignes ---------- */
+/* Fills the screen: the header's "Nous trouver" lands here, all in ink. */
 .home-loueur.oa-section {
+  display: grid;
+  align-content: center;
+  min-height: 100svh;
   padding-block: clamp(64px, 8vw, 112px);
   background: var(--oah-ink);
   color: var(--oah-ivory);

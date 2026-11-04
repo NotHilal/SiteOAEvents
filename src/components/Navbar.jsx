@@ -19,8 +19,8 @@ import { SITE } from '../lib/site.js'
 // the transition is one continuous movement. Every page lives in the
 // full-screen editorial menu.
 
-// "Nous trouver" target: the Localisation block on the contact page.
-const LOCATION_HREF = '/contact#localisation'
+// "Nous trouver" target: the occasions, zones and guides block on the homepage.
+const LOCATION_HREF = '/#nous-trouver'
 
 // Full-screen menu: each main page gets a photo that takes over the right
 // half of the menu while its link is hovered or focused.

@@ -81,6 +81,223 @@
 .seo-hub-card-text { display: block; margin-top: 6px; font-size: .875rem; line-height: 1.55; color: var(--oa-muted); }
 .seo-page-body .seo-hub-card:hover .seo-hub-card-title { color: var(--oa-accent-ink); }
 
+/* ===== OCCASIONS (/evenements) =====
+   Tiles on small and touch screens; from 1100px with a mouse, a frieze of
+   full-height panels (see below). Breaks out of the 860px text column to line
+   up with the page head. */
+.seo-occ-grid {
+  --occ-w: calc(min(100vw, var(--oa-container-max)) - 2 * var(--oa-container-pad));
+  --occ-pad: clamp(18px, 1.9vw, 26px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: var(--occ-w);
+  margin: clamp(40px, 5vw, 64px) calc(50% - var(--occ-w) / 2) 72px;
+  padding: 0 !important;
+  list-style: none;
+}
+.seo-occ-grid > li { min-width: 0; }
+.seo-page-body .seo-occ-link,
+.seo-page-body .seo-occ-link:hover {
+  color: var(--oah-ivory);
+  text-decoration: none;
+}
+.seo-page-body .seo-occ-link {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  min-height: clamp(340px, 56vw, 480px);
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--oah-ink);
+  isolation: isolate;
+}
+.seo-occ-photo {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Scrim: the photos are light and pastel, the ivory text needs it to read. */
+.seo-occ-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(to top, rgba(14, 11, 7, .92) 0%, rgba(14, 11, 7, .78) 30%, rgba(14, 11, 7, 0) 66%);
+}
+.seo-occ-body {
+  display: block;
+  padding: var(--occ-pad);
+  padding-right: calc(var(--occ-pad) + 58px);
+}
+.seo-occ-title {
+  display: block;
+  font-family: var(--oah-font-serif);
+  font-size: clamp(1.6rem, 2.2vw, 2rem);
+  line-height: 1.08;
+  text-wrap: balance;
+}
+.seo-occ-text {
+  display: block;
+  max-width: 46ch;
+  margin-top: 10px;
+  color: var(--oah-ivory);
+  font-size: .98rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+.seo-occ-arrow {
+  position: absolute;
+  right: var(--occ-pad);
+  bottom: var(--occ-pad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--oah-gold);
+  color: var(--oah-ink);
+  font-size: .82rem;
+  transition: scale .12s ease;
+}
+.seo-occ-link:active .seo-occ-arrow { scale: .94; }
+.seo-occ-link:focus-visible { outline: 2px solid var(--oa-accent-ink); outline-offset: 3px; }
+
+@media (max-width: 620px) {
+  .seo-occ-grid { grid-template-columns: minmax(0, 1fr); }
+  .seo-page-body .seo-occ-link { min-height: 0; aspect-ratio: 1; }
+}
+
+/* The frieze: four panels side by side with no gap, split by a gold hairline.
+   Each <li> fills the whole frieze and clip-path shows only its slice, between
+   --l and --r, so opening one moves nothing but clip-path, translate and
+   opacity, and no layout runs. The photo keeps the open panel's width, so the
+   slice only uncovers more of it. */
+@media (min-width: 1100px) and (hover: hover) and (pointer: fine) {
+  .seo-occ-grid {
+    --occ-open: 46cqw;
+    --occ-closed: 18cqw;
+    --occ-move: .38s var(--oah-ease);
+    position: relative;
+    display: block;
+    height: clamp(480px, 44vw, 620px);
+    overflow: hidden;
+    border-radius: 6px;
+    background: var(--oah-ink);
+    box-shadow: 0 28px 56px -28px rgba(20, 17, 12, .5);
+    container-type: inline-size;
+  }
+  .seo-occ-grid > li {
+    position: absolute;
+    inset: 0;
+    clip-path: inset(0 calc(100cqw - var(--r)) 0 var(--l));
+    transition: clip-path var(--occ-move);
+  }
+
+  .seo-occ-grid > li:nth-child(1) { --l: 0cqw; --r: 46cqw; --on: 1; }
+  .seo-occ-grid > li:nth-child(2) { --l: 46cqw; --r: 64cqw; --on: 0; }
+  .seo-occ-grid > li:nth-child(3) { --l: 64cqw; --r: 82cqw; --on: 0; }
+  .seo-occ-grid > li:nth-child(4) { --l: 82cqw; --r: 100cqw; --on: 0; }
+
+  .seo-occ-grid:has(> li:nth-child(n + 2):hover) > li:nth-child(1),
+  .seo-occ-grid:has(> li:nth-child(n + 2) a:focus-visible) > li:nth-child(1) { --r: 18cqw; --on: 0; }
+
+  .seo-occ-grid:has(> li:nth-child(2):hover) > li:nth-child(2),
+  .seo-occ-grid:has(> li:nth-child(2) a:focus-visible) > li:nth-child(2) { --l: 18cqw; --on: 1; }
+
+  .seo-occ-grid:has(> li:nth-child(n + 3):hover) > li:nth-child(2),
+  .seo-occ-grid:has(> li:nth-child(n + 3) a:focus-visible) > li:nth-child(2) { --l: 18cqw; --r: 36cqw; }
+
+  .seo-occ-grid:has(> li:nth-child(3):hover) > li:nth-child(3),
+  .seo-occ-grid:has(> li:nth-child(3) a:focus-visible) > li:nth-child(3) { --l: 36cqw; --on: 1; }
+
+  .seo-occ-grid:has(> li:nth-child(4):hover) > li:nth-child(3),
+  .seo-occ-grid:has(> li:nth-child(4) a:focus-visible) > li:nth-child(3) { --l: 36cqw; --r: 54cqw; }
+
+  .seo-occ-grid:has(> li:nth-child(4):hover) > li:nth-child(4),
+  .seo-occ-grid:has(> li:nth-child(4) a:focus-visible) > li:nth-child(4) { --l: 54cqw; --on: 1; }
+
+  /* Gold hairline on each panel's left edge. */
+  .seo-occ-grid > li + li::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+    width: 1px;
+    background: var(--oah-gold);
+    opacity: .55;
+    pointer-events: none;
+    translate: var(--l);
+    transition: translate var(--occ-move);
+  }
+
+  .seo-page-body .seo-occ-link { position: absolute; inset: 0; display: block; min-height: 0; overflow: visible; border-radius: 0; }
+  .seo-occ-link:focus-visible { outline: none; }
+  .seo-occ-link:focus-visible::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 6px;
+    width: calc(var(--r) - var(--l) - 12px);
+    outline: 2px solid var(--oah-gold-bright);
+    translate: var(--l);
+  }
+
+  /* Centred on its slice, so it slides at half the speed of the panel edges. */
+  .seo-occ-photo {
+    width: var(--occ-open);
+    opacity: calc(.72 + .28 * var(--on));
+    translate: calc((var(--l) + var(--r) - var(--occ-open)) / 2);
+    transition: translate var(--occ-move), opacity .3s ease;
+  }
+
+  .seo-occ-body {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: var(--occ-open);
+    padding: var(--occ-pad);
+    translate: var(--l);
+    transition: translate var(--occ-move);
+  }
+  /* Fixed widths: nothing rewraps while a panel opens. The text area is
+     reserved on every panel, so the names all share one baseline. */
+  .seo-occ-title { width: calc(var(--occ-closed) - 2 * var(--occ-pad)); font-size: 2.2cqw; }
+  .seo-occ-text {
+    width: calc(var(--occ-open) - 2 * var(--occ-pad) - 58px);
+    height: 6.2rem;
+    opacity: var(--on);
+    transition: opacity .2s ease calc(var(--on) * 90ms);
+  }
+
+  /* Waits under the name on a closed panel, crosses to the far edge on opening. */
+  .seo-occ-arrow {
+    right: auto;
+    left: 0;
+    background: color-mix(in srgb, var(--oah-gold) calc(var(--on) * 100%), transparent);
+    box-shadow: inset 0 0 0 1px var(--oah-gold);
+    color: color-mix(in srgb, var(--oah-ink) calc(var(--on) * 100%), var(--oah-ivory));
+    translate: calc(var(--l) + var(--occ-pad) + var(--on) * (var(--r) - var(--l) - 2 * var(--occ-pad) - 42px));
+    transition: translate var(--occ-move), background-color .2s ease, color .2s ease, scale .12s ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seo-occ-grid > li,
+  .seo-occ-grid > li::before,
+  .seo-occ-photo,
+  .seo-occ-body,
+  .seo-occ-arrow { transition: opacity .2s ease, background-color .2s ease, color .2s ease; }
+}
+
 .seo-faq { margin-top: 40px; }
 .seo-faq details { border-bottom: 1px solid rgba(0, 0, 0, .12); }
 .seo-faq summary {

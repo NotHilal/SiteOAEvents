@@ -245,7 +245,7 @@ export default function Home({ realisations, selection, productCount }) {
 
 
         {/* LOCATION EN ÎLE-DE-FRANCE — occasions, zones and guides */}
-        <section className="oa-section seo-home home-loueur" aria-labelledby="seo-home-title">
+        <section id="nous-trouver" data-scroll-flush className="oa-section seo-home home-loueur" aria-labelledby="seo-home-title">
           <div className="oa-container">
             <div className="home-loueur-intro" data-reveal>
               <h2 id="seo-home-title" className="home-title">Tout le matériel de votre événement, <em>au même endroit</em></h2>
