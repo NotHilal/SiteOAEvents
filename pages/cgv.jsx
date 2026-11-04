@@ -96,16 +96,23 @@ export default function Cgv() {
 
       <h2>7. Droit de rétractation</h2>
       <p>
-        Le Client consommateur dispose de 14 jours à compter de la commande pour se rétracter, sans motif, en
-        adressant une déclaration claire à <a href={`mailto:${SITE.email}`}>{SITE.email}</a>. Il peut utiliser le
-        modèle suivant : « Je notifie par la présente ma rétractation du contrat portant sur la commande n° …,
-        passée le …. Nom, adresse, date. »
+        Conformément aux dispositions de l'article L. 221-18 du Code de la consommation, le Client consommateur dispose d'un
+        délai de 14 jours calendaires à compter de la confirmation de la commande pour exercer son droit de rétractation sans
+        avoir à justifier de motifs ni à payer de pénalités.
       </p>
       <p>
-        Le Prestataire rembourse les sommes versées dans les 14 jours suivant la réception de la rétractation,
-        sur le moyen de paiement utilisé. Si le Client a demandé que la location commence avant la fin de ce
-        délai, il reste redevable du montant correspondant à la prestation déjà fournie. Le droit de rétractation
-        ne peut plus être exercé lorsque la prestation a été pleinement exécutée.
+        Pour exercer ce droit, le Client adresse sa déclaration dénuée d'ambiguïté par e-mail à{' '}
+        <a href={`mailto:${SITE.email}`}>{SITE.email}</a> ou par courrier postal au siège social, en utilisant le{' '}
+        <Link href="/retractation">formulaire de rétractation en ligne</Link> ou le modèle figurant en annexe des présentes conditions.
+      </p>
+      <p>
+        Le Prestataire rembourse la totalité des sommes versées dans les 14 jours suivant la réception de la demande,
+        sur le moyen de paiement utilisé lors de la commande. Conformément à l'article L. 221-25 du Code de la consommation,
+        si le Client a expressément demandé que la prestation commence avant la fin du délai de rétractation (par exemple
+        en réservant pour un événement intervenant dans ce délai), il verse au Prestataire un montant correspondant au
+        service fourni jusqu'à la communication de sa rétractation. Par ailleurs, conformément à l'article L. 221-28 12° du
+        Code de la consommation, le droit de rétractation ne peut être exercé pour les prestations pleinement exécutées
+        ou pour des prestations de services d'activités de loisirs devant être fournies à une date ou à une période déterminée.
       </p>
 
       <h2>8. Modification et annulation</h2>
@@ -116,59 +123,109 @@ export default function Cgv() {
           confirmée par écrit, avec l'éventuelle différence de prix.
         </li>
         <li>
-          En dehors du droit de rétractation, l'annulation à l'initiative du Client est adressée par écrit à la
-          même adresse. Le montant de la commande est remboursé à 100 % si l'annulation intervient plus de 30 jours
-          avant l'événement, à 50 % de 30 à 8 jours avant, et n'est pas remboursé à moins de 8 jours.
+          En dehors de l'exercice du droit de rétractation légal, l'annulation d'une commande à l'initiative du Client
+          est soumise au barème suivant : remboursement à 100 % si la demande intervient plus de 30 jours calendaires
+          avant l'événement, à 50 % entre 30 et 8 jours avant, et aucun remboursement à moins de 8 jours calendaires.
         </li>
         <li>
-          En cas d'annulation à l'initiative du Prestataire, le Client est intégralement remboursé, conformément
-          à l'article 4.
+          En cas d'annulation à l'initiative du Prestataire (hors cas de force majeure), le Client est intégralement
+          remboursé sur le moyen de paiement utilisé, sans indemnité complémentaire.
         </li>
         <li>
-          Aucune des parties n'est responsable d'un manquement causé par un cas de force majeure au sens de
-          l'article 1218 du Code civil.
+          Aucune des parties ne pourra être tenue pour responsable d'un manquement résultant d'un cas de force majeure
+          au sens de l'article 1218 du Code civil (notamment intempéries d'une intensité exceptionnelle rendant
+          l'installation de tentes dangereuse conformément aux normes de sécurité).
         </li>
       </ul>
 
       <h2>9. Retours et retards de restitution</h2>
       <p>
-        Le matériel est contrôlé à sa reprise. Lorsqu'il n'est pas disponible à l'horaire convenu du fait du
-        Client, chaque jour de retard entamé est facturé au prix d'une journée de location du matériel concerné.
+        Le matériel est vérifié et compté contradictoirement lors de la reprise par nos équipes. Lorsqu'il n'est pas tenu
+        à disposition à l'horaire convenu du fait du Client, chaque jour de retard entamé donne lieu à une indemnité
+        d'immobilisation équivalente au tarif journalier de location du matériel concerné.
       </p>
 
-      <h2>10. Casse, perte et dommages</h2>
+      <h2>10. Casse, perte, vol et dégradations</h2>
       <p>
-        Le matériel est placé sous la responsabilité du Client entre sa livraison et sa reprise. Toute casse ou
-        perte constatée est facturée au Client au coût de réparation ou de remplacement, sur justificatif.
+        Le matériel est placé sous l'entière garde juridique et matérielle du Client à compter de sa mise à disposition
+        ou livraison et jusqu'à sa reprise effective. En cas de casse, de perte, de vol ou de détérioration constatée
+        lors du contrôle de retour, les réparations ou le remplacement à neuf du matériel sont facturés au Client à prix
+        coûtant, sur justificatif.
       </p>
 
-      <h2>11. Responsabilité et assurance</h2>
+      <h2>11. Garanties légales</h2>
       <p>
-        Le Prestataire est responsable de la bonne exécution de ses obligations. Sa responsabilité ne peut être
-        engagée lorsque le dommage résulte d'une utilisation non conforme du matériel, du fait du Client ou d'un
-        tiers, ou d'un cas de force majeure. Ces dispositions ne limitent pas les droits que le Client consommateur
-        tient de la loi.
+        Le Client consommateur bénéficie des garanties légales prévues par la législation française :
+      </p>
+      <ul>
+        <li>
+          <strong>Garantie légale de conformité</strong> (articles L. 217-3 et suivants du Code de la consommation) : le
+          Prestataire est tenu de livrer un matériel conforme au contrat et répond des défauts de conformité existant lors
+          de la délivrance.
+        </li>
+        <li>
+          <strong>Garantie des vices cachés</strong> (articles 1641 et suivants du Code civil) : le Client peut agir si le
+          matériel loué est affecté de défauts cachés le rendant impropre à l'usage auquel on le destine.
+        </li>
+      </ul>
+
+      <h2>12. Responsabilité et assurance</h2>
+      <p>
+        Le Prestataire est couvert par une police d'assurance responsabilité civile professionnelle couvrant les dommages
+        corporels et matériels imputables à ses prestations. Sa responsabilité ne saurait être engagée en cas de mauvaise
+        utilisation du matériel par le Client ou ses invités, de non-respect des consignes de sécurité, ou de cas de force majeure.
       </p>
 
-      <h2>12. Réclamations et médiation</h2>
+      <h2>13. Réclamations et médiation de la consommation</h2>
       <p>
-        Toute réclamation peut être adressée à <a href={`mailto:${SITE.email}`}>{SITE.email}</a>. Conformément à
-        l'article L612-1 du Code de la consommation, le Client consommateur peut recourir gratuitement à un
-        médiateur de la consommation.
+        Pour toute réclamation, le Client s'adresse en priorité à notre service client :{' '}
+        <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.
+      </p>
+      <p>
+        Conformément aux articles L. 612-1 et suivants et R. 616-1 du Code de la consommation, en cas d'échec de la demande
+        de réclamation ou en l'absence de réponse dans un délai de deux mois, le Client consommateur peut recourir gratuitement
+        au médiateur de la consommation désigné par OA Événementiel :
+      </p>
+      <div className="legal-note">
+        <strong>CNPM MÉDIATION CONSOMMATION</strong><br />
+        27 avenue de la Libération, 42400 Saint-Chamond<br />
+        Site internet : <a href="https://cnpm-mediation-consommation.eu" target="_blank" rel="noopener noreferrer">https://cnpm-mediation-consommation.eu</a>
+      </div>
+      <p>
+        Le Client peut également utiliser la plateforme européenne de règlement en ligne des litiges :{' '}
+        <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer">https://ec.europa.eu/consumers/odr</a>.
       </p>
 
-      <h2>13. Données personnelles</h2>
+      <h2>14. Données personnelles</h2>
       <p>
-        Les données collectées lors de la réservation sont traitées conformément à notre{' '}
+        Les données à caractère personnel collectées font l'objet d'un traitement sécurisé conforme au RGPD.
+        Pour plus d'informations sur vos droits, consultez notre{' '}
         <Link href="/confidentialite">politique de confidentialité</Link>.
       </p>
 
-      <h2>14. Droit applicable</h2>
+      <h2>15. Droit applicable et litiges</h2>
       <p>
-        Les présentes conditions sont soumises au droit français. À défaut d'accord amiable, le litige sera porté
-        devant les juridictions compétentes. Pour les Clients professionnels, le tribunal de commerce de
-        Versailles est seul compétent.
+        Les présentes conditions générales sont régies par le droit français. En cas de litige non résolu amiablement,
+        les tribunaux français sont seuls compétents selon les règles du Code de procédure civile pour les consommateurs.
+        Pour les Clients professionnels, attribution expresse de compétence est faite au Tribunal de commerce de Versailles.
       </p>
+
+      <h2>Annexe : Formulaire type de rétractation</h2>
+      <p>
+        <em>(Veuillez compléter et renvoyer le présent formulaire uniquement si vous souhaitez vous rétracter du contrat, ou utilisez notre <Link href="/retractation">formulaire en ligne</Link>.)</em>
+      </p>
+      <div className="legal-note">
+        <p>À l'attention de : <strong>OA Événementiel</strong>, 8 rue de la Butte des Groux, 78570 Chanteloup-les-Vignes — e-mail : {SITE.email}</p>
+        <p>Je vous notifie par la présente ma rétractation du contrat portant sur la location du matériel événementiel ci-dessous :</p>
+        <ul>
+          <li>Numéro de commande :</li>
+          <li>Commandée le :</li>
+          <li>Date(s) de l'événement prévue(s) :</li>
+          <li>Nom du client :</li>
+          <li>Adresse du client :</li>
+          <li>Date et signature (en cas de notification sur papier) :</li>
+        </ul>
+      </div>
     </LegalPage>
   )
 }

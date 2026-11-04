@@ -59,4 +59,6 @@ export const PUBLIC_PAGES = [
   '/confidentialite',
   '/cgu',
   '/cgv',
+  '/cookies',
+  '/retractation',
 ];

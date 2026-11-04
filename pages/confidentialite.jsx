@@ -112,7 +112,8 @@ export default function Confidentialite() {
       </ul>
       <p>
         Ces éléments sont exemptés de consentement. Les outils de mesure d'audience de Google, qui déposent
-        des cookies, ne sont chargés qu'après votre accord. Vous pouvez modifier votre choix à tout moment :{' '}
+        des cookies, ne sont chargés qu'après votre accord. Pour une information complète et détaillée, consultez notre{' '}
+        <Link href="/cookies">politique relative aux cookies</Link>. Vous pouvez modifier votre choix à tout moment :{' '}
         <button type="button" className="legal-inline-btn" onClick={openCookieSettings}>gérer mes cookies</button>.
       </p>
 
@@ -137,7 +138,7 @@ export default function Confidentialite() {
       </p>
 
       <p className="legal-see-also">
-        Voir aussi : <Link href="/mentions-legales">mentions légales</Link> · <Link href="/cgu">CGU</Link> · <Link href="/cgv">CGV</Link>
+        Voir aussi : <Link href="/mentions-legales">Mentions légales</Link> · <Link href="/cgv">CGV</Link> · <Link href="/cgu">CGU</Link> · <Link href="/cookies">Cookies</Link> · <Link href="/retractation">Rétractation</Link>
       </p>
     </LegalPage>
   )

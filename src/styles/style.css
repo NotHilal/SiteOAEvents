@@ -1068,12 +1068,9 @@ body::before {
   width: min(var(--oah-pill-w), calc(100% - 2 * var(--oah-pill-gap)));
   height: var(--oah-pill-h);
   margin-top: var(--oah-pill-gap);
-  padding: 0 7px 0 20px;
+  padding: 0 16px;
   column-gap: 12px;
-  /* The pill's sides are uneven (Menu vs account, cart, Réserver): size
-     them to their content so the monogram sits at equal distance from
-     both groups instead of at the pill's geometric centre. */
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   border-color: var(--oah-line);
   border-radius: 999px;
   background: rgba(20, 17, 12, .88);
@@ -1087,12 +1084,7 @@ body::before {
 .oah-scrolled .oah-right,
 .oah-scrolled .oah-logo { gap: 0; }
 .oah-scrolled .oah-quick { padding-left: 0; border-left-width: 0; }
-/* Optical centre: halfway between "equal gaps" and the pill's true centre,
-   since the heavier right group (account, cart, Réserver) otherwise pulls
-   the eye's centre to the right. */
-@media (min-width: 992px) {
-  .oah-scrolled .oah-center { padding-left: 64px; }
-}
+.oah-scrolled .oah-center { padding-left: 0; }
 
 .oah-left, .oah-right { display: flex; align-items: center; min-width: 0; }
 .oah-left { gap: 26px; }
@@ -1920,7 +1912,7 @@ a.oah-cart-item-name:hover { color: var(--oa-accent-ink); }
   .oah-quick,
   .oah-contact { display: none; }
   .oah-bar { column-gap: 12px; }
-  .oah-scrolled .oah-bar { padding: 0 6px 0 16px; }
+  .oah-scrolled .oah-bar { padding: 0 14px; }
   .oah-logo { gap: 12px; }
   .oah-logo-mark { width: 46px; height: 36px; }
   .oah-scrolled .oah-logo-mark { width: 40px; height: 31px; }
@@ -1943,8 +1935,7 @@ a.oah-cart-item-name:hover { color: var(--oa-accent-ink); }
   .oah-bar .oah-cta,
   .oah-drawer-brand .oah-logo-name { display: none; }
   .oah-left { gap: 0; }
-  /* Uneven sides (menu vs account + cart): centre the logo between them. */
-  .oah-bar { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .oah-scrolled .oah-bar { padding: 0 10px; }
   .oah-icon { width: 40px; height: 40px; }
   /* Phones keep the glyphs a step smaller so the wordmark has room. */
   .oah-icon svg { width: 24px; height: 24px; }

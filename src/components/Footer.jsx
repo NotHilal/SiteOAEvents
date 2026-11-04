@@ -92,9 +92,11 @@ export default function Footer() {
               <h2 className="footer-widget-title">Informations légales</h2>
               <ul role="list" className="list-style-one">
                 <li className="list-item"><Link href="/mentions-legales" className="list-text-link">Mentions légales</Link></li>
-                <li className="list-item"><Link href="/confidentialite" className="list-text-link">Politique de confidentialité</Link></li>
+                <li className="list-item"><Link href="/cgv" className="list-text-link">Conditions de vente &amp; location (CGV)</Link></li>
                 <li className="list-item"><Link href="/cgu" className="list-text-link">Conditions d'utilisation (CGU)</Link></li>
-                <li className="list-item"><Link href="/cgv" className="list-text-link">Conditions de vente (CGV)</Link></li>
+                <li className="list-item"><Link href="/confidentialite" className="list-text-link">Politique de confidentialité</Link></li>
+                <li className="list-item"><Link href="/cookies" className="list-text-link">Politique des cookies</Link></li>
+                <li className="list-item"><Link href="/retractation" className="list-text-link">Formulaire de rétractation</Link></li>
                 <li className="list-item">
                   <button type="button" className="list-text-link footer-cookie-btn" onClick={openCookieSettings}>Gestion des cookies</button>
                 </li>

@@ -57,8 +57,10 @@ export default function Cgu() {
 
       <h2>7. Données personnelles et cookies</h2>
       <p>
-        Voir la <Link href="/confidentialite">politique de confidentialité</Link>. Les préférences de cookies sont
-        modifiables à tout moment depuis le lien « Gestion des cookies » en bas de page.
+        Les données personnelles collectées lors de l'utilisation du site sont régies par notre{' '}
+        <Link href="/confidentialite">politique de confidentialité</Link>.
+        Pour en savoir plus sur les traceurs et gérer vos préférences, consultez notre{' '}
+        <Link href="/cookies">politique relative aux cookies</Link> ou utilisez le lien « Gestion des cookies » en bas de page.
       </p>
 
       <h2>8. Modification des conditions</h2>
@@ -71,6 +73,10 @@ export default function Cgu() {
       <p>
         Les présentes conditions sont soumises au droit français. Contact :{' '}
         <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.
+      </p>
+
+      <p className="legal-see-also">
+        Voir aussi : <Link href="/mentions-legales">Mentions légales</Link> · <Link href="/cgv">CGV</Link> · <Link href="/confidentialite">Confidentialité</Link> · <Link href="/cookies">Cookies</Link>
       </p>
     </LegalPage>
   )
