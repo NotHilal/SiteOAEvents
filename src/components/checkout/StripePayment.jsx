@@ -87,7 +87,7 @@ function PaymentForm({ amount, ready, validate, createPayment, onPaid, billingDe
   return (
     <div className="ck-pay">
       <PaymentElement options={{
-        layout: { type: 'accordion', defaultCollapsed: false, radios: true, spacedAccordionItems: false },
+        layout: { type: 'accordion', defaultCollapsed: false, radios: 'always', spacedAccordionItems: false },
         // Name, email and phone are already in the form above (sent with
         // the payment below) — not asking twice also keeps Stripe's Link
         // sign-up prompt out of the way.
