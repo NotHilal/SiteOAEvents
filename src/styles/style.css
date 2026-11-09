@@ -2087,9 +2087,10 @@ a.oah-cart-item-name:hover { color: var(--oa-accent-ink); }
 /* Nos catégories — full-bleed mosaic (options.fr home): 3 equal columns,
    a tall tile on the left, two stacked tiles in the others. */
 .oa-home-cats { padding: clamp(48px, 6vw, 72px) 0 0; }
+.oa-home-cats-rows { display: grid; gap: 10px; }
 .oa-home-cats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(var(--category-columns, 3), minmax(0, 1fr));
   gap: 10px;
   padding: 0 5px;
 }
@@ -2107,6 +2108,7 @@ a.oah-cart-item-name:hover { color: var(--oa-accent-ink); }
 .oa-home-cat.is-tall { height: 660px; }
 .oa-home-cat.is-raised { padding-top: 28px; }
 .oa-home-cat-title {
+  overflow-wrap: anywhere;
   margin: 0;
   color: var(--oa-cat-text, #000);
   font-family: var(--oa-font-heading);

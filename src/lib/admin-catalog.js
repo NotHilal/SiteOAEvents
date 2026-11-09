@@ -3,6 +3,7 @@ import db from './db/index.js'
 import { slugify } from './slug.js'
 import { categoryKeyFromTitle, normalizeCategoryTitle } from './catalogue-pages.js'
 import { todayParis } from './admin-bookings.js'
+import { HOME_TILES_KEY } from './home-category-tiles.js'
 
 // Server-only. /admin > Matériel and Site > Catalogue: every write to the
 // catalogue (articles, options, prices, categories), validated here and run
@@ -282,4 +283,29 @@ export async function reorderCategories({ ids }) {
   return { ok: true }
 }
 
-export const CATALOG_ACTIONS = { createMaterial, setTiers, updateArticle, addOption, deleteOption, deleteArticle, saveCategory, deleteCategory, reorderCategories }
+// Layout and an optional shared category photo are saved atomically.
+export async function saveHomeTiles({ tiles, photo }) {
+  if (!Array.isArray(tiles) || tiles.length > 12) throw catalogError('Choisissez au maximum 12 tuiles.')
+  const clean = tiles.map(tile => {
+    if (!tile || typeof tile.categoryId !== 'string' || (tile.title != null && typeof tile.title !== 'string')) throw catalogError('Tuile invalide.')
+    return { categoryId: tile.categoryId, title: text(tile.title, 60) }
+  })
+  if (new Set(clean.map(t => t.categoryId)).size !== clean.length) throw catalogError('Une catégorie ne peut apparaître qu’une fois.')
+  const image = photo ? imageUrl(photo.image) : null
+  if (photo && (!image || !clean.some(t => t.categoryId === photo.categoryId))) throw catalogError('Photo ou catégorie invalide.')
+  let previous = null
+  await db.writeTransaction(async tx => {
+    const categories = await tx.prepare('SELECT id, image_url FROM categories').all()
+    if (clean.some(t => !categories.some(c => String(c.id) === t.categoryId))) throw catalogError('Une catégorie a été supprimée. Actualisez les tuiles.', 409)
+    if (photo) {
+      previous = categories.find(c => String(c.id) === photo.categoryId).image_url
+      await tx.prepare('UPDATE categories SET image_url = ? WHERE id = ?').run(image, photo.categoryId)
+    }
+    await tx.prepare('INSERT INTO site_content (key, value, updated_at) VALUES (?, ?, now()) ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = now()')
+      .run(HOME_TILES_KEY, JSON.stringify({ tiles: clean }))
+  })
+  if (previous && previous !== image) await deleteUploadIfUnused(previous)
+  return { ok: true }
+}
+
+export const CATALOG_ACTIONS = { createMaterial, setTiers, updateArticle, addOption, deleteOption, deleteArticle, saveCategory, deleteCategory, reorderCategories, saveHomeTiles }

@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import Seo from '../../src/components/Seo.jsx'
 import { catalogueCategoryHref } from '../../src/components/product/productUtils.js'
-import { categoryTitle, sortCategories } from '../../src/lib/catalogue-pages.js'
 
 const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1478146059778-26028b07395a?w=1600&q=75&auto=format&fit=crop'
 
@@ -11,11 +10,12 @@ const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1478146059778-260
 // here, see next.config.js).
 export async function getServerSideProps() {
   const { default: db } = await import('../../src/lib/db/index.js')
-  const rows = sortCategories(await db.prepare('SELECT id, name, label, description, image_url, position, created_at FROM categories').all())
+  const { getCatalogueCategories } = await import('../../src/lib/catalogue-categories.js')
+  const rows = await getCatalogueCategories()
   const tiles = rows.map(c => ({
     key: String(c.id),
     value: c.name,
-    label: categoryTitle(c),
+    label: c.label,
     img: c.image_url || null,
     text: c.description || '',
   }))

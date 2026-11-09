@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import { slugify } from '../slug.js'
+import { defaultHomeCategoryTiles } from '../catalogue-pages.js'
 
 // Default data for a new, empty PostgreSQL database: settings and page
 // content keys (added whenever missing, never overwritten) and, only when
@@ -204,6 +205,13 @@ export async function seedDatabase(sql) {
   // OA_SKIP_CATALOG_SEED: set by scripts/migrate-sqlite-to-postgres.mjs, which brings the real data.
   const { n } = await sql('SELECT COUNT(*) AS n FROM materials').get()
   if (!n && !process.env.OA_SKIP_CATALOG_SEED) await seedCatalogue(sql)
+
+  // Persist IDs once so later category renames keep their homepage tiles.
+  if (!(await sql("SELECT 1 FROM site_content WHERE key = 'home_category_tiles'").get())) {
+    const categories = await sql('SELECT id, name FROM categories').all()
+    if (categories.length) await sql('INSERT INTO site_content (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT (key) DO NOTHING')
+      .run('home_category_tiles', JSON.stringify({ tiles: defaultHomeCategoryTiles(categories) }), t)
+  }
 
   // Every material gets a URL slug from its name (once — kept on rename).
   const unslugged = await sql("SELECT id, name FROM materials WHERE slug IS NULL OR slug = ''").all()

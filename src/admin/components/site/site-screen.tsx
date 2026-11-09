@@ -9,11 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { CategoriesPanel } from "./categories-panel";
+import { HomeTilesPanel } from "./home-tiles-panel";
 import { AboutPanel, ImagesPanel } from "./content-panels";
 import { RealisationsPanel } from "./realisations-panel";
 
 const TABS = [
-  { key: "catalogue", label: "Catalogue" },
+  { key: "tuiles", label: "Tuiles de l'accueil" },
+  { key: "catalogue", label: "Catégories" },
   { key: "realisations", label: "Réalisations" },
   { key: "images", label: "Images & couleurs" },
   { key: "a-propos", label: "À propos" },
@@ -50,6 +52,9 @@ export function SiteScreen() {
         </TabsList>
         <TabsContent value="catalogue" className="mt-4">
           <CategoriesPanel />
+        </TabsContent>
+        <TabsContent value="tuiles" className="mt-4">
+          <HomeTilesPanel />
         </TabsContent>
         <TabsContent value="realisations" className="mt-4">
           <RealisationsPanel />

@@ -21,6 +21,12 @@ export const categoryKeyFromTitle = title => String(title || '').replace(/\s+/g,
 export const sortCategories = categories =>
   [...categories].sort((a, b) => (a.position ?? 1e9) - (b.position ?? 1e9) || String(a.created_at || '').localeCompare(String(b.created_at || '')) || String(a.name).localeCompare(String(b.name)))
 
+export const defaultHomeCategoryTiles = categories =>
+  ['CHAISES', 'TABLES', 'BANQUETTES', 'TENTES', 'OPTIONS & ACCESSOIRES'].flatMap(name => {
+    const category = categories.find(c => normalizeCategoryTitle(c.name) === name)
+    return category ? [{ categoryId: String(category.id), title: name === 'TENTES' ? 'Tentes de réception' : null }] : []
+  })
+
 export const CATALOGUE_SORTS = [
   { key: '', label: 'Pertinence' },
   { key: 'prix', label: 'Prix croissant' },

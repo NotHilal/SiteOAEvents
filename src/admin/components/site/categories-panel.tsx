@@ -53,7 +53,7 @@ export function CategoriesPanel() {
   async function remove(c: CategoryRow) {
     const n = count(c);
     if (n) return toast.error(`« ${categoryTitle(c)} » contient ${n} article(s) : changez-les de catégorie avant de la supprimer.`);
-    if (!(await confirm({ title: `Supprimer « ${categoryTitle(c)} » ?`, description: "La vignette disparaît de la page Catalogue.", confirm: "Supprimer", destructive: true }))) return;
+    if (!(await confirm({ title: `Supprimer « ${categoryTitle(c)} » ?`, description: "La vignette disparaît de l'accueil et du catalogue.", confirm: "Supprimer", destructive: true }))) return;
     try {
       await catalogAction("deleteCategory", { id: c.id });
       toast.success("Catégorie supprimée");
@@ -69,11 +69,15 @@ export function CategoriesPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          Chaque catégorie est une vignette de la page{" "}
+          Photos communes avec les tuiles de l'{" "}
+          <a href="/#oa-home-cats-title" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-foreground underline-offset-4 hover:underline">
+            accueil <ExternalLink className="size-3" />
+          </a>
+          {" "}et au{" "}
           <a href="/catalogue" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-foreground underline-offset-4 hover:underline">
             Catalogue <ExternalLink className="size-3" />
           </a>
-          , dans cet ordre.
+          . Le choix, les titres personnalisés et l'ordre des tuiles se gèrent dans « Tuiles de l'accueil ».
         </p>
         <Button onClick={() => setEditing("new")}>
           <Plus /> Nouvelle catégorie
@@ -164,7 +168,7 @@ function CategoryDialog({ category, categories, onClose, onSaved }: { category: 
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-heading">{isEdit ? "Modifier la catégorie" : "Nouvelle catégorie"}</DialogTitle>
-          <DialogDescription>Titre, texte au survol et photo de la vignette.</DialogDescription>
+          <DialogDescription>La photo est commune avec l'accueil. Le titre est repris sur l'accueil sauf si un titre de tuile a été personnalisé.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">

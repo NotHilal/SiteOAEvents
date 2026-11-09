@@ -40,14 +40,9 @@ const SLOT_GROUPS = [
   {
     key: "images_home",
     title: "Page d'accueil",
-    description: "Photos des grandes vignettes de l'accueil. Sans photo, l'image par défaut est utilisée.",
+    description: "Bannière de l'accueil. Pour modifier une tuile, son titre ou sa photo, ouvrez l'onglet Tuiles de l'accueil.",
     slots: [
       { key: "univers_1", label: "Bannière « Organisation sur mesure »" },
-      { key: "categorie_1", label: "Tuile Chaises (grande, à gauche)" },
-      { key: "categorie_2", label: "Tuile Tables" },
-      { key: "categorie_3", label: "Tuile Banquettes" },
-      { key: "categorie_4", label: "Tuile Décorations" },
-      { key: "categorie_5", label: "Tuile Accessoires" },
     ],
   },
   { key: "images_contact", title: "Page Contact", description: "Bannière en haut de la page.", slots: [{ key: "page_header", label: "Bannière de page" }] },

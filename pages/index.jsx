@@ -19,17 +19,6 @@ import { track } from '../src/lib/analytics.js'
 // block so an already chosen photo stays in place).
 const BANNER_IMG = 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1600&q=70&auto=format&fit=crop'
 
-// "Nos catégories" mosaic, modelled on options.fr's home block: one tall
-// tile on the left, two stacked tiles in each of the other columns. Photos
-// are swappable from Espace OA > Visuel Site > Accueil — Catégories.
-const CATEGORY_TILES = [
-  { slotKey: 'categorie_1', title: 'Chaises', value: 'CHAISES', img: '/catalogue/Chaises_600x800.jpg' },
-  { slotKey: 'categorie_2', title: 'Tables', value: 'TABLES', img: '/catalogue/Tables_1200x670.jpg' },
-  { slotKey: 'categorie_3', title: 'Banquettes', value: 'BANQUETTES', img: '/catalogue/Banquettes_600x800.jpg', raised: true },
-  { slotKey: 'categorie_4', title: 'Décorations', value: 'DÉCORATIONS', img: '/catalogue/Decorations_800x800.jpg' },
-  { slotKey: 'categorie_5', title: 'Accessoires', value: 'OPTIONS & ACCESSOIRES', img: '/catalogue/Options-accessoires_600x800.jpg' },
-]
-
 // Reassurance strip, modelled on options.fr's "Louez tout le matériel pour
 // votre réception !" block (reference at /example). Copy built only from
 // claims the site already makes elsewhere.
@@ -74,11 +63,14 @@ function pickSelection(cards) {
 
 export async function getServerSideProps() {
   const { getCatalogueCards } = await import('../src/lib/catalogue-cards.js')
-  const [realisations, { cards }] = await Promise.all([getRealisations(), getCatalogueCards()])
-  return { props: { realisations: realisations.slice(0, 6), selection: pickSelection(cards), productCount: cards.length } }
+  const { getHomeCategoryTiles } = await import('../src/lib/home-category-tiles.js')
+  const [realisations, { cards }, categories] = await Promise.all([getRealisations(), getCatalogueCards(), getHomeCategoryTiles()])
+  return { props: { realisations: realisations.slice(0, 6), selection: pickSelection(cards), productCount: cards.length, categories } }
 }
 
-export default function Home({ realisations, selection, productCount }) {
+export default function Home({ realisations, selection, productCount, categories }) {
+  // Repeat the existing five-tile mosaic for any number of CMS categories.
+  const categoryRows = Array.from({ length: Math.ceil(categories.length / 5) }, (_, i) => categories.slice(i * 5, i * 5 + 5))
   const cart = useCatalogueCart()
   const [quick, setQuick] = useState(null)
   // The hero's entrance animation is pure CSS (see .hero-reveal in
@@ -143,7 +135,7 @@ export default function Home({ realisations, selection, productCount }) {
         </section>
 
         {/* NOS CATÉGORIES — options.fr category mosaic */}
-        <section
+        {categories.length > 0 && <section
           className="oa-home-cats"
           aria-labelledby="oa-home-cats-title"
           style={{
@@ -152,26 +144,27 @@ export default function Home({ realisations, selection, productCount }) {
           }}
         >
           <h2 id="oa-home-cats-title" className="oa-section-title" data-reveal>Nos catégories</h2>
-          <div className="oa-home-cats-grid" data-reveal>
-            {[[0], [1, 2], [3, 4]].map((col, c) => (
-              <div className="oa-home-cats-col" key={c}>
-                {col.map(i => {
-                  const t = CATEGORY_TILES[i]
-                  return (
-                    <Link
-                      key={t.slotKey}
-                      href={catalogueCategoryHref(t.value)}
-                      className={`oa-home-cat${col.length === 1 ? ' is-tall' : ''}${t.raised ? ' is-raised' : ''}`}
-                      style={{ backgroundImage: `url(${images[t.slotKey] || t.img})` }}
-                    >
-                      <h3 className="oa-home-cat-title">{t.title}</h3>
-                    </Link>
-                  )
-                })}
+          <div className="oa-home-cats-rows">
+            {categoryRows.map(row => (
+              <div className="oa-home-cats-grid" key={row[0].id} style={{ '--category-columns': 1 + Math.ceil((row.length - 1) / 2) }} data-reveal>
+                {[row.slice(0, 1), row.slice(1, 3), row.slice(3, 5)].filter(col => col.length).map(col => (
+                  <div className="oa-home-cats-col" key={col[0].id}>
+                    {col.map(t => (
+                      <Link
+                        key={t.id}
+                        href={catalogueCategoryHref(t.name)}
+                        className={`oa-home-cat${row.length >= 3 && col.length === 1 ? ' is-tall' : ''}`}
+                        style={t.image_url ? { backgroundImage: `url(${JSON.stringify(t.image_url)})` } : undefined}
+                      >
+                        <h3 className="oa-home-cat-title">{t.label}</h3>
+                      </Link>
+                    ))}
+                  </div>
+                ))}
               </div>
             ))}
           </div>
-        </section>
+        </section>}
 
         {/* NOTRE SÉLECTION — products to add to the cart */}
         {selection.length > 0 && (
