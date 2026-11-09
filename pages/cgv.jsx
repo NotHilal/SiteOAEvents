@@ -43,7 +43,8 @@ export default function Cgv() {
         <li>Certains articles ne peuvent être loués qu'à partir d'une quantité minimale, indiquée sur le catalogue.</li>
         <li>
           Les frais de livraison sont calculés à partir de la distance routière entre notre dépôt et l'adresse
-          de livraison (forfait fixe + prix au kilomètre).
+          de livraison : deux allers-retours, un pour la dépose et un pour la reprise, soit quatre fois
+          la distance aller multipliée par le prix au kilomètre, avec un éventuel forfait supplémentaire affiché avant le paiement.
         </li>
         <li>
           Le montant payé est celui affiché au moment de la commande, livraison comprise. Aucune caution n'est

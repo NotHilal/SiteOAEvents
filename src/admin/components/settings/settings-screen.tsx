@@ -17,6 +17,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { useFetch } from "@/hooks/use-fetch";
 import { money } from "@/lib/format";
 import { api } from "@/lib/session";
+// biome-ignore lint: shared pricing rule used by the server and settings preview
+import { deliveryFee } from "../../../lib/delivery-pricing.js";
 
 type StripeInfo = {
   source: "admin" | "env" | null;
@@ -252,7 +254,7 @@ function DeliveryCard({ settings, onSaved }: { settings: Settings; onSaved: (s: 
     <Card>
       <CardHeader>
         <CardTitle className="font-heading">Livraison et location en ligne</CardTitle>
-        <CardDescription>Frais de livraison calculés automatiquement sur le site.</CardDescription>
+        <CardDescription>Deux allers-retours depuis le dépôt : un pour la dépose, un pour la reprise, soit quatre trajets.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-1.5">
@@ -261,16 +263,16 @@ function DeliveryCard({ settings, onSaved }: { settings: Settings; onSaved: (s: 
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="s-base">Forfait de livraison (€)</Label>
+            <Label htmlFor="s-base">Forfait supplémentaire (€ — 0 si aucun)</Label>
             <Input id="s-base" inputMode="decimal" value={form.base} onChange={(e) => setForm({ ...form, base: e.target.value })} className="h-10" />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="s-km">Prix par km (€)</Label>
+            <Label htmlFor="s-km">Prix par km et par trajet (€)</Label>
             <Input id="s-km" inputMode="decimal" value={form.perKm} onChange={(e) => setForm({ ...form, perKm: e.target.value })} className="h-10" />
           </div>
         </div>
         <p className="rounded-lg bg-muted/60 p-3 text-sm text-muted-foreground">
-          Exemple : une livraison à 20 km coûte <strong className="text-foreground">{money((num(form.base) || 0) + (num(form.perKm) || 0) * 20)}</strong>.
+          Exemple à 20 km du dépôt : 4 × 20 km × {money(num(form.perKm) || 0)}/km{num(form.base) > 0 ? ` + ${money(num(form.base))} de forfait` : ""}, soit <strong className="text-foreground">{money(deliveryFee(20, num(form.perKm) || 0, num(form.base) || 0))}</strong> pour la dépose et la reprise.
         </p>
         <div className="space-y-1.5 sm:max-w-xs">
           <Label htmlFor="s-days">Durée maximale d'une location en ligne (jours)</Label>

@@ -9,7 +9,7 @@
 
 const ALL_ZONES_FAQ = {
   q: 'Comment sont calculés les frais de livraison ?',
-  a: 'Ils dépendent de la distance routière entre notre dépôt et votre adresse (forfait fixe + prix au kilomètre). Le total, livraison comprise, s’affiche avant le paiement.',
+  a: 'Ils couvrent deux allers-retours : un pour la dépose, un pour la reprise. Le calcul utilise quatre fois la distance routière aller entre notre dépôt et votre adresse, multipliée par le prix au kilomètre, avec un éventuel forfait supplémentaire. Le total s’affiche avant le paiement.',
 }
 
 export const ZONES = [
@@ -306,7 +306,7 @@ export const FAQ_GROUPS = [
     h: 'Livraison et installation',
     items: [
       { q: 'Dans quelles zones livrez-vous ?', a: 'Nous livrons dans TOUTE la France métropolitaine. Le montant de la livraison dépend de la distance routière entre notre dépôt et votre adresse et s’affiche automatiquement avant le paiement.' },
-      { q: 'Combien coûte la livraison ?', a: 'Elle dépend de la distance routière entre notre dépôt et votre adresse (forfait fixe + prix au kilomètre). Le montant exact s’affiche avant le paiement.' },
+      { q: 'Combien coûte la livraison ?', a: 'Les frais couvrent deux allers-retours pour la dépose et la reprise : quatre fois la distance routière aller multipliée par le prix au kilomètre, avec un éventuel forfait supplémentaire. Le montant exact s’affiche avant le paiement.' },
       { q: 'Quand peut-on être livré ?', a: 'La livraison et l’installation sont possibles 24h/24 et 7j/7. Notre équipe vous répond tous les jours de 9h à 20h.' },
       { q: 'L’installation d’une tente est-elle incluse ?', a: 'Oui, l’installation, la désinstallation et le lestage sont inclus dans le prix des [tentes de réception](/location/tentes), hors frais kilométriques.' },
     ],

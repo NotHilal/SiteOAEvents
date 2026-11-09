@@ -11,7 +11,7 @@ const PAGE = {
   image: '/pics/tente-chaises-tables.jpg',
   imageAlt: 'Tables et chaises installées sous une tente de réception',
   sections: [
-    { h: 'Comment fonctionne la livraison ?', p: 'Les frais dépendent de la distance routière entre notre dépôt et votre adresse (forfait fixe + prix au kilomètre). Ajoutez vos articles au panier, indiquez votre adresse lors de la commande et le total, livraison comprise, s’affiche avant le paiement. La livraison et l’installation sont possibles 24h/24 et 7j/7.' },
+    { h: 'Comment fonctionne la livraison ?', p: 'Les frais couvrent deux allers-retours depuis notre dépôt : un pour la dépose, un pour la reprise. Le calcul utilise quatre fois la distance routière aller, multipliée par le prix au kilomètre, avec un éventuel forfait supplémentaire. Ajoutez vos articles au panier et indiquez votre adresse : le total s’affiche avant le paiement. La livraison et l’installation sont possibles 24h/24 et 7j/7.' },
     { h: 'Choisissez votre département', p: 'Chaque territoire a ses contraintes : accès en ville à Paris, grands terrains en Seine-et-Marne, événements d’entreprise dans les Hauts-de-Seine. Retrouvez nos conseils et le matériel adapté à votre secteur, ou parcourez directement le [catalogue complet](/catalogue/complet).' },
   ],
   faq: [

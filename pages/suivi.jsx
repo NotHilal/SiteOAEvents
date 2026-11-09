@@ -241,8 +241,8 @@ export default function Suivi() {
                     )}
                     {order.quote_per_km != null && order.distance_km != null && (
                       <div className="price-detail-row">
-                        <span className="price-detail-label">Frais kilométrique<span className="price-detail-sub">{order.quote_per_km.toFixed(2)} €/km × {order.distance_km} km</span></span>
-                        <span className="price-detail-amount">{(order.quote_per_km * order.distance_km).toFixed(2)} €</span>
+                        <span className="price-detail-label">Frais kilométriques<span className="price-detail-sub">{order.quote_trip_count === 4 ? 'Dépose et reprise : 2 allers-retours — ' : ''}{order.quote_trip_count || 1} × {order.distance_km} km × {order.quote_per_km.toFixed(2)} €/km</span></span>
+                        <span className="price-detail-amount">{(order.quote_per_km * order.distance_km * (order.quote_trip_count || 1)).toFixed(2)} €</span>
                       </div>
                     )}
                     {order.delivery_fee != null && (

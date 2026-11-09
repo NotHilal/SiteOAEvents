@@ -32,10 +32,11 @@ process.env.EMAIL_FROM = 'OA Événementiel <contact@oa-evenementiel.fr>'
 const delivered = new Map()
 const contactMails = []
 let geoFails = false
+let routeDistanceMetres = 10000
 let mailFails = false
 globalThis.fetch = async (url, options = {}) => {
   if (String(url).startsWith('https://nominatim.openstreetmap.org/')) return Response.json(geoFails ? [] : [{ lat: '48.8', lon: '2.3' }])
-  if (String(url).startsWith('https://router.project-osrm.org/')) return Response.json({ code: 'Ok', routes: [{ distance: 10000, duration: 900 }] })
+  if (String(url).startsWith('https://router.project-osrm.org/')) return Response.json({ code: 'Ok', routes: [{ distance: routeDistanceMetres, duration: 900 }] })
   if (String(url) === 'https://api.resend.com/emails') {
     if (mailFails) return Response.json({ message: 'temporary' }, { status: 503 })
     const key = options.headers['Idempotency-Key']
@@ -51,6 +52,7 @@ const { getStripe, clearStripeConfigCache } = await import('../src/lib/stripe.js
 const { default: webhook } = await import('../pages/api/payments/webhook.js')
 const { default: adminOrders } = await import('../pages/api/admin/orders.js')
 const { createAdminToken } = await import('../src/lib/auth.js')
+const { computeDeliveryQuote } = await import('../src/lib/geo.js')
 
 // ---- Fake Stripe ----
 const stripe = await getStripe()
@@ -97,7 +99,7 @@ async function call(handler, { method = 'POST', body, query = {}, admin = false 
 let nextDate = 0
 function input(extra = {}) {
   const date = new Date(Date.now() + (60 + nextDate++) * 86400000).toISOString().slice(0, 10)
-  return { checkout_key: crypto.randomUUID(), prenom: 'Test', nom: 'Client', phone: '0600000000', email: 'client@example.test', dates: [date], date, materials: [{ id: 'qa-material', quantity: 1 }], delivery_address: 'Adresse fictive de test', grand_total: 39, ...extra }
+  return { checkout_key: crypto.randomUUID(), prenom: 'Test', nom: 'Client', phone: '0600000000', email: 'client@example.test', dates: [date], date, materials: [{ id: 'qa-material', quantity: 1 }], delivery_address: 'Adresse fictive de test', grand_total: 42, ...extra }
 }
 const order = async reference => db.prepare('SELECT * FROM reservations WHERE reference = ?').get(reference)
 const paymentOf = async id => db.prepare('SELECT * FROM payments WHERE reservation_id = ?').get(id)
@@ -107,8 +109,20 @@ try {
   await db.prepare('SELECT 1').get()
   await db.prepare("INSERT INTO materials (id, name, max_quantity, available) VALUES ('qa-material', 'Article test', 1, true)").run()
   await db.prepare("INSERT INTO material_price_tiers (id, material_id, min_qty, price_weekday_ht, price_weekend_ht) VALUES ('qa-tier', 'qa-material', 1, 10, 10)").run()
-  await db.prepare("UPDATE settings SET value = '15' WHERE key = 'delivery_base_fee'").run()
-  await db.prepare("UPDATE settings SET value = '1.2' WHERE key = 'delivery_per_km'").run()
+  assert.equal((await db.prepare("SELECT value FROM settings WHERE key = 'delivery_base_fee'").get()).value, '0')
+  assert.equal((await db.prepare("SELECT value FROM settings WHERE key = 'delivery_per_km'").get()).value, '0.75')
+  routeDistanceMetres = 20000
+  const quote = await computeDeliveryQuote('Adresse fictive de test')
+  assert.equal(quote.tripCount, 4)
+  assert.equal(quote.distanceKm, 20)
+  assert.equal(quote.fee, 60, '20 km: two return trips at 0.75 euros per km')
+  routeDistanceMetres = 12345
+  const roundedQuote = await computeDeliveryQuote('Adresse fictive de test')
+  assert.equal(roundedQuote.distanceKm, 12.3)
+  assert.equal(roundedQuote.fee, 36.9, 'displayed distance and charged formula agree')
+  routeDistanceMetres = 0
+  assert.equal((await computeDeliveryQuote('Adresse fictive de test')).fee, 0)
+  routeDistanceMetres = 10000
   assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM settings WHERE key LIKE 'bank_%' OR key LIKE 'installment_%'").get()).n, 0, 'bank transfer / installment settings are gone')
 
   // Checkout: order + one PaymentIntent for the full amount, stock held.
@@ -117,8 +131,11 @@ try {
   assert.ok(first.clientSecret && first.paymentIntentId && !first.paid)
   const created = await order(first.reference)
   assert.equal(created.status, 'awaiting_payment')
-  assert.equal(created.grand_total, 39)
-  assert.equal(intents.get(first.paymentIntentId).amount, 3900)
+  assert.equal(created.grand_total, 42)
+  assert.equal(created.delivery_fee, 30)
+  assert.equal(created.quote_trip_count, 4)
+  assert.equal(created.quote_per_km, 0.75)
+  assert.equal(intents.get(first.paymentIntentId).amount, 4200)
   assert.deepEqual(intents.get(first.paymentIntentId).automatic_payment_methods, { enabled: true }, 'every method enabled in Stripe (card, PayPal…) is offered')
   assert.equal(delivered.size, 0, 'no email before payment')
   assert.equal((await startCheckout(request)).paymentIntentId, first.paymentIntentId, 'retrying the same basket reuses the order and payment')
@@ -203,7 +220,7 @@ try {
   assert.equal((await call(adminOrders, { body: { id: confirmedId, action: 'cancel' } })).statusCode, 401)
   const cancelled = await call(adminOrders, { body: { id: confirmedId, action: 'cancel' }, admin: true })
   assert.equal(cancelled.statusCode, 200, JSON.stringify(cancelled.body))
-  assert.deepEqual(cancelled.body.data, { status: 'cancelled', refunded: true, amount: 39 })
+  assert.deepEqual(cancelled.body.data, { status: 'cancelled', refunded: true, amount: 42 })
   assert.equal(refunds.length, 1)
   assert.equal(refunds[0].payment_intent, first.paymentIntentId)
   assert.equal((await order(first.reference)).status, 'cancelled')
@@ -224,9 +241,9 @@ try {
   await emit({ type: 'payment_intent.succeeded', data: { object: intents.get(halfOrder.paymentIntentId) } })
   const halfId = (await order(halfOrder.reference)).id
   const half = await call(adminOrders, { body: { id: halfId, action: 'cancel', refundPercent: 50 }, admin: true })
-  assert.deepEqual(half.body.data, { status: 'cancelled', refunded: true, amount: 19.5 })
-  assert.equal(refunds.at(-1).amount, 1950)
-  assert.equal((await paymentOf(halfId)).refunded_amount, 19.5)
+  assert.deepEqual(half.body.data, { status: 'cancelled', refunded: true, amount: 21 })
+  assert.equal(refunds.at(-1).amount, 2100)
+  assert.equal((await paymentOf(halfId)).refunded_amount, 21)
   const noneOrder = await startCheckout(input())
   pay(noneOrder.paymentIntentId)
   await emit({ type: 'payment_intent.succeeded', data: { object: intents.get(noneOrder.paymentIntentId) } })

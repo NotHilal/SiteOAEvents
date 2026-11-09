@@ -304,7 +304,7 @@ export default function Checkout() {
                 </div>
                 {quoteState.loading && <span className="ck-hint"><i className="fas fa-circle-notch fa-spin" /> Calcul de la livraison…</span>}
                 {quoteState.error && <span className="ck-field-error">{quoteState.error} <button type="button" className="ck-link" onClick={() => computeQuote(form.address)}>Réessayer</button></span>}
-                {quote && <span className="ck-hint ck-ok"><i className="fas fa-truck" /> Livraison et installation : {euro.format(quote.fee)} ({quote.distanceKm} km)</span>}
+                {quote && <span className="ck-hint ck-ok"><i className="fas fa-truck" /> Dépose et reprise : {euro.format(quote.fee)} — 2 allers-retours ({quote.tripCount} × {quote.distanceKm} km × {euro.format(quote.perKm)}/km{quote.baseFee > 0 ? ` + ${euro.format(quote.baseFee)} de forfait` : ''})</span>}
               </Field>
               <Field label="Précisions (facultatif)" wide>
                 <textarea rows={2} placeholder="Horaire souhaité, accès, étage…" maxLength={2000} {...field('message')} />

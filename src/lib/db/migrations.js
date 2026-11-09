@@ -240,4 +240,12 @@ CREATE TABLE files (                          -- uploaded photos / videos, serve
     id: '002_partial_refunds',
     sql: `ALTER TABLE payments ADD COLUMN refunded_amount double precision;`,
   },
+  {
+    id: '003_delivery_two_round_trips',
+    sql: `
+      ALTER TABLE reservations ADD COLUMN quote_trip_count integer NOT NULL DEFAULT 1;
+      UPDATE settings SET value = '0.75', updated_at = now() WHERE key = 'delivery_per_km';
+      UPDATE settings SET value = '0', updated_at = now() WHERE key = 'delivery_base_fee';
+    `,
+  },
 ]

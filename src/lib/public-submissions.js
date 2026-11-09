@@ -128,6 +128,7 @@ export async function sanitizeReservation(item) {
       delivery_fee: quote?.fee ?? null,
       quote_base_fee: quote?.baseFee ?? null,
       quote_per_km: quote?.perKm ?? null,
+      quote_trip_count: quote?.tripCount ?? 1,
       materials_total: materialsTotal,
       grand_total: grandTotal,
     },

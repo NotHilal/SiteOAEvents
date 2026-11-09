@@ -52,6 +52,7 @@ export default async function handler(req, res) {
         delivery_fee: resa.delivery_fee,
         quote_base_fee: resa.quote_base_fee,
         quote_per_km: resa.quote_per_km,
+        quote_trip_count: resa.quote_trip_count,
         materials_total: resa.materials_total,
         grand_total: resa.grand_total,
         payment_method: resa.payment_method,

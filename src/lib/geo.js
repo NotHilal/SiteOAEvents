@@ -1,5 +1,6 @@
 // Geocodage (Nominatim/OpenStreetMap) + distance routière (OSRM) — services publics gratuits, sans clé API.
 import db from './db/index.js';
+import { DELIVERY_TRIP_COUNT, DEFAULT_DELIVERY_PER_KM, deliveryFee } from './delivery-pricing.js';
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 const OSRM_URL = 'https://router.project-osrm.org/route/v1/driving';
@@ -66,11 +67,13 @@ export async function computeDeliveryQuote(destinationAddress) {
     geocodeAddress(destinationAddress),
   ]);
   const { distanceKm, durationMin } = await getDrivingDistanceKm(depot, dest);
-  const baseFee = parseFloat(await getSetting('delivery_base_fee', '15'));
-  const perKm = parseFloat(await getSetting('delivery_per_km', '1.2'));
-  const fee = Math.round((baseFee + perKm * distanceKm) * 100) / 100;
+  const baseFee = parseFloat(await getSetting('delivery_base_fee', '0'));
+  const perKm = parseFloat(await getSetting('delivery_per_km', String(DEFAULT_DELIVERY_PER_KM)));
+  const quotedDistanceKm = Math.round(distanceKm * 10) / 10;
+  const fee = deliveryFee(quotedDistanceKm, perKm, baseFee);
   return {
-    distanceKm: Math.round(distanceKm * 10) / 10,
+    distanceKm: quotedDistanceKm,
+    tripCount: DELIVERY_TRIP_COUNT,
     durationMin: Math.round(durationMin),
     fee,
     baseFee,

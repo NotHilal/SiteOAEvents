@@ -155,8 +155,8 @@ export async function seedDatabase(sql) {
   const t = now()
   const settings = [
     ['depot_address', process.env.DEPOT_ADDRESS || '8 rue de la Butte des Groux, 78570 Chanteloup-les-Vignes, France'],
-    ['delivery_base_fee', process.env.DELIVERY_BASE_FEE || '15'],
-    ['delivery_per_km', process.env.DELIVERY_PER_KM || '1.2'],
+    ['delivery_base_fee', process.env.DELIVERY_BASE_FEE || '0'],
+    ['delivery_per_km', process.env.DELIVERY_PER_KM || '0.75'],
   ]
   for (const [key, value] of settings) await sql('INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT (key) DO NOTHING').run(key, value, t)
 
