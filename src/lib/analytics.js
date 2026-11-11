@@ -41,7 +41,7 @@ function loadPlausible() {
 }
 
 export function loadAnalytics() {
-  if (typeof window === 'undefined' || !hasAnalyticsConsent()) return
+  if (typeof window === 'undefined' || !hasAnalyticsConsent() || isAdminPreview()) return
   loadGoogleTag()
   loadPlausible()
 }
@@ -63,7 +63,12 @@ export function unloadAnalytics() {
   window.location.reload()
 }
 
+// The site shown in the live preview of Espace OA > Contenu des pages is not a visit.
+function isAdminPreview() {
+  try { return window.parent !== window && window.parent.location.pathname.startsWith('/admin') } catch { return false }
+}
+
 export function track(event, props) {
-  if (typeof window === 'undefined' || !hasAnalyticsConsent() || typeof window.plausible !== 'function') return
+  if (typeof window === 'undefined' || !hasAnalyticsConsent() || typeof window.plausible !== 'function' || isAdminPreview()) return
   try { window.plausible(event, props ? { props } : undefined) } catch {}
 }

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import LegalPage from '../src/components/LegalPage.jsx'
-import { SITE } from '../src/lib/site.js'
+import { SITE_ADDRESS } from '../src/lib/site.js'
+import { SiteEmail } from '../src/components/SiteContact.jsx'
 
 export default function Cgv() {
   return (
@@ -101,7 +102,7 @@ export default function Cgv() {
       </p>
       <p>
         Pour exercer ce droit, le Client adresse sa déclaration dénuée d'ambiguïté par e-mail à{' '}
-        <a href={`mailto:${SITE.email}`}>{SITE.email}</a> ou par courrier postal au siège social, en utilisant le{' '}
+        <SiteEmail /> ou par courrier postal au siège social, en utilisant le{' '}
         <Link href="/retractation">formulaire de rétractation en ligne</Link> ou le modèle figurant en annexe des présentes conditions.
       </p>
       <p>
@@ -118,7 +119,7 @@ export default function Cgv() {
       <ul>
         <li>
           Toute demande de modification (quantités, date, adresse) est adressée à{' '}
-          <a href={`mailto:${SITE.email}`}>{SITE.email}</a>. Elle est acceptée selon les disponibilités et
+          <SiteEmail />. Elle est acceptée selon les disponibilités et
           confirmée par écrit, avec l'éventuelle différence de prix.
         </li>
         <li>
@@ -178,7 +179,7 @@ export default function Cgv() {
       <h2>13. Réclamations et médiation de la consommation</h2>
       <p>
         Pour toute réclamation, le Client s'adresse en priorité à notre service client :{' '}
-        <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.
+        <SiteEmail />.
       </p>
       <p>
         Conformément aux articles L. 612-1 et suivants et R. 616-1 du Code de la consommation, en cas d'échec de la demande
@@ -214,7 +215,7 @@ export default function Cgv() {
         <em>(Veuillez compléter et renvoyer le présent formulaire uniquement si vous souhaitez vous rétracter du contrat, ou utilisez notre <Link href="/retractation">formulaire en ligne</Link>.)</em>
       </p>
       <div className="legal-note">
-        <p>À l'attention de : <strong>OA Événementiel</strong>, 8 rue de la Butte des Groux, 78570 Chanteloup-les-Vignes — e-mail : {SITE.email}</p>
+        <p>À l'attention de : <strong>OA Événementiel</strong>, {SITE_ADDRESS} — e-mail : <SiteEmail /></p>
         <p>Je vous notifie par la présente ma rétractation du contrat portant sur la location du matériel événementiel ci-dessous :</p>
         <ul>
           <li>Numéro de commande :</li>

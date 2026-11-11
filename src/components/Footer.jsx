@@ -1,16 +1,22 @@
 import Link from 'next/link'
 import { openCookieSettings } from '../lib/consent.js'
-import { SITE } from '../lib/site.js'
+import { SITE, SITE_ADDRESS } from '../lib/site.js'
+import RichText from './seo/RichText.jsx'
 import { CATEGORY_SEO } from '../lib/seo/catalogue.js'
 import { EVENTS } from '../lib/seo/landings.js'
+import { cms, telHref, useCmsGlobal, useSiteContact } from '../lib/cms/client.js'
 
-const SOCIALS = [
+const SOCIAL_LINKS = [
   { key: 'facebook', label: 'Facebook', icon: 'fab fa-facebook-f' },
   { key: 'instagram', label: 'Instagram', icon: 'fab fa-instagram' },
   { key: 'pinterest', label: 'Pinterest', icon: 'fab fa-pinterest-p' },
-].map(s => ({ ...s, url: SITE.social?.[s.key] })).filter(s => s.url)
+]
 
 export default function Footer() {
+  const global = useCmsGlobal()
+  const contact = useSiteContact()
+  // Profiles set in Espace OA > Contenu des pages, else src/lib/site.js.
+  const SOCIALS = SOCIAL_LINKS.map(s => ({ ...s, url: global.social[s.key] || SITE.social?.[s.key] })).filter(s => s.url)
   return (
     <footer data-wf--main-footer--variant="base" className="main-footer">
       <span className="footer-corner footer-corner-tl" aria-hidden="true" />
@@ -33,9 +39,7 @@ export default function Footer() {
                   height="336"
                 />
               </Link>
-              <p className="footer-text">
-                Location de matériel événementiel dans toute la France : tentes, mobilier, vaisselle et décoration, livrés et installés.
-              </p>
+              <p className="footer-text" {...cms('global', 'footer.text')}>{global.footer.text}</p>
               {/* Social icons pointed to "#!" (dead links). They render again
                   as soon as real profile URLs are filled in SITE.social
                   (src/lib/site.js). */}
@@ -70,21 +74,23 @@ export default function Footer() {
               <h2 className="footer-widget-title">Contact</h2>
               <ul role="list" className="list-style-one">
                 <li className="list-item footer-contact-line">
-                  <i className="fas fa-map-marker-alt" aria-hidden="true" /> {SITE.address.street}, {SITE.address.postalCode} {SITE.address.city}
+                  <i className="fas fa-map-marker-alt" aria-hidden="true" /> {SITE_ADDRESS}
                 </li>
-                {SITE.phone && (
-                  <li className="list-item footer-contact-line">
-                    <i className="fas fa-phone" aria-hidden="true" /> <a href={`tel:${SITE.phone}`} className="list-text-link">{SITE.phone}</a>
+                {contact.phone && (
+                  <li className="list-item footer-contact-line" {...cms('global', 'contact.phone')}>
+                    <i className="fas fa-phone" aria-hidden="true" /> <a href={telHref(contact.phone)} className="list-text-link">{contact.phone}</a>
                   </li>
                 )}
-                <li className="list-item footer-contact-line">
-                  <i className="fas fa-envelope" aria-hidden="true" /> <a href={`mailto:${SITE.email}`} className="list-text-link">{SITE.email}</a>
+                <li className="list-item footer-contact-line" {...cms('global', 'contact.email')}>
+                  <i className="fas fa-envelope" aria-hidden="true" /> <a href={`mailto:${contact.email}`} className="list-text-link">{contact.email}</a>
                 </li>
-                <li className="list-item">
-                  <Link href="/catalogue" className="list-text-link footer-cta-link">
-                    Demander un devis →
-                  </Link>
-                </li>
+                {global.footer.ctaLabel && (
+                  <li className="list-item">
+                    <Link href="/catalogue" className="list-text-link footer-cta-link" {...cms('global', 'footer.ctaLabel')}>
+                      {global.footer.ctaLabel}
+                    </Link>
+                  </li>
+                )}
               </ul>
             </div>
 
@@ -116,11 +122,11 @@ export default function Footer() {
             <div>
               <h2 className="footer-widget-title">Livraison</h2>
               <ul role="list">
-                <li className="list-text-link" style={{ color: 'var(--oah-ivory)', fontWeight: 600 }}>
-                  TOUTE la France
+                <li className="list-text-link" style={{ color: 'var(--oah-ivory)', fontWeight: 600 }} {...cms('global', 'delivery.zone')}>
+                  {global.delivery.zone.charAt(0).toUpperCase() + global.delivery.zone.slice(1)}
                 </li>
-                <li style={{ marginTop: '8px', color: 'var(--oa-muted)', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                  Livraison et installation 7j/7 partout en France métropolitaine.
+                <li style={{ marginTop: '8px', color: 'var(--oa-muted)', fontSize: '0.9rem', lineHeight: '1.5' }} {...cms('global', 'delivery.text')}>
+                  <RichText text={global.delivery.text} />
                 </li>
                 <li style={{ marginTop: '10px' }}>
                   <Link href="/catalogue/complet" className="list-text-link">Voir le catalogue complet →</Link>

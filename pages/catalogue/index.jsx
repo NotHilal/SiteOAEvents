@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import PageBanner from '../../src/components/PageBanner.jsx'
 import Seo from '../../src/components/Seo.jsx'
 import { catalogueCategoryHref } from '../../src/components/product/productUtils.js'
 
@@ -53,18 +54,7 @@ export default function Catalogue({ tiles, productCount }) {
       />
 
       <div className="site-wrap">
-        <div className="page-header" style={{ backgroundImage: `url(${PAGE_HEADER_DEFAULT})` }}>
-          <div className="page-header-overlay" />
-          <div className="container">
-            <h1>Notre Catalogue</h1>
-            <nav aria-label="breadcrumb">
-              <ol className="breadcrumb justify-content-center">
-                <li className="breadcrumb-item"><Link href="/">Accueil</Link></li>
-                <li className="breadcrumb-item active">Catalogue</li>
-              </ol>
-            </nav>
-          </div>
-        </div>
+        <PageBanner title="Notre Catalogue" crumb="Catalogue" image={PAGE_HEADER_DEFAULT} />
 
         <section className="oa-section oa-cat-landing">
           <div className="oa-container">

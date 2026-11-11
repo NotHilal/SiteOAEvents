@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import Icon from './Icon.jsx'
-import { SITE } from '../lib/site.js'
+import { telHref, useSiteContact } from '../lib/cms/client.js'
 
 // Phone dropdown modelled on the /example header. It shares the account
 // menu's hover/click/keyboard behaviour so both controls feel identical.
@@ -10,6 +10,7 @@ const CLOSE_DELAY = 120
 
 export default function ContactMenu() {
   const router = useRouter()
+  const contact = useSiteContact()
   const [open, setOpen] = useState(false)
   const wrapRef = useRef(null)
   const buttonRef = useRef(null)
@@ -92,8 +93,8 @@ export default function ContactMenu() {
       <div id="oah-contact-menu" className="oah-account-menu" inert={!open}>
         <ul className="oah-account-list">
           <li>
-            {SITE.phone ? (
-              <a href={`tel:${SITE.phone}`} className="oah-account-item">
+            {contact.phone ? (
+              <a href={telHref(contact.phone)} className="oah-account-item">
                 <Icon name="headset" size={18} strokeWidth={1.5} />
                 Nous appeler
               </a>
@@ -105,7 +106,7 @@ export default function ContactMenu() {
             )}
           </li>
           <li>
-            <a href={`mailto:${SITE.email}`} className="oah-account-item">
+            <a href={`mailto:${contact.email}`} className="oah-account-item">
               <Icon name="mail" size={18} strokeWidth={1.5} />
               Nous écrire
             </a>

@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   type LucideIcon,
   Package,
+  PanelsTopLeft,
   ReceiptText,
   Settings,
   Users,
@@ -60,10 +61,16 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Site",
     items: [
       {
-        title: "Site",
+        title: "Contenu des pages",
+        url: "/admin/contenu",
+        icon: PanelsTopLeft,
+        description: "Textes, photos et couleurs de chaque page, avec aperçu en direct.",
+      },
+      {
+        title: "Catalogue & réalisations",
         url: "/admin/site",
         icon: Globe,
-        description: "Catalogue, réalisations et apparence du site.",
+        description: "Catégories, tuiles de l'accueil et réalisations.",
       },
     ],
   },

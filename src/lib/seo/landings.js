@@ -305,15 +305,16 @@ export const FAQ_GROUPS = [
   {
     h: 'Livraison et installation',
     items: [
-      { q: 'Dans quelles zones livrez-vous ?', a: 'Nous livrons dans TOUTE la France métropolitaine. Le montant de la livraison dépend de la distance routière entre notre dépôt et votre adresse et s’affiche automatiquement avant le paiement.' },
-      { q: 'Combien coûte la livraison ?', a: 'Les frais couvrent deux allers-retours pour la dépose et la reprise : quatre fois la distance routière aller multipliée par le prix au kilomètre, avec un éventuel forfait supplémentaire. Le montant exact s’affiche avant le paiement.' },
+      { home: true, q: 'Dans quelles zones livrez-vous ?', a: 'Nous livrons dans TOUTE la France métropolitaine. Le montant de la livraison dépend de la distance routière entre notre dépôt et votre adresse et s’affiche automatiquement avant le paiement.' },
+      { home: true, q: 'Combien coûte la livraison ?', a: 'Les frais couvrent deux allers-retours pour la dépose et la reprise : quatre fois la distance routière aller multipliée par le prix au kilomètre, avec un éventuel forfait supplémentaire. Le montant exact s’affiche avant le paiement.' },
       { q: 'Quand peut-on être livré ?', a: 'La livraison et l’installation sont possibles 24h/24 et 7j/7. Notre équipe vous répond tous les jours de 9h à 20h.' },
-      { q: 'L’installation d’une tente est-elle incluse ?', a: 'Oui, l’installation, la désinstallation et le lestage sont inclus dans le prix des [tentes de réception](/location/tentes), hors frais kilométriques.' },
+      { home: true, q: 'Le matériel est-il installé ?', a: 'Notre équipe assure la livraison, le montage et le démontage. Pour les [tentes de réception](/location/tentes), l’installation, la désinstallation et le lestage sont inclus dans le prix de location, hors frais kilométriques.' },
     ],
   },
   {
     h: 'Le matériel',
     items: [
+      { home: true, q: 'Quel matériel événementiel peut-on louer ?', a: 'Des [tentes de réception](/location/tentes), des [tables](/location/tables), des [chaises](/location/chaises), des [banquettes](/location/banquettes), de la [vaisselle](/location/vaisselle-art-de-la-table), de la [décoration](/location/decorations) et des [accessoires](/location/options-accessoires) comme l’éclairage ou le chauffage.' },
       { q: 'Doit-on nettoyer le matériel avant de le rendre ?', a: 'Le [kit vaisselle](/catalogue/kit-complet-vaisselle-par-personne) et les [nappes](/catalogue/nappe-professionnelle) se rendent sales.' },
       { q: 'Y a-t-il un minimum de commande ?', a: 'Il n’y a pas de minimum global, mais certains articles ont une quantité minimale indiquée sur leur fiche : les chaises Napoléon se louent par exemple à partir de 20 unités.' },
       { q: 'Combien de jours peut durer une location ?', a: 'Vous choisissez le ou les jours de votre événement lors de la commande. Pour une durée plus longue que celle proposée, contactez-nous.' },

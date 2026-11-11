@@ -1,5 +1,6 @@
 import Head from 'next/head'
 import { SITE } from '../lib/site.js'
+import { useCmsGlobal, useSiteContact } from '../lib/cms/client.js'
 
 // Per-page SEO: unique title + description, canonical URL, Open Graph /
 // Twitter card, optional robots noindex and JSON-LD blocks.
@@ -83,7 +84,11 @@ export const PROVIDER_LD = { '@type': 'LocalBusiness', '@id': ORGANIZATION_ID, n
 // The business, on the homepage and the contact page. Only verifiable facts
 // (Kbis, contact page) — never invent ratings or reviews: add aggregateRating
 // only once real reviews are displayed on the site.
-export const LOCAL_BUSINESS_LD = {
+// Built from the editable coordinates (Espace OA > Contenu des pages): pass
+// useLocalBusinessLd() from a page; LOCAL_BUSINESS_LD is the default.
+export function localBusinessLd({ email = SITE.email, phone = SITE.phone, social = SITE.social } = {}) {
+  const profiles = Object.values(social || {}).filter(Boolean)
+  return {
   '@context': 'https://schema.org',
   '@type': 'LocalBusiness',
   '@id': ORGANIZATION_ID,
@@ -92,8 +97,8 @@ export const LOCAL_BUSINESS_LD = {
   url: SITE.url,
   logo: SITE.logo,
   image: SITE.ogImage,
-  email: SITE.email,
-  ...(SITE.phone ? { telephone: SITE.phone } : {}),
+  email,
+  ...(phone ? { telephone: phone } : {}),
   description: SITE.description,
   foundingDate: SITE.foundingDate,
   identifier: { '@type': 'PropertyValue', propertyID: 'SIREN', value: SITE.siren },
@@ -114,7 +119,16 @@ export const LOCAL_BUSINESS_LD = {
   paymentAccepted: 'Carte bancaire',
   currenciesAccepted: 'EUR',
   knowsAbout: ['Location de matériel événementiel', 'Location de mobilier de réception', 'Location de tentes de réception', 'Décoration de mariage', 'Art de la table'],
-  ...(Object.values(SITE.social).some(Boolean) ? { sameAs: Object.values(SITE.social).filter(Boolean) } : {}),
+  ...(profiles.length ? { sameAs: profiles } : {}),
+  }
+}
+
+export const LOCAL_BUSINESS_LD = localBusinessLd()
+
+export function useLocalBusinessLd() {
+  const global = useCmsGlobal()
+  const { email, phone } = useSiteContact()
+  return localBusinessLd({ email, phone, social: { ...SITE.social, ...Object.fromEntries(Object.entries(global.social).filter(([, v]) => v)) } })
 }
 
 export const WEBSITE_LD = {

@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 
 import { BookingProvider } from "@/components/booking/booking-provider";
 import { ConfirmProvider } from "@/components/confirm";
+import { QuickRealisationButton } from "@/components/realisations/quick-realisation-button";
+import { QuickRealisationProvider } from "@/components/realisations/quick-realisation";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
@@ -48,6 +50,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <ConfirmProvider>
     <BookingProvider>
+    <QuickRealisationProvider>
     <SidebarProvider style={{ "--sidebar-width": "15.5rem" } as React.CSSProperties}>
       <AppSidebar email={session.user?.email || ""} />
       <SidebarInset className="min-w-0">
@@ -55,10 +58,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mx-1 data-[orientation=vertical]:h-5 data-[orientation=vertical]:self-center" />
           <span className="font-heading text-sm font-semibold">{current?.title ?? "Espace OA"}</span>
+          <span className="flex-1" />
+          <QuickRealisationButton />
         </header>
         <div className="min-w-0 flex-1 p-4 md:p-6 lg:p-8">{children}</div>
       </SidebarInset>
     </SidebarProvider>
+    </QuickRealisationProvider>
     </BookingProvider>
     </ConfirmProvider>
   );

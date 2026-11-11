@@ -25,6 +25,7 @@ import Navbar from '../src/components/Navbar.jsx'
 import Footer from '../src/components/Footer.jsx'
 import CookieConsent from '../src/components/CookieConsent.jsx'
 import useScrollReveal from '../src/lib/useScrollReveal.js'
+import { CmsGlobalProvider, CmsPreviewBridge } from '../src/lib/cms/client.js'
 
 export default function App({ Component, pageProps }) {
   const router = useRouter()
@@ -126,7 +127,8 @@ export default function App({ Component, pageProps }) {
   }, [router.events])
 
   return (
-    <>
+    <CmsGlobalProvider initial={pageProps.cmsGlobal}>
+      {!isAdmin && <CmsPreviewBridge />}
       <div className={`oa-progress-bar oa-progress-${navState}`} aria-hidden="true" />
       {!isAdmin && <Navbar />}
       {/* key={asPath} forces a remount on navigation, which restarts the
@@ -157,6 +159,6 @@ export default function App({ Component, pageProps }) {
       </div>
       {!isAdmin && <Footer />}
       {!isAdmin && <CookieConsent />}
-    </>
+    </CmsGlobalProvider>
   )
 }

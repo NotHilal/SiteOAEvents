@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import LegalPage from '../src/components/LegalPage.jsx'
 import { openCookieSettings } from '../src/lib/consent.js'
-import { SITE } from '../src/lib/site.js'
+import { SiteEmail } from '../src/components/SiteContact.jsx'
 
 export default function CookiesPage() {
   return (
@@ -116,7 +116,7 @@ export default function CookiesPage() {
       <p>
         Pour toute information relative au traitement de vos données personnelles, veuillez consulter notre{' '}
         <Link href="/confidentialite">politique de confidentialité</Link> ou nous écrire à{' '}
-        <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.
+        <SiteEmail />.
       </p>
 
       <p className="legal-see-also">

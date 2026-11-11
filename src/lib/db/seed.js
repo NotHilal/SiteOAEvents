@@ -160,21 +160,8 @@ export async function seedDatabase(sql) {
   ]
   for (const [key, value] of settings) await sql('INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT (key) DO NOTHING').run(key, value, t)
 
-  const aboutPageDefault = JSON.stringify({
-    headline: "Location et décoration d'événements en Île-de-France",
-    story: "OA Événementiel est née en 2026 d'une conviction simple : chaque réception mérite un décor à la hauteur de ce qu'elle célèbre. Installée à Chanteloup-les-Vignes, dans les Yvelines, l'entreprise accompagne particuliers et professionnels partout en Île-de-France.\n\nMariages, anniversaires, baptêmes, séminaires ou soirées d'entreprise : nous louons le mobilier, la vaisselle et la décoration de vos événements, et nous pouvons aussi les imaginer, les coordonner et les installer de A à Z. Vous composez votre sélection en ligne, nous livrons, montons et reprenons le matériel.\n\nUne question, un projet ? Écrivez-nous à contact@oa-evenementiel.fr, nous vous répondons rapidement.",
-    photoUrl: null,
-    counters: [
-      { count: "2026", label: "Année de création" },
-      { count: "7j/7", label: "À votre écoute" },
-    ],
-    values: [
-      { title: "Créativité sur-mesure", text: "Chaque décor est pensé pour votre événement : vos couleurs, votre lieu, votre style. Nous composons avec vous une ambiance qui vous ressemble." },
-      { title: "Logistique maîtrisée", text: "Livraison, montage, démontage et reprise du matériel : nous organisons chaque étape pour que le jour J se déroule sans imprévu." },
-      { title: "Écoute & Accompagnement", text: "Du premier échange à la fin de l'événement, un interlocuteur unique vous conseille et répond à vos questions." },
-      { title: "Confiance & Transparence", text: "Des prix affichés en ligne et un total calculé avant de commander, livraison comprise : vous savez exactement ce que vous payez." },
-    ],
-  });
+  // Page texts (À propos, accueil…) are not seeded: their defaults live in
+  // src/lib/cms/schema.js, the single source used by the site and the editor.
   const galerieDefault = JSON.stringify({
     page_header: null,
     photos: [
@@ -193,7 +180,6 @@ export async function seedDatabase(sql) {
     ],
   });
   const content = [
-    ['about_page', aboutPageDefault],
     ['max_consecutive_days', '7'],
     ['images_home', '{}'],
     ['images_contact', '{}'],

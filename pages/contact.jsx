@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import Seo, { LOCAL_BUSINESS_LD } from '../src/components/Seo.jsx'
-import { SITE } from '../src/lib/site.js'
+import { useState } from 'react'
+import Seo, { useLocalBusinessLd } from '../src/components/Seo.jsx'
+import PageBanner from '../src/components/PageBanner.jsx'
+import { SITE_ADDRESS } from '../src/lib/site.js'
 import PhoneInput from '../src/components/PhoneInput.jsx'
-import { getJsonContent, sendContact } from '../src/lib/public-api.js'
+import { sendContact } from '../src/lib/public-api.js'
+import { cms, Emph, telHref, useCmsContent, useCmsGlobal, useSiteContact } from '../src/lib/cms/client.js'
 import { track } from '../src/lib/analytics.js'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -23,23 +24,29 @@ function validate(form, phoneValid) {
   return e
 }
 
-const PAGE_HEADER_DEFAULT = 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?w=1600&q=75&auto=format&fit=crop'
+export async function getServerSideProps() {
+  const { getPageProps } = await import('../src/lib/cms/server.js')
+  return { props: await getPageProps('contact') }
+}
 
-export default function Contact() {
+// Texts and banner: Espace OA > Contenu des pages > Contact; phone, e-mail
+// and hours: > En-tête, pied de page & coordonnées.
+export default function Contact({ cms: initialContent }) {
+  const c = useCmsContent('contact', initialContent)
+  const global = useCmsGlobal()
+  const contact = useSiteContact()
+  const businessLd = useLocalBusinessLd()
+  const at = path => cms('contact', path)
   const EMPTY = { prenom: '', nom: '', email: '', telephone: '', typeEvenement: '', message: '', website: '' }
   const [form, setForm] = useState(EMPTY)
   const [errorMsg, setErrorMsg] = useState('')
   const [status, setStatus] = useState('idle') // idle | loading | success | error
-  const [images, setImages] = useState({})
   const [errors, setErrors] = useState({})
   const [phoneValid, setPhoneValid] = useState(true)
   // Bumped after a successful send to remount (= clear) the phone field.
   const [phoneKey, setPhoneKey] = useState(0)
 
 
-  useEffect(() => {
-    getJsonContent('images_contact').then(v => { if (v) setImages(v) })
-  }, [])
 
   const clearError = (name) => setErrors(prev => (prev[name] ? { ...prev, [name]: undefined } : prev))
   const handleChange = (e) => {
@@ -97,7 +104,7 @@ export default function Contact() {
       setPhoneKey(k => k + 1)
       track('Contact envoyé', { type: form.typeEvenement || 'non précisé' })
     } else {
-      setErrorMsg("Votre message n'a pas pu être envoyé. Vérifiez votre connexion et réessayez, ou écrivez-nous à contact@oa-evenementiel.fr.")
+      setErrorMsg(`Votre message n'a pas pu être envoyé. Vérifiez votre connexion et réessayez, ou écrivez-nous à ${contact.email}.`)
       setStatus('error')
     }
   }
@@ -105,46 +112,32 @@ export default function Contact() {
   return (
     <>
       <Seo
-        title="Contact et devis location de matériel"
-        description="Une question ou un projet ? Contactez OA Événementiel pour vos mariages, anniversaires et événements professionnels en Île-de-France."
+        title={c.seo.title}
+        description={c.seo.description}
         path="/contact"
-        jsonLd={LOCAL_BUSINESS_LD}
+        jsonLd={businessLd}
         breadcrumb={[{ name: 'Contact', path: '/contact' }]}
-        preloadImage={PAGE_HEADER_DEFAULT}
+        preloadImage={c.header.image}
       />
 
       <div className="site-wrap">
-        <div
-          className="page-header"
-          style={{ backgroundImage: `url(${images.page_header || PAGE_HEADER_DEFAULT})` }}
-        >
-          <div className="page-header-overlay" />
-          <div className="container">
-            <h1>Contactez-Nous</h1>
-            <nav aria-label="breadcrumb">
-              <ol className="breadcrumb justify-content-center">
-                <li className="breadcrumb-item"><Link href="/">Accueil</Link></li>
-                <li className="breadcrumb-item active">Contact</li>
-              </ol>
-            </nav>
-          </div>
-        </div>
+        <PageBanner title={c.header.title} crumb="Contact" image={c.header.image} editable={at('header.title')} />
 
         <section className="contact-section">
           <div className="container">
             <div className="row">
               <div className="col-lg-4 mb-5 mb-lg-0" data-reveal>
-                <span className="section-subtitle">Parlons de votre projet</span>
-                <h2 className="section-title">Nous Sommes à Votre Écoute</h2>
-                <p className="section-text">N'hésitez pas à nous contacter pour toute demande de renseignements ou pour démarrer la planification de votre événement.</p>
+                {c.intro.eyebrow && <span className="section-subtitle" {...at('intro.eyebrow')}>{c.intro.eyebrow}</span>}
+                <h2 className="section-title" {...at('intro.title')}><Emph text={c.intro.title} /></h2>
+                {c.intro.text && <p className="section-text" {...at('intro.text')}>{c.intro.text}</p>}
 
                 {[
-                  { icon: 'fas fa-map-marker-alt', title: 'Localisation', text: `${SITE.address.street}, ${SITE.address.postalCode} ${SITE.address.city}`, note: 'Livraison dans toute la France', id: 'localisation' },
-                  { icon: 'fas fa-phone', title: 'Téléphone', text: 'Sur demande' },
-                  { icon: 'fas fa-envelope', title: 'Email', text: 'contact@oa-evenementiel.fr', href: 'mailto:contact@oa-evenementiel.fr' },
-                  { icon: 'fas fa-clock', title: 'Disponibilité', text: 'Lun – Dim : 9h – 20h', note: 'Livraison et installation possibles 24h/24, 7j/7' },
-                ].map((item, i) => (
-                  <div key={i} id={item.id} className="contact-info-item">
+                  { icon: 'fas fa-map-marker-alt', title: 'Localisation', text: SITE_ADDRESS, note: `Livraison dans ${global.delivery.zone}`, id: 'localisation', field: 'delivery.zone' },
+                  { icon: 'fas fa-phone', title: 'Téléphone', text: contact.phone || 'Sur demande', href: contact.phone ? telHref(contact.phone) : null, field: 'contact.phone' },
+                  { icon: 'fas fa-envelope', title: 'Email', text: contact.email, href: `mailto:${contact.email}`, field: 'contact.email' },
+                  global.contact.hours && { icon: 'fas fa-clock', title: 'Disponibilité', text: global.contact.hours, note: global.contact.hoursNote, field: 'contact.hours' },
+                ].filter(Boolean).map((item, i) => (
+                  <div key={i} id={item.id} className="contact-info-item" {...cms('global', item.field)}>
                     <div className="contact-info-icon"><i className={item.icon} aria-hidden="true" /></div>
                     <div className="contact-info-text">
                       <h3>{item.title}</h3>
@@ -157,12 +150,12 @@ export default function Contact() {
 
               <div className="col-lg-8" data-reveal>
                 <div className="contact-form-wrap">
-                  <h3>Demande de devis</h3>
-                  <p className="lead-text">Remplissez ce formulaire et nous vous répondrons dans les 24h.</p>
+                  <h3 {...at('form.title')}>{c.form.title}</h3>
+                  {c.form.lead && <p className="lead-text" {...at('form.lead')}>{c.form.lead}</p>}
 
                   {status === 'success' && (
                     <div className="alert alert-success" role="alert">
-                      <i className="fas fa-check-circle me-2" aria-hidden="true" />Message envoyé ! Nous vous répondrons très vite.
+                      <i className="fas fa-check-circle me-2" aria-hidden="true" />{c.form.success}
                     </div>
                   )}
                   {status === 'error' && (
@@ -237,7 +230,7 @@ export default function Contact() {
                     <button type="submit" className="btn btn-rose-gold w-100" disabled={status === 'loading'}>
                       {status === 'loading'
                         ? <><i className="fas fa-circle-notch fa-spin me-2" />Envoi en cours…</>
-                        : <><i className="fas fa-paper-plane me-2" />Envoyer ma demande</>
+                        : <><i className="fas fa-paper-plane me-2" />{c.form.buttonLabel}</>
                       }
                     </button>
                   </form>

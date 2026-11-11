@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import LegalPage from '../src/components/LegalPage.jsx'
-import { SITE } from '../src/lib/site.js'
+import { SiteEmail } from '../src/components/SiteContact.jsx'
 
 export default function Cgu() {
   return (
@@ -72,7 +72,7 @@ export default function Cgu() {
       <h2>9. Droit applicable et contact</h2>
       <p>
         Les présentes conditions sont soumises au droit français. Contact :{' '}
-        <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.
+        <SiteEmail />.
       </p>
 
       <p className="legal-see-also">

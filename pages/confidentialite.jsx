@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import LegalPage from '../src/components/LegalPage.jsx'
-import { SITE } from '../src/lib/site.js'
+import { SITE_ADDRESS } from '../src/lib/site.js'
+import { SiteEmail } from '../src/components/SiteContact.jsx'
 import { openCookieSettings } from '../src/lib/consent.js'
 
 export default function Confidentialite() {
@@ -14,8 +15,8 @@ export default function Confidentialite() {
       <h2>1. Responsable du traitement</h2>
       <p>
         OA Événementiel, société par actions simplifiée, 131 239 949 RCS Versailles, dont le siège est situé
-        au 8 rue de la Butte des Groux, 78570 Chanteloup-les-Vignes, France, joignable à{' '}
-        <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.
+        au {SITE_ADDRESS}, France, joignable à{' '}
+        <SiteEmail />.
       </p>
 
       <h2>2. Données collectées et finalités</h2>
@@ -125,7 +126,7 @@ export default function Confidentialite() {
         données après votre décès.
       </p>
       <p>
-        Pour les exercer, écrivez à <a href={`mailto:${SITE.email}`}>{SITE.email}</a>. Nous répondons dans un
+        Pour les exercer, écrivez à <SiteEmail />. Nous répondons dans un
         délai d'un mois. Vous pouvez également introduire une réclamation auprès de la CNIL
         (<a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer">www.cnil.fr</a>).
       </p>

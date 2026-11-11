@@ -58,6 +58,8 @@ try {
     await request('/api/admin/accounts',{cookie,bearer,status:401})
     await request('/api/realisations',{method:'POST',body:{},cookie,bearer,status:401})
     await request('/api/admin/content',{method:'PUT',body:{key:'about_page',value:{headline:'overwrite'}},cookie,bearer,status:401})
+    await request('/api/admin/pages?page=home',{cookie,bearer,status:401})
+    await request('/api/admin/pages',{method:'PUT',body:{page:'home',content:{hero:{title:'overwrite'}}},cookie,bearer,status:401})
     await request('/api/admin/catalog',{method:'POST',body:{action:'deleteArticle',materialId:'mat-chaise-napoleon'},cookie,bearer,status:401})
     await request('/api/upload',{method:'POST',body:{},cookie,bearer,status:401})
   }

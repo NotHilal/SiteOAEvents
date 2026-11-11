@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import LegalPage, { ToFill } from '../src/components/LegalPage.jsx'
-import { SITE } from '../src/lib/site.js'
+import { SITE_ADDRESS } from '../src/lib/site.js'
+import { SiteEmail, SitePhone } from '../src/components/SiteContact.jsx'
 
 export default function MentionsLegales() {
   return (
@@ -16,13 +17,13 @@ export default function MentionsLegales() {
         <li>Dénomination sociale : <strong>OA Événementiel</strong></li>
         <li>Forme juridique : société par actions simplifiée (SAS)</li>
         <li>Capital social : 2 000 €</li>
-        <li>Siège social : 8 rue de la Butte des Groux, 78570 Chanteloup-les-Vignes, France</li>
+        <li>Siège social : {SITE_ADDRESS}, France</li>
         <li>SIREN : 131 239 949</li>
         <li>Immatriculation : 131 239 949 RCS Versailles</li>
         <li>Date d’immatriculation : 8 octobre 2026</li>
         <li>N° de TVA intracommunautaire : FR60 131 239 949</li>
-        <li>Email : <a href={`mailto:${SITE.email}`}>{SITE.email}</a></li>
-        <li>Téléphone : {SITE.phone ? <a href={`tel:${SITE.phone}`}>{SITE.phone}</a> : <ToFill>numéro professionnel</ToFill>}</li>
+        <li>Email : <SiteEmail /></li>
+        <li>Téléphone : <SitePhone fallback={<ToFill>numéro professionnel</ToFill>} /></li>
       </ul>
 
       <h2>2. Directeur de la publication</h2>
@@ -83,7 +84,7 @@ export default function MentionsLegales() {
 
       <h2>8. Contact</h2>
       <p>
-        Pour toute question relative au site : <a href={`mailto:${SITE.email}`}>{SITE.email}</a> ou via
+        Pour toute question relative au site : <SiteEmail /> ou via
         notre <Link href="/contact">formulaire de contact</Link>.
       </p>
     </LegalPage>

@@ -9,7 +9,8 @@
     "preview": "next start",
     "db:up": "docker compose -f docker-compose.dev.yml up -d",
     "db:import-sqlite": "node scripts/migrate-sqlite-to-postgres.mjs",
-    "test": "node scripts/test-delivery-pricing.mjs && node scripts/test-direct-orders.mjs && node scripts/test-access.mjs && node scripts/test-realisations.mjs && node scripts/test-customer-welcome.mjs && node scripts/test-password-reset.mjs && node scripts/test-category-sync.mjs"
+    "db:pull-content": "node scripts/pull-prod-content.mjs",
+    "test": "node scripts/test-delivery-pricing.mjs && node scripts/test-direct-orders.mjs && node scripts/test-access.mjs && node scripts/test-realisations.mjs && node scripts/test-customer-welcome.mjs && node scripts/test-password-reset.mjs && node scripts/test-category-sync.mjs && node scripts/test-cms.mjs"
   },
   "dependencies": {
     "@fontsource/bodoni-moda": "5.2.7",

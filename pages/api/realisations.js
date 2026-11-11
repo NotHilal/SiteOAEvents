@@ -24,13 +24,14 @@ export default async function handler(req, res) {
     let item
     try { item = validateRealisation(req.body) } catch (error) { return res.status(400).json({ message: error.message }) }
     const now = new Date().toISOString()
-    // Check and write in one statement to reject simultaneous slug collisions.
-    const result = await db.prepare(`INSERT INTO site_content (key, value, updated_at)
+    // Check and write inside a write transaction (serialized): two
+    // simultaneous publications can't both take the same address.
+    const result = await db.writeTransaction(tx => tx.prepare(`INSERT INTO site_content (key, value, updated_at)
       SELECT ?, ?, ?::timestamptz WHERE NOT EXISTS (
         SELECT 1 FROM site_content WHERE key LIKE ? AND key != ?
         AND CASE WHEN value IS JSON OBJECT THEN value::jsonb ->> 'slug' END = ?
       ) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`)
-      .run(key, JSON.stringify(item), now, `${REALISATION_PREFIX}%`, key, item.slug)
+      .run(key, JSON.stringify(item), now, `${REALISATION_PREFIX}%`, key, item.slug))
     if (!result.changes) return res.status(409).json({ message: 'Cette adresse existe déjà. Choisissez une autre adresse.' })
     return res.status(req.method === 'POST' ? 201 : 200).json({ data: { ...item, id, updatedAt: now } })
   } catch (error) {

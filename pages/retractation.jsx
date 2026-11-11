@@ -2,15 +2,19 @@ import { useState } from 'react'
 import Link from 'next/link'
 import LegalPage from '../src/components/LegalPage.jsx'
 import { SITE } from '../src/lib/site.js'
+import { useSiteContact } from '../src/lib/cms/client.js'
+import { SiteEmail } from '../src/components/SiteContact.jsx'
 
 export default function RetractationPage() {
   const [copied, setCopied] = useState(false)
+  const { email } = useSiteContact()
+  const { street, postalCode, city } = SITE.address
 
   const templateText = `À l'attention de :
 OA Événementiel
-8 rue de la Butte des Groux
-78570 Chanteloup-les-Vignes
-E-mail : ${SITE.email}
+${street}
+${postalCode} ${city}
+E-mail : ${email}
 
 Je vous notifie par la présente ma rétractation du contrat portant sur la location du matériel événementiel ci-dessous :
 
@@ -69,12 +73,12 @@ Je vous notifie par la présente ma rétractation du contrat portant sur la loca
         du délai de 14 jours :
       </p>
       <ul>
-        <li><strong>Par e-mail</strong> à l'adresse suivante : <a href={`mailto:${SITE.email}`}>{SITE.email}</a></li>
+        <li><strong>Par e-mail</strong> à l'adresse suivante : <SiteEmail /></li>
         <li>
           <strong>Par voie postale</strong> à l'adresse du siège social :<br />
           <strong>OA Événementiel</strong><br />
-          8 rue de la Butte des Groux<br />
-          78570 Chanteloup-les-Vignes
+          {street}<br />
+          {postalCode} {city}
         </li>
       </ul>
       <p>
@@ -127,7 +131,7 @@ Je vous notifie par la présente ma rétractation du contrat portant sur la loca
       <h2>6. Contact et assistance</h2>
       <p>
         Pour toute question relative à votre commande ou à son suivi, notre équipe est à votre écoute :{' '}
-        <a href={`mailto:${SITE.email}`}>{SITE.email}</a> ou via la page{' '}
+        <SiteEmail /> ou via la page{' '}
         <Link href="/suivi">suivi de commande</Link>.
       </p>
 

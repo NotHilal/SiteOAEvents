@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { ArrowLeft, ExternalLink, Film, ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Film, ImagePlus, Pencil, Plus, Trash2, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 import { useConfirm } from "@/components/confirm";
+import { REALISATIONS_CHANGED, useQuickRealisation } from "@/components/realisations/quick-realisation";
 import { ImageField } from "@/components/image-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,6 +34,13 @@ export function RealisationsPanel() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const mediaInput = useRef<HTMLInputElement>(null);
+  const quick = useQuickRealisation();
+
+  useEffect(() => {
+    const onChange = () => reload();
+    window.addEventListener(REALISATIONS_CHANGED, onChange);
+    return () => window.removeEventListener(REALISATIONS_CHANGED, onChange);
+  }, [reload]);
 
   async function addMedia(files: FileList | null) {
     if (!files?.length || !draft) return;
@@ -169,9 +177,14 @@ export function RealisationsPanel() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">Vos événements passés, publiés sur la page Nos réalisations et l'accueil.</p>
-        <Button onClick={() => setDraft(empty())}>
-          <Plus /> Nouvelle réalisation
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={quick}>
+            <Zap /> Ajout rapide
+          </Button>
+          <Button onClick={() => setDraft(empty())}>
+            <Plus /> Nouvelle réalisation détaillée
+          </Button>
+        </div>
       </div>
       {(data || []).length === 0 && <p className="rounded-xl border bg-card p-10 text-center text-muted-foreground">Aucune réalisation publiée.</p>}
       <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

@@ -1,12 +1,13 @@
 import RealisationsGrid from '../src/components/RealisationsGrid.jsx'
 import { getRealisations } from '../src/lib/realisations-server.js'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import Seo, { LOCAL_BUSINESS_LD, WEBSITE_LD, faqLd } from '../src/components/Seo.jsx'
+import Seo, { WEBSITE_LD, faqLd, useLocalBusinessLd } from '../src/components/Seo.jsx'
 import Faq from '../src/components/seo/Faq.jsx'
 import RichText from '../src/components/seo/RichText.jsx'
 import { EVENTS, GUIDES } from '../src/lib/seo/landings.js'
-import { getJsonContent } from '../src/lib/public-api.js'
+import { cms, Emph, useCmsContent, useCmsGlobal } from '../src/lib/cms/client.js'
+import { homeFaqItems, plainText } from '../src/lib/cms/resolve.js'
 import ShopCard from '../src/components/product/ShopCard.jsx'
 import QuickView from '../src/components/product/QuickView.jsx'
 import { catalogueCategoryHref, useCatalogueCart } from '../src/components/product/productUtils.js'
@@ -14,37 +15,9 @@ import Icon from '../src/components/Icon.jsx'
 import HeroVideo from '../src/components/HeroVideo.jsx'
 import { track } from '../src/lib/analytics.js'
 
-// Fallback photo of the "Organisation sur mesure" banner, swappable from
-// Espace OA > Visuel Site > Accueil (slot key kept from the old Nos Univers
-// block so an already chosen photo stays in place).
-const BANNER_IMG = 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1600&q=70&auto=format&fit=crop'
-
-// Reassurance strip, modelled on options.fr's "Louez tout le matériel pour
-// votre réception !" block (reference at /example). Copy built only from
-// claims the site already makes elsewhere.
-const ASSURANCES = [
-  { icon: 'book', title: 'Tout pour votre décor', tag: 'Mobilier, vaisselle et éclairage', text: 'Composez votre réception pièce par pièce dans notre catalogue en ligne.' },
-  { icon: 'truck', title: 'Livré et installé', tag: 'Pris en charge de A à Z', text: 'Livraison, montage et démontage assurés par notre équipe.' },
-  { icon: 'users', title: 'La location pour tous', tag: 'Particuliers et professionnels', text: 'Mariages, anniversaires, séminaires : quelle que soit la taille de votre événement.' },
-  { icon: 'headset', title: 'Accompagnement 7j/7', tag: 'Du premier échange au jour J', text: 'Une équipe à votre écoute pour vous conseiller à chaque étape.' },
-]
-
-// "Louez en 4 étapes" — options.fr's step strip, written for OA's real
-// flow: catalogue cart → reservation form → online estimate → team
-// confirmation, then payment + tracking via /suivi.
-const ETAPES = [
-  { title: 'Faites votre sélection', text: 'Mobilier, art de la table et décoration : ajoutez vos pièces au panier depuis le catalogue.' },
-  { title: 'Indiquez la date et le lieu', text: "Au moment de commander, choisissez le ou les jours de votre événement et l'adresse de livraison." },
-  { title: 'Vérifiez votre total', text: 'Le prix de la location et de la livraison est calculé immédiatement.' },
-  { title: 'Payez, c’est réservé', text: 'Réglez en ligne par carte : votre location est confirmée aussitôt, suivez-la depuis votre commande.' },
-]
-
-const HOME_FAQ = [
-  { q: 'Quel matériel événementiel peut-on louer ?', a: 'Des [tentes de réception](/location/tentes), des [tables](/location/tables), des [chaises](/location/chaises), des [banquettes](/location/banquettes), de la [vaisselle](/location/vaisselle-art-de-la-table), de la [décoration](/location/decorations) et des [accessoires](/location/options-accessoires) comme l’éclairage ou le chauffage.' },
-  { q: 'Où livrez-vous ?', a: 'Nous livrons dans TOUTE la France. Les frais de livraison sont calculés automatiquement en ligne selon la distance routière avant le paiement.' },
-  { q: 'Le prix de la livraison est-il connu à l’avance ?', a: 'Oui, le total de la location et de la livraison est calculé en ligne selon votre adresse, avant le paiement.' },
-  { q: 'Le matériel est-il installé ?', a: 'Notre équipe assure la livraison, le montage et le démontage. Pour les tentes de réception, l’installation, la désinstallation et le lestage sont inclus dans le prix de location, hors frais kilométriques.' },
-]
+// Icons of the reassurance strip. All texts and the banner photo are edited
+// in Espace OA > Contenu des pages > Accueil (defaults: src/lib/cms/schema.js).
+const ASSURANCE_ICONS = ['book', 'truck', 'users', 'headset']
 
 const SELECTION_SIZE = 8
 
@@ -64,11 +37,18 @@ function pickSelection(cards) {
 export async function getServerSideProps() {
   const { getCatalogueCards } = await import('../src/lib/catalogue-cards.js')
   const { getHomeCategoryTiles } = await import('../src/lib/home-category-tiles.js')
-  const [realisations, { cards }, categories] = await Promise.all([getRealisations(), getCatalogueCards(), getHomeCategoryTiles()])
-  return { props: { realisations: realisations.slice(0, 6), selection: pickSelection(cards), productCount: cards.length, categories } }
+  const { getPageContent, getPageProps } = await import('../src/lib/cms/server.js')
+  const [realisations, { cards }, categories, cmsProps, cmsFaq] = await Promise.all([getRealisations(), getCatalogueCards(), getHomeCategoryTiles(), getPageProps('home'), getPageContent('faq')])
+  return { props: { realisations: realisations.slice(0, 6), selection: pickSelection(cards), productCount: cards.length, categories, ...cmsProps, cmsFaq } }
 }
 
-export default function Home({ realisations, selection, productCount, categories }) {
+export default function Home({ realisations, selection, productCount, categories, cms: initialContent, cmsFaq }) {
+  const c = useCmsContent('home', initialContent)
+  const global = useCmsGlobal()
+  const businessLd = useLocalBusinessLd()
+  // The home FAQ is a selection of the FAQ page's questions (one source).
+  const faqItems = homeFaqItems(useCmsContent('faq', cmsFaq))
+  const at = path => cms('home', path)
   // Repeat the existing five-tile mosaic for any number of CMS categories.
   const categoryRows = Array.from({ length: Math.ceil(categories.length / 5) }, (_, i) => categories.slice(i * 5, i * 5 + 5))
   const cart = useCatalogueCart()
@@ -76,26 +56,17 @@ export default function Home({ realisations, selection, productCount, categories
   // The hero's entrance animation is pure CSS (see .hero-reveal in
   // index.css) — it starts on first paint, no JS flag needed.
 
-  const [images, setImages] = useState({})
-  useEffect(() => {
-    getJsonContent('images_home').then(v => { if (v) setImages(v) })
-  }, [])
-
-  // Title colours of the "Nos catégories" tiles, set in Espace OA.
-  const [catColors, setCatColors] = useState({})
-  useEffect(() => {
-    getJsonContent('home_categories_style').then(v => { if (v) setCatColors(v) })
-  }, [])
+  const catColors = c.categories
 
   const inCartOf = card => card.variants.reduce((n, v) => n + (cart[v.id] || 0), 0)
 
   return (
     <>
       <Seo
-        title="Location de matériel événementiel dans toute la France | OA Événementiel"
-        description="Louez en ligne tentes, tables, chaises, vaisselle et décoration pour vos événements dans toute la France. Prix affichés, livraison et installation partout en France."
+        title={c.seo.title}
+        description={c.seo.description}
         path="/"
-        jsonLd={[LOCAL_BUSINESS_LD, WEBSITE_LD, faqLd(HOME_FAQ)]}
+        jsonLd={[businessLd, WEBSITE_LD, faqItems.length ? faqLd(faqItems) : null]}
         preloadImage="/videos/oa-hero-poster.jpg"
       />
 
@@ -104,19 +75,19 @@ export default function Home({ realisations, selection, productCount, categories
         <section id="Hero-Section" className="oa-hero" aria-labelledby="oa-hero-title">
           <HeroVideo />
           <div className="oa-container oa-hero-inner">
-            <p className="oa-hero-eyebrow hero-reveal hero-reveal-1">Tentes, mobilier, vaisselle & décoration</p>
-            <h1 id="oa-hero-title" className="oa-hero-title hero-reveal hero-reveal-2">
-              Location de matériel événementiel dans toute la France
+            {c.hero.eyebrow && <p className="oa-hero-eyebrow hero-reveal hero-reveal-1" {...at('hero.eyebrow')}>{c.hero.eyebrow}</p>}
+            <h1 id="oa-hero-title" className="oa-hero-title hero-reveal hero-reveal-2" {...at('hero.title')}>
+              {c.hero.title}
             </h1>
-            <p className="oa-hero-text hero-reveal hero-reveal-3">
-              Louez tout pour votre réception : choisissez en ligne, réservez votre date, nous livrons et installons chez vous.
-            </p>
+            {c.hero.text && <p className="oa-hero-text hero-reveal hero-reveal-3" {...at('hero.text')}>
+              {c.hero.text}
+            </p>}
             <div className="oa-hero-actions hero-reveal hero-reveal-4">
-              <Link href="/catalogue/complet" className="shop-btn shop-btn-gold shop-btn-xl" onClick={() => track('Clic Catalogue', { emplacement: 'hero' })}>
-                <i className="fas fa-th-large" /> Voir le catalogue
+              <Link href="/catalogue/complet" className="shop-btn shop-btn-gold shop-btn-xl" onClick={() => track('Clic Catalogue', { emplacement: 'hero' })} {...at('hero.primaryLabel')}>
+                <i className="fas fa-th-large" /> {c.hero.primaryLabel}
               </Link>
-              <Link href="/catalogue" className="shop-btn shop-btn-light shop-btn-xl" onClick={() => track('Clic Réserver', { emplacement: 'hero' })}>
-                <i className="far fa-calendar-check" /> Réserver mon événement
+              <Link href="/catalogue" className="shop-btn shop-btn-light shop-btn-xl" onClick={() => track('Clic Réserver', { emplacement: 'hero' })} {...at('hero.secondaryLabel')}>
+                <i className="far fa-calendar-check" /> {c.hero.secondaryLabel}
               </Link>
             </div>
           </div>
@@ -125,10 +96,10 @@ export default function Home({ realisations, selection, productCount, categories
         {/* ARGUMENTS — compact reassurance under the hero */}
         <section className="shop-usp" aria-label="Nos engagements">
           <ul className="shop-usp-list">
-            {ASSURANCES.map(a => (
-              <li key={a.title}>
-                <Icon name={a.icon} size={30} strokeWidth={1.2} />
-                <span><strong>{a.title}</strong><small>{a.tag}</small></span>
+            {c.assurances.items.map((a, i) => (
+              <li key={i} {...at(`assurances.items.${i}`)}>
+                <Icon name={ASSURANCE_ICONS[i % ASSURANCE_ICONS.length]} size={30} strokeWidth={1.2} />
+                <span><strong>{a.title}</strong>{a.tag && <small>{a.tag}</small>}</span>
               </li>
             ))}
           </ul>
@@ -143,7 +114,7 @@ export default function Home({ realisations, selection, productCount, categories
             ...(catColors.hoverColor && { '--oa-cat-hover': catColors.hoverColor }),
           }}
         >
-          <h2 id="oa-home-cats-title" className="oa-section-title" data-reveal>Nos catégories</h2>
+          <h2 id="oa-home-cats-title" className="oa-section-title" data-reveal {...at('categories.title')}>{c.categories.title}</h2>
           <div className="oa-home-cats-rows">
             {categoryRows.map(row => (
               <div className="oa-home-cats-grid" key={row[0].id} style={{ '--category-columns': 1 + Math.ceil((row.length - 1) / 2) }} data-reveal>
@@ -171,15 +142,15 @@ export default function Home({ realisations, selection, productCount, categories
           <section className="oa-section oa-section-tight shop-home-selection" aria-labelledby="shop-selection-title">
             <div className="oa-container">
               <div className="home-head" data-reveal>
-                <h2 id="shop-selection-title" className="home-title">Notre <em>sélection</em></h2>
-                <p className="home-head-note">À louer dès maintenant</p>
+                <h2 id="shop-selection-title" className="home-title" {...at('selection.title')}><Emph text={c.selection.title} /></h2>
+                {c.selection.note && <p className="home-head-note" {...at('selection.note')}>{c.selection.note}</p>}
               </div>
               <div className="shop-grid" data-reveal>
                 {selection.map((card, i) => (
                   <ShopCard key={card.key} card={card} inCart={inCartOf(card)} onQuickView={setQuick} eager={i < 4} place="accueil" />
                 ))}
                 <Link href="/catalogue/complet" className="home-sel-all">
-                  <strong>Voir tout le catalogue</strong>
+                  <strong {...at('selection.allLabel')}>{c.selection.allLabel}</strong>
                   <span>{productCount} articles <i className="fas fa-arrow-right" aria-hidden="true" /></span>
                 </Link>
               </div>
@@ -191,18 +162,18 @@ export default function Home({ realisations, selection, productCount, categories
         <section className="oa-section-tight oa-steps" aria-labelledby="oa-steps-title">
           <div className="oa-container">
             <div className="home-head" data-reveal>
-              <h2 id="oa-steps-title" className="home-title">Louez en <em>4 étapes</em></h2>
-              <Link href="/catalogue/complet" className="shop-btn shop-btn-gold shop-btn-xl" onClick={() => track('Clic Réserver', { emplacement: 'étapes' })}>
-                <i className="far fa-calendar-check" /> Commencer ma sélection
+              <h2 id="oa-steps-title" className="home-title" {...at('steps.title')}><Emph text={c.steps.title} /></h2>
+              <Link href="/catalogue/complet" className="shop-btn shop-btn-gold shop-btn-xl" onClick={() => track('Clic Réserver', { emplacement: 'étapes' })} {...at('steps.buttonLabel')}>
+                <i className="far fa-calendar-check" /> {c.steps.buttonLabel}
               </Link>
             </div>
             <ol className="oa-steps-list" data-reveal>
-              {ETAPES.map((e, i) => (
-                <li className="oa-step" key={e.title}>
+              {c.steps.items.map((e, i) => (
+                <li className="oa-step" key={i} {...at(`steps.items.${i}`)}>
                   <span className="oa-step-num" aria-hidden="true">{i + 1}</span>
                   <div className="oa-step-body">
                     <h3 className="oa-step-title">{e.title}</h3>
-                    <p className="oa-step-text">{e.text}</p>
+                    {e.text && <p className="oa-step-text">{e.text}</p>}
                   </div>
                 </li>
               ))}
@@ -211,13 +182,13 @@ export default function Home({ realisations, selection, productCount, categories
         </section>
 
         {/* BANNIÈRE — custom projects */}
-        <section className="shop-banner" style={{ backgroundImage: `url(${images.univers_1 || BANNER_IMG})` }}>
+        <section className="shop-banner" style={{ backgroundImage: `url(${JSON.stringify(c.banner.image)})` }}>
           <div className="shop-banner-inner" data-reveal>
-            <span className="oa-eyebrow">Organisation sur mesure</span>
-            <h2>Un mariage, un anniversaire, un séminaire ?</h2>
-            <p>Au-delà de la location, notre équipe conçoit et installe la scénographie complète de votre événement.</p>
+            {c.banner.eyebrow && <span className="oa-eyebrow" {...at('banner.eyebrow')}>{c.banner.eyebrow}</span>}
+            <h2 {...at('banner.title')}>{c.banner.title}</h2>
+            {c.banner.text && <p {...at('banner.text')}>{c.banner.text}</p>}
             <div className="shop-banner-actions">
-              <Link href="/contact" className="shop-btn shop-btn-light">Demander un devis</Link>
+              <Link href="/contact" className="shop-btn shop-btn-light" {...at('banner.buttonLabel')}>{c.banner.buttonLabel}</Link>
             </div>
           </div>
         </section>
@@ -227,10 +198,10 @@ export default function Home({ realisations, selection, productCount, categories
           <div className="oa-container">
             <div className="oa-section-head oa-section-head-split" data-reveal>
               <div>
-                <span className="oa-eyebrow">Réalisations</span>
-                <h2 className="oa-section-title">Quelques instants capturés</h2>
+                {c.realisations.eyebrow && <span className="oa-eyebrow" {...at('realisations.eyebrow')}>{c.realisations.eyebrow}</span>}
+                <h2 className="oa-section-title" {...at('realisations.title')}>{c.realisations.title}</h2>
               </div>
-              <Link href="/nos-realisations" className="oa-univers-link">Voir toutes nos réalisations <i className="fas fa-arrow-right" /></Link>
+              <Link href="/nos-realisations" className="oa-univers-link" {...at('realisations.linkLabel')}>{c.realisations.linkLabel} <i className="fas fa-arrow-right" /></Link>
             </div>
             <RealisationsGrid items={realisations} />
           </div>
@@ -241,9 +212,9 @@ export default function Home({ realisations, selection, productCount, categories
         <section id="nous-trouver" data-scroll-flush className="oa-section seo-home home-loueur" aria-labelledby="seo-home-title">
           <div className="oa-container">
             <div className="home-loueur-intro" data-reveal>
-              <h2 id="seo-home-title" className="home-title">Tout le matériel de votre événement, <em>au même endroit</em></h2>
-              <p><RichText text="OA Événementiel loue aux particuliers et aux professionnels le matériel de leurs réceptions : [tentes](/location/tentes), [tables](/location/tables), [chaises](/location/chaises), [banquettes](/location/banquettes), [vaisselle](/location/vaisselle-art-de-la-table) et [décoration](/location/decorations). Les prix sont affichés en ligne et le total, livraison comprise, est calculé avant le paiement." /></p>
-              <p className="home-loueur-sign">Votre loueur dans toute la France</p>
+              <h2 id="seo-home-title" className="home-title" {...at('about.title')}><Emph text={c.about.title} /></h2>
+              {c.about.text && <p {...at('about.text')}><RichText text={c.about.text} /></p>}
+              {c.about.sign && <p className="home-loueur-sign" {...at('about.sign')}>{c.about.sign}</p>}
             </div>
             <div className="seo-link-columns" data-reveal>
               <div>
@@ -251,9 +222,9 @@ export default function Home({ realisations, selection, productCount, categories
                 <ul>{EVENTS.map(e => <li key={e.slug}><Link href={`/evenements/${e.slug}`}>{e.title.replace(' en Île-de-France', '')}</Link></li>)}</ul>
               </div>
               <div>
-                <h3>Livraison &amp; installation</h3>
-                <p style={{ color: 'var(--oa-muted)', lineHeight: '1.6', marginTop: '10px' }}>
-                  Livraison et montage dans <strong>TOUTE la France</strong> 7j/7 et 24h/24. Vos frais kilométriques sont calculés en temps réel dès la saisie de votre adresse.
+                <h3 {...at('about.deliveryTitle')}>{c.about.deliveryTitle}</h3>
+                <p style={{ color: 'var(--oa-muted)', lineHeight: '1.6', marginTop: '10px' }} {...cms('global', 'delivery.text')}>
+                  <RichText text={global.delivery.text} />
                 </p>
                 <p style={{ marginTop: '14px' }}>
                   <Link href="/catalogue/complet" className="list-text-link">Voir tout le catalogue →</Link>
@@ -269,19 +240,19 @@ export default function Home({ realisations, selection, productCount, categories
 
         {/* VOS QUESTIONS */}
         <div className="home-faq">
-          <div className="oa-container" data-reveal>
-            <Faq items={HOME_FAQ} title="Vos questions sur la location" more />
+          <div className="oa-container" data-reveal {...at('faq.title')}>
+            <Faq items={faqItems} title={plainText(c.faq.title)} more itemProps={item => cms('faq', item.path)} />
           </div>
         </div>
 
         {/* CTA FINALE */}
         <section className="apropos-cta-section">
           <div className="container">
-            <h2 className="apropos-cta-title oa-section-title">Prêt à composer votre réception ?</h2>
-            <p className="apropos-cta-text">Choisissez vos articles, indiquez votre date : le total, livraison comprise, est calculé en ligne.</p>
+            <h2 className="apropos-cta-title oa-section-title" {...at('cta.title')}>{c.cta.title}</h2>
+            {c.cta.text && <p className="apropos-cta-text" {...at('cta.text')}>{c.cta.text}</p>}
             <div className="oa-center-cta" style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link href="/catalogue/complet" className="shop-btn shop-btn-dark shop-btn-xl">Voir le catalogue</Link>
-              <Link href="/catalogue" className="shop-btn shop-btn-gold shop-btn-xl">Réserver mon événement</Link>
+              <Link href="/catalogue/complet" className="shop-btn shop-btn-dark shop-btn-xl" {...at('cta.primaryLabel')}>{c.cta.primaryLabel}</Link>
+              <Link href="/catalogue" className="shop-btn shop-btn-gold shop-btn-xl" {...at('cta.secondaryLabel')}>{c.cta.secondaryLabel}</Link>
             </div>
           </div>
         </section>

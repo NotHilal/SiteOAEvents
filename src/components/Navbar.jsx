@@ -9,7 +9,7 @@ import AccountMenu from './AccountMenu.jsx'
 import ContactMenu from './ContactMenu.jsx'
 import CartDrawer from './CartDrawer.jsx'
 import { track } from '../lib/analytics.js'
-import { SITE } from '../lib/site.js'
+import { cms, telHref, useCmsGlobal, useSiteContact } from '../lib/cms/client.js'
 
 // "Nuit & or" header. At the top of the page it is a full-width ink bar:
 // Menu + two quick links | gold monogram and serif wordmark | contact icons,
@@ -38,7 +38,7 @@ const SERVICE_LINKS = [
   { href: '/faq', label: 'Questions fréquentes' },
   { href: '/contact', label: 'Contact' },
   // Also in the header icon row, which hides them below 992px.
-  ...(SITE.phone ? [{ href: `tel:${SITE.phone}`, label: 'Nous appeler', external: true }] : []),
+  { phone: true, label: 'Nous appeler', external: true },
   { href: LOCATION_HREF, label: 'Nous trouver' },
 ]
 // Text links beside the Menu toggle in the full bar.
@@ -54,6 +54,9 @@ const ICON_LINKS = [
 
 export default function Navbar() {
   const router = useRouter()
+  const global = useCmsGlobal()
+  const contact = useSiteContact()
+  const serviceLinks = SERVICE_LINKS.flatMap(link => (link.phone ? (contact.phone ? [{ ...link, href: telHref(contact.phone) }] : []) : [link]))
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   // Menu photos are only requested once the menu has been opened.
@@ -186,7 +189,7 @@ export default function Navbar() {
             <span className="oah-logo-mark" aria-hidden="true" />
             <span className="oah-logo-words oah-fold">
               <span className="oah-logo-name">OA Événementiel</span>
-              <span className="oah-logo-tagline">Location · Toute la France</span>
+              {global.header.tagline && <span className="oah-logo-tagline" {...cms('global', 'header.tagline')}>{global.header.tagline}</span>}
             </span>
           </Link>
         </div>
@@ -227,8 +230,8 @@ export default function Navbar() {
             {cartCount > 0 && <span className="oah-cart-count" aria-hidden="true">{cartCount}</span>}
             <span className="oah-tooltip" aria-hidden="true">Mon panier</span>
           </button>
-          <Link href="/catalogue/complet" className="oah-cta" onClick={() => track('Clic Réserver', { emplacement: 'header' })}>
-            Réserver
+          <Link href="/catalogue/complet" className="oah-cta" onClick={() => track('Clic Réserver', { emplacement: 'header' })} {...cms('global', 'header.ctaLabel')}>
+            {global.header.ctaLabel}
           </Link>
         </div>
       </div>
@@ -243,8 +246,8 @@ export default function Navbar() {
               {c.label}
             </Link>
           ))}
-          <Link href="/catalogue/complet" className="oah-catbar-book" onClick={() => track('Clic Réserver', { emplacement: 'barre catalogue' })}>
-            <i className="far fa-calendar-check" aria-hidden="true" /> Réserver
+          <Link href="/catalogue/complet" className="oah-catbar-book" onClick={() => track('Clic Réserver', { emplacement: 'barre catalogue' })} {...cms('global', 'header.ctaLabel')}>
+            <i className="far fa-calendar-check" aria-hidden="true" /> {global.header.ctaLabel}
           </Link>
         </div>
       </nav>
@@ -277,7 +280,7 @@ export default function Navbar() {
             <span className="oah-logo-name">OA Événementiel</span>
           </Link>
           <Link href="/catalogue/complet" className="oah-cta" onClick={() => { setMenuOpen(false); track('Clic Réserver', { emplacement: 'menu' }) }}>
-            Réserver
+            {global.header.ctaLabel}
           </Link>
         </div>
 
@@ -317,7 +320,7 @@ export default function Navbar() {
         </div>
 
         <nav className="oah-drawer-services" aria-label="Services">
-          {SERVICE_LINKS.map(link => {
+          {serviceLinks.map(link => {
             const Tag = link.external ? 'a' : Link
             return (
               <Tag
@@ -331,7 +334,7 @@ export default function Navbar() {
               </Tag>
             )
           })}
-          <a href={`mailto:${SITE.email}`} className="oah-drawer-mail">{SITE.email}</a>
+          <a href={`mailto:${contact.email}`} className="oah-drawer-mail">{contact.email}</a>
         </nav>
       </div>
       <CartDrawer

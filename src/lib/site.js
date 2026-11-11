@@ -10,10 +10,10 @@ export const SITE = {
   name: 'OA Événementiel',
   url: SITE_URL,
   email: 'contact@oa-evenementiel.fr',
-  // Business phone in international form (e.g. '+33612345678'). Empty until
-  // the real number is known: the header's phone icon then leads to the
-  // contact page instead of a tel: link.
-  phone: process.env.NEXT_PUBLIC_SITE_PHONE || '',
+  // Business phone, shown as written (links use the digits only).
+  // NEXT_PUBLIC_SITE_PHONE overrides it; it can also be changed in Espace OA >
+  // Contenu des pages > Coordonnées.
+  phone: process.env.NEXT_PUBLIC_SITE_PHONE || '+33 7 69 67 23 09',
   region: 'Toute la France',
   // Registered office (Kbis, same as /mentions-legales). Keep name, address
   // and phone strictly identical on Google Business Profile and directories.
@@ -41,6 +41,9 @@ export const SITE = {
   description:
     "Location de matériel événementiel dans toute la France : tentes, tables, chaises, vaisselle et décoration pour mariages, anniversaires et événements d'entreprise.",
 };
+
+// Registered office on one line (legal pages, contact page, footer).
+export const SITE_ADDRESS = `${SITE.address.street}, ${SITE.address.postalCode} ${SITE.address.city}`;
 
 // Static, indexable pages — drives the sitemap together with the generated
 // catalogue, zone, occasion, guide and réalisation URLs (pages/sitemap.xml.js).

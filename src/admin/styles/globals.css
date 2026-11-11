@@ -136,3 +136,18 @@
     letter-spacing: -0.01em;
   }
 }
+
+/* Contenu des pages: field reached from a click in the live preview. */
+.cms-flash {
+  animation: cms-flash 1.6s ease-out;
+}
+@keyframes cms-flash {
+  0%,
+  35% {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--oa-gold) 55%, transparent);
+    background-color: color-mix(in oklab, var(--oa-gold) 8%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 3px transparent;
+  }
+}

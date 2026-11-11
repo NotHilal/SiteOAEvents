@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 
-import { AlertTriangle, ArrowRight, CalendarCheck2, Coins, Lock, Mail, PackageCheck, ReceiptText, Truck, Undo2, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarCheck2, Camera, Coins, Lock, Mail, PackageCheck, ReceiptText, Truck, Undo2, Wallet } from "lucide-react";
 
 import { KindBadge, PaymentBadge } from "@/components/badges";
 import { useBookings, useBookingsChanged } from "@/components/booking/booking-provider";
+import { useQuickRealisation } from "@/components/realisations/quick-realisation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,6 +35,7 @@ const who = (b: Booking) => (b.kind === "block" ? b.title || "Blocage" : b.clien
 
 export function DashboardScreen() {
   const { newBooking, openBooking } = useBookings();
+  const newRealisation = useQuickRealisation();
   const { data, error, loading, reload } = useFetch(() => api<{ data: Overview }>("/api/admin/overview").then((r) => r.data), []);
   useBookingsChanged(reload);
 
@@ -64,7 +66,10 @@ export function DashboardScreen() {
             {todayCount ? `${plural(data.deliveries.length, "livraison")} et ${plural(data.returns.length, "reprise")} aujourd'hui.` : "Pas de livraison ni de reprise aujourd'hui."}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={newRealisation}>
+            <Camera /> Nouvelle réalisation
+          </Button>
           <Button variant="outline" onClick={() => newBooking({ kind: "block" })}>
             <Lock /> Bloquer du matériel
           </Button>
